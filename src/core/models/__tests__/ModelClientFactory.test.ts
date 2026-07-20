@@ -543,62 +543,40 @@ describe('ModelClientFactory', () => {
       await expect((client as any)._opts.refreshAuthorizationToken()).resolves.toBe('jwt-456');
     });
 
-    it('should pass a configured upstream provider pin to gateway-routed clients', async () => {
-      const previousProviderSlug = process.env.WORKX_GATEWAY_PROVIDER_SLUG;
-      process.env.WORKX_GATEWAY_PROVIDER_SLUG = 'deepseek';
+    it('should pass the catalog OpenHub provider pin to gateway-routed clients', async () => {
+      await factory.initialize(createMockAgentConfig({
+        modelData: {
+          model: { modelKey: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'DeepSeek' },
+          provider: { id: 'deepseek', name: 'DeepSeek', apiKey: '', timeout: 30000, openHubProviderSlug: 'deepseek', models: [] },
+        },
+      }));
+      factory.updateAuthContext(createMockAuthManager({
+        shouldUseBackend: true,
+        gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
+        accessToken: 'jwt-123',
+      }));
 
-      try {
-        await factory.initialize(createMockAgentConfig({
-          modelData: {
-            model: { modelKey: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'DeepSeek' },
-            provider: { id: 'deepseek', name: 'DeepSeek', apiKey: '', timeout: 30000, models: [] },
-          },
-        }));
-        factory.updateAuthContext(createMockAuthManager({
-          shouldUseBackend: true,
-          gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
-          accessToken: 'jwt-123',
-        }));
+      const client = await factory.createClient('deepseek');
 
-        const client = await factory.createClient('deepseek');
-
-        expect((client as any)._opts.providerRoutingSlug).toBe('deepseek');
-      } finally {
-        if (previousProviderSlug === undefined) {
-          delete process.env.WORKX_GATEWAY_PROVIDER_SLUG;
-        } else {
-          process.env.WORKX_GATEWAY_PROVIDER_SLUG = previousProviderSlug;
-        }
-      }
+      expect((client as any)._opts.providerRoutingSlug).toBe('deepseek');
     });
 
-    it('should omit a configured upstream provider pin for other model owners', async () => {
-      const previousProviderSlug = process.env.WORKX_GATEWAY_PROVIDER_SLUG;
-      process.env.WORKX_GATEWAY_PROVIDER_SLUG = 'deepseek';
+    it('should use an explicit OpenHub pin that differs from the WorkX provider id', async () => {
+      await factory.initialize(createMockAgentConfig({
+        modelData: {
+          model: { modelKey: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro', supportsReasoning: true, supportBackendMode: 3, contextWindow: 128000, maxOutputTokens: 8192, creator: 'Google' },
+          provider: { id: 'google-ai-studio', name: 'Google AI Studio', apiKey: '', timeout: 30000, openHubProviderSlug: 'google', models: [] },
+        },
+      }));
+      factory.updateAuthContext(createMockAuthManager({
+        shouldUseBackend: true,
+        gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
+        accessToken: 'jwt-123',
+      }));
 
-      try {
-        await factory.initialize(createMockAgentConfig({
-          modelData: {
-            model: { modelKey: 'gpt-5', name: 'GPT-5', supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'OpenAI' },
-            provider: { id: 'openai', name: 'OpenAI', apiKey: '', timeout: 30000, models: [] },
-          },
-        }));
-        factory.updateAuthContext(createMockAuthManager({
-          shouldUseBackend: true,
-          gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
-          accessToken: 'jwt-123',
-        }));
+      const client = await factory.createClient('google-ai-studio');
 
-        const client = await factory.createClient('openai');
-
-        expect((client as any)._opts.providerRoutingSlug).toBeUndefined();
-      } finally {
-        if (previousProviderSlug === undefined) {
-          delete process.env.WORKX_GATEWAY_PROVIDER_SLUG;
-        } else {
-          process.env.WORKX_GATEWAY_PROVIDER_SLUG = previousProviderSlug;
-        }
-      }
+      expect((client as any)._opts.providerRoutingSlug).toBe('google');
     });
 
     it('should cache backend-routed clients', async () => {

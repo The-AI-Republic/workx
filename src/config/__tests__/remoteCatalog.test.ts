@@ -51,7 +51,7 @@ describe('remoteCatalog', () => {
     expect(getRemoteProviders()).toBeNull();
   });
 
-  it('caches a valid catalog and makes getDefaultProviders() return it (full replace)', async () => {
+  it('replaces provider/model data while preserving bundled OpenHub routing pins', async () => {
     process.env.WORKX_MODEL_CATALOG_URL = CATALOG_URL;
     mockFetchOnce(() => jsonResponse(VALID_CATALOG));
 
@@ -62,6 +62,21 @@ describe('remoteCatalog', () => {
     const providers = getDefaultProviders();
     expect(Object.keys(providers)).toEqual(['anthropic']);
     expect(providers.anthropic.models[0].modelKey).toBe('remote-opus-x');
+    expect(providers.anthropic.openHubProviderSlug).toBe('anthropic');
+  });
+
+  it('defines an explicit OpenHub routing pin for every bundled provider', () => {
+    const providers = getDefaultProviders();
+    expect(Object.fromEntries(Object.entries(providers).map(([id, provider]) => [
+      id,
+      provider.openHubProviderSlug,
+    ]))).toEqual({
+      xai: 'xai',
+      openai: 'openai',
+      'google-ai-studio': 'google',
+      deepseek: 'deepseek',
+      anthropic: 'anthropic',
+    });
   });
 
   it('falls back (null cache) on a non-ok response', async () => {

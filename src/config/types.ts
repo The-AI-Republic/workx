@@ -307,6 +307,13 @@ export interface IProviderConfig {
   baseUrl?: string | null;
 
   /**
+   * OpenHub upstream provider slug used to pin gateway routing.
+   * This is explicit catalog metadata because the WorkX provider id is not
+   * always the OpenHub provider slug (for example, google-ai-studio -> google).
+   */
+  openHubProviderSlug?: string;
+
+  /**
    * API version string (optional)
    * Provider-specific API version identifier
    */

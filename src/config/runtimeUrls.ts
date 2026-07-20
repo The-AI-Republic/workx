@@ -8,8 +8,6 @@ export interface RuntimeUrlConfig {
   llmApiUrl: string | null;
   gatewayBaseUrl: string | null;
   gatewayLlmApiUrl: string | null;
-  /** Optional OpenHub upstream-provider pin (for example, "deepseek"). */
-  gatewayProviderSlug: string | null;
   gatewayMcpUrl: string | null;
   gatewayCatalogUrl: string | null;
   gatewayCatalogApiBaseUrl: string | null;
@@ -39,7 +37,6 @@ export interface RuntimeUrlConfig {
     llmApiUrl: RuntimeUrlSource;
     gatewayBaseUrl: RuntimeUrlSource;
     gatewayLlmApiUrl: RuntimeUrlSource;
-    gatewayProviderSlug: RuntimeUrlSource;
     gatewayMcpUrl: RuntimeUrlSource;
     gatewayCatalogUrl: RuntimeUrlSource;
     gatewayCatalogApiBaseUrl: RuntimeUrlSource;
@@ -124,11 +121,6 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
     env.VITE_GATEWAY_LLM_API_URL,
     vite.VITE_GATEWAY_LLM_API_URL,
   );
-  const gatewayProviderSlug = firstNonEmpty(
-    env.WORKX_GATEWAY_PROVIDER_SLUG,
-    env.VITE_GATEWAY_PROVIDER_SLUG,
-    vite.VITE_GATEWAY_PROVIDER_SLUG,
-  )?.trim() ?? null;
   const gatewayMcpFromEnv = firstNonEmpty(
     env.WORKX_GATEWAY_MCP_URL,
     env.VITE_GATEWAY_MCP_URL,
@@ -205,7 +197,6 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
     llmApiUrl: backendApiBaseUrl ? `${backendApiBaseUrl}/api/llm` : '/api/llm',
     gatewayBaseUrl,
     gatewayLlmApiUrl,
-    gatewayProviderSlug,
     gatewayMcpUrl,
     gatewayCatalogUrl,
     gatewayCatalogApiBaseUrl,
@@ -224,7 +215,6 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
       llmApiUrl: backendFromEnv ? 'env' : 'default',
       gatewayBaseUrl: gatewayBaseUrl ? 'env' : 'default',
       gatewayLlmApiUrl: gatewayLlmFromEnv || gatewayBaseUrl ? 'env' : 'default',
-      gatewayProviderSlug: gatewayProviderSlug ? 'env' : 'default',
       gatewayMcpUrl: gatewayMcpFromEnv || gatewayBaseUrl ? 'env' : 'default',
       gatewayCatalogUrl: gatewayCatalogUrl ? 'env' : 'default',
       gatewayCatalogApiBaseUrl: gatewayCatalogApiFromEnv ? 'env' : 'default',
