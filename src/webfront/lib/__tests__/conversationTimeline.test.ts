@@ -12,11 +12,11 @@ import {
   upsertTimelineEvent,
 } from '../conversationTimeline';
 
-function event(id: string, content = id): ProcessedEvent {
+function event(id: string, content = id, timestamp = 0): ProcessedEvent {
   return {
     id,
     category: 'message',
-    timestamp: new Date(0),
+    timestamp: new Date(timestamp),
     title: 'user',
     content,
     style: { textColor: 'text-test' },
@@ -42,6 +42,36 @@ describe('conversation timeline reducer', () => {
     const timeline = upsertTimelineEvent(emptyTimeline(), event('user:m1'), 'optimistic');
     const attached = reconcileAttachedTimeline(timeline, [], [], new Set(['m1']));
     expect(attached.order).toEqual(['user:m1']);
+  });
+
+  it('places older retained optimistic messages before newer durable history', () => {
+    let timeline = upsertTimelineEvent(
+      emptyTimeline(),
+      event('user:old-1', 'old question one', 1_000),
+      'optimistic',
+    );
+    timeline = upsertTimelineEvent(
+      timeline,
+      event('user:old-2', 'old question two', 2_000),
+      'optimistic',
+    );
+
+    const attached = reconcileAttachedTimeline(
+      timeline,
+      [
+        event('user:new', 'new question', 3_000),
+        { ...event('response:new', 'new answer', 4_000), title: 'workx' },
+      ],
+      [],
+      new Set(['old-1', 'old-2']),
+    );
+
+    expect(attached.order).toEqual([
+      'user:old-1',
+      'user:old-2',
+      'user:new',
+      'response:new',
+    ]);
   });
 
   it('drops stale live rows on reattach but keeps local command output', () => {

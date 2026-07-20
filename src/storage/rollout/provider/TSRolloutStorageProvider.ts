@@ -69,7 +69,7 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
 
       CREATE TABLE IF NOT EXISTS rollout_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        rollout_id TEXT NOT NULL REFERENCES rollout_metadata(id) ON DELETE CASCADE,
+        rollout_id TEXT NOT NULL REFERENCES rollout_metadata(id) ON DELETE RESTRICT,
         timestamp TEXT NOT NULL,
         sequence INTEGER NOT NULL,
         type TEXT NOT NULL,
@@ -78,6 +78,7 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
       );
       CREATE INDEX IF NOT EXISTS idx_items_rollout_seq ON rollout_items(rollout_id, sequence);
     `);
+    this.ensureRestrictiveItemForeignKey();
   }
 
   async close(): Promise<void> {
@@ -88,6 +89,48 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
   private getDb(): import('better-sqlite3').Database {
     if (!this.db) throw new Error('TSRolloutStorageProvider not initialized. Call initialize() first.');
     return this.db;
+  }
+
+  /** Migrate legacy CASCADE schemas without changing or reordering item rows. */
+  private ensureRestrictiveItemForeignKey(): void {
+    const db = this.getDb();
+    const itemForeignKey = (db.pragma('foreign_key_list(rollout_items)') as RawForeignKeyRow[])
+      .find((row) => row.table === 'rollout_metadata' && row.from === 'rollout_id');
+    if (itemForeignKey?.on_delete.toUpperCase() === 'RESTRICT') return;
+
+    const orphan = db.prepare(
+      `SELECT rollout_items.rollout_id
+       FROM rollout_items
+       LEFT JOIN rollout_metadata ON rollout_metadata.id = rollout_items.rollout_id
+       WHERE rollout_metadata.id IS NULL
+       LIMIT 1`,
+    ).get() as { rollout_id: string } | undefined;
+    if (orphan) {
+      throw new Error(`Cannot migrate rollout item ownership: missing metadata for ${orphan.rollout_id}`);
+    }
+
+    const migrate = db.transaction(() => {
+      db.exec(`
+        DROP TABLE IF EXISTS rollout_items_restrict_migration;
+        CREATE TABLE rollout_items_restrict_migration (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          rollout_id TEXT NOT NULL REFERENCES rollout_metadata(id) ON DELETE RESTRICT,
+          timestamp TEXT NOT NULL,
+          sequence INTEGER NOT NULL,
+          type TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          UNIQUE(rollout_id, sequence)
+        );
+        INSERT INTO rollout_items_restrict_migration
+          (id, rollout_id, timestamp, sequence, type, payload)
+        SELECT id, rollout_id, timestamp, sequence, type, payload
+        FROM rollout_items;
+        DROP TABLE rollout_items;
+        ALTER TABLE rollout_items_restrict_migration RENAME TO rollout_items;
+        CREATE INDEX idx_items_rollout_seq ON rollout_items(rollout_id, sequence);
+      `);
+    });
+    migrate();
   }
 
   // ==========================================================================
@@ -103,9 +146,20 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
   }
 
   async putMetadata(metadata: RolloutMetadataRecord): Promise<void> {
-    this.getDb().prepare(
-      `INSERT OR REPLACE INTO rollout_metadata (id, created, updated, expires_at, session_meta, item_count, status)
-       VALUES (@id, @created, @updated, @expiresAt, @sessionMeta, @itemCount, @status)`
+    const db = this.getDb();
+    // This must be an in-place update. SQLite's INSERT OR REPLACE deletes the
+    // parent first: legacy schemas cascaded that deletion into rollout_items,
+    // while the restrictive schema correctly rejects it.
+    db.prepare(
+      `INSERT INTO rollout_metadata (id, created, updated, expires_at, session_meta, item_count, status)
+       VALUES (@id, @created, @updated, @expiresAt, @sessionMeta, @itemCount, @status)
+       ON CONFLICT(id) DO UPDATE SET
+         created = excluded.created,
+         updated = excluded.updated,
+         expires_at = excluded.expires_at,
+         session_meta = excluded.session_meta,
+         item_count = MAX(rollout_metadata.item_count, excluded.item_count),
+         status = excluded.status`
     ).run({
       id: metadata.id,
       created: metadata.created,
@@ -154,6 +208,19 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
       return true;
     });
     return transaction();
+  }
+
+  async deleteRollouts(rolloutIds: ConversationId[]): Promise<void> {
+    if (rolloutIds.length === 0) return;
+    const db = this.getDb();
+    const placeholders = rolloutIds.map(() => '?').join(', ');
+    const transaction = db.transaction(() => {
+      db.prepare(`DELETE FROM rollout_items WHERE rollout_id IN (${placeholders})`)
+        .run(...rolloutIds);
+      db.prepare(`DELETE FROM rollout_metadata WHERE id IN (${placeholders})`)
+        .run(...rolloutIds);
+    });
+    transaction();
   }
 
   async deleteMetadata(rolloutId: ConversationId): Promise<void> {
@@ -427,4 +494,10 @@ interface RawItemRow {
   sequence: number;
   type: string;
   payload: string;
+}
+
+interface RawForeignKeyRow {
+  table: string;
+  from: string;
+  on_delete: string;
 }
