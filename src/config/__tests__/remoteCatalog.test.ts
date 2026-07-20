@@ -10,7 +10,7 @@ const VALID_CATALOG = {
     name: 'Anthropic',
     apiKey: '',
     timeout: 30000,
-    models: [{ name: 'Remote Opus', modelKey: 'remote-opus-x' }],
+    models: [{ name: 'Remote Fable', modelKey: 'claude-fable-5' }],
   },
 };
 
@@ -51,7 +51,7 @@ describe('remoteCatalog', () => {
     expect(getRemoteProviders()).toBeNull();
   });
 
-  it('replaces provider/model data while preserving bundled OpenHub routing pins', async () => {
+  it('replaces provider/model data while preserving bundled per-model OpenHub routes', async () => {
     process.env.WORKX_MODEL_CATALOG_URL = CATALOG_URL;
     mockFetchOnce(() => jsonResponse(VALID_CATALOG));
 
@@ -61,21 +61,56 @@ describe('remoteCatalog', () => {
 
     const providers = getDefaultProviders();
     expect(Object.keys(providers)).toEqual(['anthropic']);
-    expect(providers.anthropic.models[0].modelKey).toBe('remote-opus-x');
-    expect(providers.anthropic.openHubProviderSlug).toBe('anthropic');
+    expect(providers.anthropic.models[0].name).toBe('Remote Fable');
+    expect(providers.anthropic.models[0].openHubRoute).toEqual({
+      modelSlug: 'anthropic/claude-fable-5',
+      providerSlug: 'anthropic',
+    });
   });
 
-  it('defines an explicit OpenHub routing pin for every bundled provider', () => {
+  it('accepts providers without models without crashing the route overlay', async () => {
+    process.env.WORKX_MODEL_CATALOG_URL = CATALOG_URL;
+    mockFetchOnce(() => jsonResponse({
+      ...VALID_CATALOG,
+      openai: { id: 'openai', name: 'OpenAI', apiKey: '', timeout: 30000 },
+    }));
+
+    await fetchRemoteCatalog();
+
+    expect(getDefaultProviders().openai.models).toEqual([]);
+  });
+
+  it('defines an explicit OpenHub route for every bundled model', () => {
     const providers = getDefaultProviders();
-    expect(Object.fromEntries(Object.entries(providers).map(([id, provider]) => [
-      id,
-      provider.openHubProviderSlug,
-    ]))).toEqual({
-      xai: 'xai',
-      openai: 'openai',
-      'google-ai-studio': 'google-ai-studio',
-      deepseek: 'deepseek',
-      anthropic: 'anthropic',
+    expect(Object.fromEntries(Object.entries(providers).flatMap(([providerId, provider]) =>
+      provider.models.map((model) => [
+        `${providerId}:${model.modelKey}`,
+        model.openHubRoute,
+      ]),
+    ))).toEqual({
+      'xai:grok-4-1-fast-reasoning': {
+        modelSlug: 'x-ai/grok-4-1-fast-reasoning', providerSlug: 'xai',
+      },
+      'openai:gpt-5.5': { modelSlug: 'openai/gpt-5.5', providerSlug: 'azure' },
+      'openai:gpt-5.4': { modelSlug: 'openai/gpt-5.4', providerSlug: 'azure' },
+      'google-ai-studio:gemini-3.1-pro': {
+        modelSlug: 'google/gemini-3.1-pro', providerSlug: 'google-ai-studio',
+      },
+      'deepseek:deepseek-v4-flash': {
+        modelSlug: 'deepseek/deepseek-v4-flash', providerSlug: 'deepseek',
+      },
+      'anthropic:claude-opus-4-8': {
+        modelSlug: 'anthropic/claude-opus-4-8', providerSlug: 'deepinfra',
+      },
+      'anthropic:claude-sonnet-4-6': {
+        modelSlug: 'anthropic/claude-sonnet-4-6', providerSlug: 'deepinfra',
+      },
+      'anthropic:claude-fable-5': {
+        modelSlug: 'anthropic/claude-fable-5', providerSlug: 'anthropic',
+      },
+      'anthropic:claude-haiku-4-5-20251001': {
+        modelSlug: 'anthropic/claude-haiku-4.5', providerSlug: 'anthropic',
+      },
     });
   });
 
@@ -86,7 +121,7 @@ describe('remoteCatalog', () => {
     expect(await fetchRemoteCatalog()).toBeNull();
     expect(getRemoteProviders()).toBeNull();
     // bundled default still used
-    expect(getDefaultProviders().anthropic.models.some((m: { modelKey: string }) => m.modelKey === 'remote-opus-x')).toBe(false);
+    expect(getDefaultProviders().anthropic.models.some((m) => m.name === 'Remote Fable')).toBe(false);
   });
 
   it('rejects a malformed payload (no models with modelKey) and keeps the bundled default', async () => {
@@ -112,7 +147,7 @@ describe('remoteCatalog', () => {
 
   it('buildRuntimeConfig falls back to the first available model when the hardcoded default is absent from a replaced catalog', async () => {
     process.env.WORKX_MODEL_CATALOG_URL = CATALOG_URL;
-    // Remote catalog has only anthropic:remote-opus-x — the hardcoded default
+    // Remote catalog has only anthropic:claude-fable-5 — the hardcoded default
     // deepseek:deepseek-v4-flash is NOT present.
     mockFetchOnce(() => jsonResponse(VALID_CATALOG));
     await fetchRemoteCatalog();
@@ -121,7 +156,7 @@ describe('remoteCatalog', () => {
     const config = buildRuntimeConfig(stored);
 
     // Must not keep a key that isn't in the replaced catalog.
-    expect(config.selectedModelKey).toBe('anthropic:remote-opus-x');
+    expect(config.selectedModelKey).toBe('anthropic:claude-fable-5');
   });
 
   it('buildRuntimeConfig keeps the default when it IS present in the catalog', async () => {

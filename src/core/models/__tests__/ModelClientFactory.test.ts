@@ -332,6 +332,18 @@ describe('ModelClientFactory', () => {
       const client = await factory.createClient('openai');
       expect(client).toBeDefined();
     });
+
+    it('should fail closed in gateway mode when routing metadata is unavailable', async () => {
+      factory.updateAuthContext(createMockAuthManager({
+        shouldUseBackend: true,
+        gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
+        accessToken: 'jwt-123',
+      }));
+
+      await expect(factory.createClient('openai')).rejects.toThrow(
+        'Gateway routing metadata is unavailable for openai',
+      );
+    });
   });
 
   // =========================================================================
@@ -520,7 +532,7 @@ describe('ModelClientFactory', () => {
     it('should create a Chat Completions client for gateway routing with dynamic session JWT bearer auth', async () => {
       await factory.initialize(createMockAgentConfig({
         modelData: {
-          model: { modelKey: 'gpt-5', name: 'GPT-5', supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'OpenAI' },
+          model: { modelKey: 'gpt-5', name: 'GPT-5', openHubRoute: { modelSlug: 'openai/gpt-5', providerSlug: 'azure' }, supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'OpenAI' },
           provider: { id: 'openai', name: 'OpenAI', apiKey: '', timeout: 30000, models: [] },
         },
       }));
@@ -546,8 +558,8 @@ describe('ModelClientFactory', () => {
     it('should pass the catalog OpenHub provider pin to gateway-routed clients', async () => {
       await factory.initialize(createMockAgentConfig({
         modelData: {
-          model: { modelKey: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'DeepSeek' },
-          provider: { id: 'deepseek', name: 'DeepSeek', apiKey: '', timeout: 30000, openHubProviderSlug: 'deepseek', models: [] },
+          model: { modelKey: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', openHubRoute: { modelSlug: 'deepseek/deepseek-v4-flash', providerSlug: 'deepseek' }, supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'DeepSeek' },
+          provider: { id: 'deepseek', name: 'DeepSeek', apiKey: '', timeout: 30000, models: [] },
         },
       }));
       factory.updateAuthContext(createMockAuthManager({
@@ -558,14 +570,15 @@ describe('ModelClientFactory', () => {
 
       const client = await factory.createClient('deepseek');
 
+      expect((client as any)._opts.modelFamily.family).toBe('deepseek/deepseek-v4-flash');
       expect((client as any)._opts.providerRoutingSlug).toBe('deepseek');
     });
 
     it('should preserve the specific Google AI Studio OpenHub route', async () => {
       await factory.initialize(createMockAgentConfig({
         modelData: {
-          model: { modelKey: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro', supportsReasoning: true, supportBackendMode: 3, contextWindow: 128000, maxOutputTokens: 8192, creator: 'Google' },
-          provider: { id: 'google-ai-studio', name: 'Google AI Studio', apiKey: '', timeout: 30000, openHubProviderSlug: 'google-ai-studio', models: [] },
+          model: { modelKey: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro', openHubRoute: { modelSlug: 'google/gemini-3.1-pro', providerSlug: 'google-ai-studio' }, supportsReasoning: true, supportBackendMode: 3, contextWindow: 128000, maxOutputTokens: 8192, creator: 'Google' },
+          provider: { id: 'google-ai-studio', name: 'Google AI Studio', apiKey: '', timeout: 30000, models: [] },
         },
       }));
       factory.updateAuthContext(createMockAuthManager({
@@ -576,7 +589,21 @@ describe('ModelClientFactory', () => {
 
       const client = await factory.createClient('google-ai-studio');
 
+      expect((client as any)._opts.modelFamily.family).toBe('google/gemini-3.1-pro');
       expect((client as any)._opts.providerRoutingSlug).toBe('google-ai-studio');
+    });
+
+    it('should fail closed when a gateway model has no explicit OpenHub route', async () => {
+      await factory.initialize(createMockAgentConfig());
+      factory.updateAuthContext(createMockAuthManager({
+        shouldUseBackend: true,
+        gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
+        accessToken: 'jwt-123',
+      }));
+
+      await expect(factory.createClient('openai')).rejects.toThrow(
+        'Gateway routing metadata is missing for openai:gpt-5',
+      );
     });
 
     it('should cache backend-routed clients', async () => {

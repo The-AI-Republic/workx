@@ -57,7 +57,10 @@ interface ClientConstructionSignature {
   providerBaseUrl: string | null;
   providerOrganization: string | null;
   gatewayLlmBaseUrl: string | null;
-  openHubProviderSlug: string | null;
+  openHubRoute: {
+    modelSlug: string;
+    providerSlug: string;
+  } | null;
   model: {
     modelKey: string | null;
     supportsReasoning: boolean;
@@ -477,27 +480,25 @@ export class ModelClientFactory {
     }
 
     const parallelToolCalls = this.resolveParallelToolCalls();
-    let providerRoutingSlug: string | undefined;
-    let modelConfig: any = undefined;
-    let supportsReasoning = false;
-    let supportsReasoningSummaries = false;
-    let selectedModel = DEFAULT_MODEL;
+    const selectedModelKey = modelKeyOverride ?? this.config?.getConfig().selectedModelKey;
+    const modelData = selectedModelKey
+      ? this.config?.getModelByKey(selectedModelKey)
+      : null;
+    if (!modelData?.model) {
+      throw new ModelClientError(
+        `Gateway routing metadata is unavailable for ${selectedModelKey ?? provider}`,
+      );
+    }
 
-    if (this.config) {
-      const configData = this.config.getConfig();
-      const modelData = this.config.getModelByKey(modelKeyOverride ?? configData.selectedModelKey);
-      if (modelData?.model) {
-        modelConfig = modelData.model;
-        supportsReasoning = modelData.model.supportsReasoning ?? false;
-        supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
-        // The Hub gateway resolves the canonical "<owner>/<model>" slug; for our
-        // first-party catalog the provider id is the owner. (A catalog-driven
-        // slug lookup would be the robust long-term form.)
-        selectedModel = `${modelData.provider.id}/${modelData.model.modelKey}`;
-        // WorkX intentionally pins every catalog model to its declared OpenHub
-        // upstream rather than allowing the gateway to choose a cheaper sibling.
-        providerRoutingSlug = modelData.provider.openHubProviderSlug?.trim() || undefined;
-      }
+    const modelConfig = modelData.model;
+    const supportsReasoning = modelConfig.supportsReasoning ?? false;
+    const supportsReasoningSummaries = modelConfig.supportsReasoningSummaries ?? false;
+    const selectedModel = modelConfig.openHubRoute?.modelSlug.trim();
+    const providerRoutingSlug = modelConfig.openHubRoute?.providerSlug.trim();
+    if (!selectedModel || !providerRoutingSlug) {
+      throw new ModelClientError(
+        `Gateway routing metadata is missing for ${modelData.provider.id}:${modelConfig.modelKey}`,
+      );
     }
 
     const modelFamily = {
@@ -982,7 +983,7 @@ export class ModelClientFactory {
       providerBaseUrl: providerConfig?.baseUrl ?? null,
       providerOrganization: providerConfig?.organization ?? null,
       gatewayLlmBaseUrl: this.auth.current()?.getGatewayLlmBaseUrl?.() ?? null,
-      openHubProviderSlug: modelData?.provider.openHubProviderSlug ?? null,
+      openHubRoute: model?.openHubRoute ?? null,
       model: {
         modelKey: model?.modelKey ?? null,
         supportsReasoning: model?.supportsReasoning ?? false,

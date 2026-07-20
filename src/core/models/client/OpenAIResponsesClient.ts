@@ -312,7 +312,9 @@ export class OpenAIResponsesClient extends ModelClient {
   async complete(request: CompletionRequest): Promise<CompletionResponse> {
     this.validateRequest(request);
 
-    const requestParams: any = {
+    const requestParams: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & {
+      provider?: string;
+    } = {
       model: request.model,
       messages: request.messages
         .filter(m => m.role !== 'tool')

@@ -167,6 +167,17 @@ export interface IModelConfig {
   modelKey: string;
 
   /**
+   * Deterministic OpenHub route for this model. `modelSlug` identifies the
+   * canonical model owner while `providerSlug` selects the serving endpoint;
+   * these are intentionally independent (for example, an Anthropic model may
+   * be served by Amazon Bedrock).
+   */
+  openHubRoute?: {
+    modelSlug: string;
+    providerSlug: string;
+  };
+
+  /**
    * Model creator/developer
    * The company that developed/trained the model
    * DISTINCT from the provider hosting the model API
@@ -305,13 +316,6 @@ export interface IProviderConfig {
    * Custom base URL for API requests
    */
   baseUrl?: string | null;
-
-  /**
-   * OpenHub upstream provider slug used to pin gateway routing.
-   * Keep this explicit rather than deriving it from an adapter alias: OpenHub
-   * distinguishes provider routes such as google-ai-studio and google-vertex.
-   */
-  openHubProviderSlug?: string;
 
   /**
    * API version string (optional)
