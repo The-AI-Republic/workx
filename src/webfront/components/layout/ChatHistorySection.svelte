@@ -178,7 +178,7 @@
 <LeftPanelSection title="Chat History">
   <div class="px-2 pb-2 flex gap-1">
     <input
-      class="min-w-0 flex-1 rounded px-2 py-1 text-xs bg-transparent border
+      class="min-w-0 flex-1 rounded px-2 py-1 text-sm bg-transparent border
         {currentTheme === 'modern'
           ? 'border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark placeholder:text-chat-text-muted dark:placeholder:text-chat-text-muted-dark'
           : 'border-term-dim-green text-term-green placeholder:text-term-dim-green'}"
@@ -198,7 +198,7 @@
 
   {#if attentionThreads.length > 0}
     <button
-      class="mx-2 mb-2 w-[calc(100%-1rem)] rounded px-2 py-1.5 text-left text-xs border-none cursor-pointer bg-amber-500/15 text-amber-700 dark:text-amber-300"
+      class="mx-2 mb-2 w-[calc(100%-1rem)] rounded px-2 py-1.5 text-left text-sm border-none cursor-pointer bg-amber-500/15 text-amber-700 dark:text-amber-300"
       onclick={() => openAttention(attentionThreads[0])}
       aria-label={$_t('Open a conversation waiting for your attention')}
     >
@@ -211,11 +211,11 @@
   {/if}
 
   {#if error}
-    <div class="px-2 py-1.5 text-xs text-chat-error dark:text-chat-error-dark" role="alert">{error}</div>
+    <div class="px-2 py-1.5 text-meta font-normal text-chat-error dark:text-chat-error-dark" role="alert">{error}</div>
   {:else if $threadStore.loading && historyThreads.length === 0}
-    <div class="px-2 py-1.5 text-xs opacity-70">{$_t('Loading history...')}</div>
+    <div class="px-2 py-1.5 text-meta font-normal opacity-70">{$_t('Loading history...')}</div>
   {:else if historyThreads.length === 0}
-    <div class="px-2 py-1.5 text-xs opacity-70">{$_t('No chat history yet')}</div>
+    <div class="px-2 py-1.5 text-meta font-normal opacity-70">{$_t('No chat history yet')}</div>
   {:else}
     <div
       class="max-h-80 overflow-y-auto overscroll-contain pr-0.5"
@@ -240,7 +240,7 @@
             title={item.title || $_t('Untitled conversation')}
           >
             {#if item.runtime.awaitingInputCount > 0}
-              <span class="w-4 h-4 rounded-full shrink-0 inline-flex items-center justify-center bg-amber-400 text-black text-[10px] font-bold"
+              <span class="w-4 h-4 rounded-full shrink-0 inline-flex items-center justify-center bg-amber-400 text-black text-2xs font-bold"
                 title={$_t('Waiting for your input')} aria-label={$_t('Waiting for your input')}>!</span>
             {:else}
               <span class="w-2 h-2 rounded-full shrink-0
@@ -250,7 +250,7 @@
             {/if}
             <span class="flex-1 truncate">{item.title || $_t('Untitled conversation')}</span>
             {#if item.runtime.durability === 'degraded'}<span title={$_t('Durability degraded')}>⚠</span>{/if}
-            <span class="shrink-0 text-xs opacity-60">{formatTimeAgo(item.lastActiveAt)}</span>
+            <span class="shrink-0 text-meta font-normal opacity-60">{formatTimeAgo(item.lastActiveAt)}</span>
           </button>
           {#if item.attentionRequest}
             <button class="px-1 border-none bg-transparent text-inherit cursor-pointer" title={$_t('Continue browser action')}
@@ -269,7 +269,7 @@
   {/if}
 
   {#if $threadStore.nextCursor}
-    <button class="w-full px-2 py-1.5 text-center text-xs border-none bg-transparent cursor-pointer opacity-70 hover:opacity-100
+    <button class="w-full px-2 py-1.5 text-center text-sm border-none bg-transparent cursor-pointer opacity-70 hover:opacity-100
       {currentTheme === 'modern'
         ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark hover:text-chat-text dark:hover:text-chat-text-dark'
         : 'text-term-dim-green hover:text-term-green'}"
@@ -279,7 +279,7 @@
   {/if}
 
   {#if undo}
-    <div class="mx-2 mt-2 rounded px-2 py-1.5 text-xs flex justify-between bg-black/10" role="status">
+    <div class="mx-2 mt-2 rounded px-2 py-1.5 text-meta font-normal flex justify-between bg-black/10" role="status">
       <span>{$_t('Conversation deleted')}</span>
       <button class="border-none bg-transparent underline cursor-pointer" onclick={() => void undoDelete()}>{$_t('Undo')}</button>
     </div>

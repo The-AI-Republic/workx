@@ -164,7 +164,7 @@
 
 {#snippet runtimeBadge(item: ThreadListItem)}
   {#if item.runtime.awaitingInputCount > 0}
-    <span class="w-4 h-4 shrink-0 rounded-full inline-flex items-center justify-center bg-amber-400 text-black text-[10px] font-bold"
+    <span class="w-4 h-4 shrink-0 rounded-full inline-flex items-center justify-center bg-amber-400 text-black text-2xs font-bold"
       title={$_t('Waiting for your input')} aria-label={$_t('Waiting for your input')}>!</span>
   {:else}
     <span class="w-2 h-2 shrink-0 rounded-full
@@ -221,7 +221,7 @@
                 {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
-              <span class="shrink-0 text-sm opacity-70
+              <span class="shrink-0 text-meta font-normal opacity-70
                 {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
                   : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.lastActiveAt)}</span>
@@ -250,7 +250,7 @@
                 {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
-              <span class="shrink-0 text-sm opacity-70
+              <span class="shrink-0 text-meta font-normal opacity-70
                 {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
                   : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.lastActiveAt)}</span>
@@ -279,7 +279,7 @@
                 {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
-              <span class="shrink-0 text-sm opacity-70
+              <span class="shrink-0 text-meta font-normal opacity-70
                 {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
                   : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.lastActiveAt)}</span>
@@ -308,7 +308,7 @@
                 {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
-              <span class="shrink-0 text-sm opacity-70
+              <span class="shrink-0 text-meta font-normal opacity-70
                 {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
                   : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.lastActiveAt)}</span>
@@ -337,7 +337,7 @@
                 {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
-              <span class="shrink-0 text-sm opacity-70
+              <span class="shrink-0 text-meta font-normal opacity-70
                 {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
                   : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.lastActiveAt)}</span>

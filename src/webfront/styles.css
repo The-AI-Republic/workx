@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../styles/typography.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -14,12 +15,6 @@
   --color-term-bright-green: #33ff00;
   --color-term-dim-green: #00cc00;
   --color-term-blue: #60a5fa;
-
-  /* Terminal Font */
-  --font-terminal: 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
-
-  /* Chat Font */
-  --font-chat: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
   /* WorkX Semantic Colors — Light */
   --color-bx-primary: #4f46e5;
@@ -122,7 +117,6 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: system-ui, -apple-system, sans-serif;
   background: #000000;
   color: #00ff00;
   width: 100%;
@@ -131,7 +125,7 @@ body {
 }
 
 body.terminal-mode {
-  font-family: 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+  @apply font-terminal text-sm;
   background: #000000;
   color: #00ff00;
 }
@@ -164,9 +158,9 @@ body.terminal-mode {
 
 /* Terminal component styles */
 .terminal-container {
+  @apply font-terminal text-sm;
   background-color: var(--color-term-bg);
   color: var(--color-term-green);
-  font-family: var(--font-terminal);
   padding: 0 1rem 1rem;
   min-height: 100vh;
   overflow: auto;

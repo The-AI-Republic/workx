@@ -27,6 +27,6 @@
     : (terminalColors[type] || terminalColors.default));
 </script>
 
-<div class="terminal-message {type} {$uiTheme} text-sm leading-relaxed font-[inherit] {colorClasses}" aria-live="polite" aria-atomic="true">
+<div class="terminal-message {type} {$uiTheme} text-sm leading-ui font-[inherit] {colorClasses}" aria-live="polite" aria-atomic="true">
   {content}
 </div>
