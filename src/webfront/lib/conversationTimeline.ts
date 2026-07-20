@@ -110,12 +110,12 @@ function insertRetainedTimelineEvent(
   if (timeline.byId[event.id]) {
     return upsertTimelineEvent(timeline, event, source);
   }
-  const timestamp = event.timestamp.getTime();
+  const timestamp = event.timestamp?.getTime?.() ?? Number.NaN;
   if (!Number.isFinite(timestamp)) {
     return upsertTimelineEvent(timeline, event, source);
   }
   const insertionIndex = timeline.order.findIndex((id) => {
-    const existingTimestamp = timeline.byId[id]?.event.timestamp.getTime();
+    const existingTimestamp = timeline.byId[id]?.event.timestamp?.getTime?.();
     return existingTimestamp !== undefined
       && Number.isFinite(existingTimestamp)
       && existingTimestamp > timestamp;

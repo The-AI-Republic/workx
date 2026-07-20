@@ -74,6 +74,40 @@ describe('conversation timeline reducer', () => {
     ]);
   });
 
+  it('falls back safely when retained or existing timestamps are malformed', () => {
+    const malformedRetained = {
+      ...event('user:malformed'),
+      timestamp: undefined,
+    } as unknown as ProcessedEvent;
+    const retainedTimeline = upsertTimelineEvent(
+      emptyTimeline(),
+      malformedRetained,
+      'optimistic',
+    );
+    expect(() => reconcileAttachedTimeline(
+      retainedTimeline,
+      [event('persisted', 'durable', 1_000)],
+      [],
+      new Set(['malformed']),
+    )).not.toThrow();
+
+    const malformedPersisted = {
+      ...event('persisted:malformed'),
+      timestamp: null,
+    } as unknown as ProcessedEvent;
+    const validRetained = upsertTimelineEvent(
+      emptyTimeline(),
+      event('user:valid', 'pending', 500),
+      'optimistic',
+    );
+    expect(() => reconcileAttachedTimeline(
+      validRetained,
+      [malformedPersisted],
+      [],
+      new Set(['valid']),
+    )).not.toThrow();
+  });
+
   it('drops stale live rows on reattach but keeps local command output', () => {
     let timeline = upsertTimelineEvent(emptyTimeline(), event('live-old'), 'live');
     timeline = upsertTimelineEvent(timeline, event('command'), 'local');
