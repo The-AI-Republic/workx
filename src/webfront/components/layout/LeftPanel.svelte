@@ -1,6 +1,7 @@
 <script lang="ts">
   import { PANEL_NAV_ITEMS, isNavActive } from '../../stores/layoutStore';
   import { location, push } from 'svelte-spa-router';
+  import { AUTH_ROUTE_PATHS, HOME_PAGE_BASE_URL } from '../../lib/constants';
   import { uiTheme } from '../../stores/themeStore';
   import UserLoginStatus from '../common/UserLoginStatus.svelte';
   import MoreMenu from './MoreMenu.svelte';
@@ -21,6 +22,7 @@
   } = $props();
 
   let currentTheme = $derived($uiTheme);
+  const hasHostedAuth = Boolean(HOME_PAGE_BASE_URL && AUTH_ROUTE_PATHS.login);
 
   function handleNavigate(data: { route: string }) {
     push(data.route);
@@ -43,15 +45,18 @@
   <ChatHistorySection />
 
   <div class="grow"></div>
-  <div class="flex flex-col gap-1">
-    <MoreMenu {onNavigate} />
-  </div>
-  <div
-    class="pt-3
-    {currentTheme === 'modern'
-      ? 'border-t border-chat-border dark:border-chat-border-dark'
-      : 'border-t border-term-dim-green/30'}"
-  >
-    <UserLoginStatus />
-  </div>
+  {#if hasHostedAuth}
+    <div
+      class="pt-3
+      {currentTheme === 'modern'
+        ? 'border-t border-chat-border dark:border-chat-border-dark'
+        : 'border-t border-term-dim-green/30'}"
+    >
+      <UserLoginStatus {onNavigate} />
+    </div>
+  {:else}
+    <div class="flex flex-col gap-1">
+      <MoreMenu {onNavigate} />
+    </div>
+  {/if}
 </div>
