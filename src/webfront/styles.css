@@ -156,6 +156,43 @@ body.terminal-mode {
   background: var(--color-bx-text-secondary);
 }
 
+/* Overlay scrollbar (see lib/actions/overlayScroll.ts). The scroll container
+   hides its native bar; a custom thumb floats over the content and auto-hides. */
+.no-native-scrollbar {
+  scrollbar-width: none; /* Firefox */
+}
+.no-native-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.overlay-scroll-thumb {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  width: 6px;
+  border-radius: 3px;
+  background: var(--color-bx-border);
+  opacity: 0;
+  pointer-events: none;
+  cursor: grab;
+  transition: opacity 200ms ease;
+  will-change: transform;
+  z-index: 5;
+}
+.overlay-scroll-thumb.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.overlay-scroll-thumb:hover,
+.overlay-scroll-thumb:active {
+  background: var(--color-bx-text-secondary);
+}
+.overlay-scroll-thumb:active {
+  cursor: grabbing;
+}
+
 /* Terminal component styles */
 .terminal-container {
   @apply font-terminal text-sm;

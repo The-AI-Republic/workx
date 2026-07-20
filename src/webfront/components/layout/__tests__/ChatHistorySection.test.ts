@@ -96,72 +96,97 @@ describe('ChatHistorySection paging', () => {
     expect(screen.queryByText('Conversation 0')).toBeNull();
   });
 
-  it('reuses the active empty draft when New Chat is clicked', async () => {
-    const draft = { ...item(0), publishedAt: null };
-    threadStore.mergeThread(draft);
-    threadStore.setActiveThread(draft.sessionId);
-    mocks.serviceRequest.mockResolvedValue({ entries: [], nextCursor: null });
-
-    render(ChatHistorySection);
-    await screen.findByText('No chat history yet');
-    mocks.serviceRequest.mockClear();
-
-    await fireEvent.click(screen.getByRole('button', { name: 'New Chat' }));
-
-    expect(mocks.serviceRequest).not.toHaveBeenCalled();
-    expect(mocks.push).toHaveBeenCalledWith('/');
-    expect(threadStore.getActiveThread()?.sessionId).toBe(draft.sessionId);
-  });
-
-  it('loads ten rows at a time inside a fixed-height scroll container', async () => {
+  it('loads ten rows at a time appended into the panel, with no inner scroll container', async () => {
     mocks.serviceRequest
-      .mockResolvedValueOnce({ entries: Array.from({ length: 10 }, (_, index) => item(index)), nextCursor: 'page-2' })
-      .mockResolvedValueOnce({ entries: Array.from({ length: 10 }, (_, index) => item(index + 10)), nextCursor: null });
+      .mockResolvedValueOnce({
+        entries: Array.from({ length: 10 }, (_, index) => item(index)),
+        nextCursor: 'page-2',
+      })
+      .mockResolvedValueOnce({
+        entries: Array.from({ length: 10 }, (_, index) => item(index + 10)),
+        nextCursor: null,
+      });
 
     const { container } = render(ChatHistorySection);
 
     await screen.findByText('Conversation 0');
-    expect(mocks.serviceRequest).toHaveBeenNthCalledWith(1, 'session.list', expect.objectContaining({
-      limit: 10,
-      cursor: undefined,
-    }));
+    expect(mocks.serviceRequest).toHaveBeenNthCalledWith(
+      1,
+      'session.list',
+      expect.objectContaining({
+        limit: 10,
+        cursor: undefined,
+      })
+    );
     expect(container.querySelectorAll('[data-thread-history-select]')).toHaveLength(10);
-    expect(container.querySelector('[data-thread-history-list]')?.className).toContain('max-h-80');
-    expect(container.querySelector('[data-thread-history-list]')?.className).toContain('overflow-y-auto');
+    // The chat-history list no longer owns a scrollbar; the whole left panel is
+    // the sole scroll surface, so the list must not clamp height or scroll.
+    expect(container.querySelector('[data-thread-history-list]')?.className).not.toContain(
+      'max-h-80'
+    );
+    expect(container.querySelector('[data-thread-history-list]')?.className).not.toContain(
+      'overflow-y-auto'
+    );
 
     await fireEvent.click(screen.getByRole('button', { name: 'Load More' }));
     await waitFor(() => {
       expect(container.querySelectorAll('[data-thread-history-select]')).toHaveLength(20);
     });
-    expect(mocks.serviceRequest).toHaveBeenNthCalledWith(2, 'session.list', expect.objectContaining({
-      limit: 10,
-      cursor: 'page-2',
-    }));
+    expect(mocks.serviceRequest).toHaveBeenNthCalledWith(
+      2,
+      'session.list',
+      expect.objectContaining({
+        limit: 10,
+        cursor: 'page-2',
+      })
+    );
     expect(screen.queryByRole('button', { name: 'Load More' })).toBeNull();
+  });
+
+  it('drops the header new-chat button and keeps per-row controls in the hover layer', async () => {
+    mocks.serviceRequest.mockResolvedValue({ entries: [item(0)], nextCursor: null });
+
+    render(ChatHistorySection);
+
+    await screen.findByText('Conversation 0');
+    expect(screen.queryByRole('button', { name: 'New Chat' })).toBeNull();
+    // Row controls still exist (rendered in the hover overlay), so pin/rename/
+    // delete remain reachable. They expose their label via `title`.
+    for (const title of ['Pin', 'Rename', 'Delete']) {
+      const control = screen.getByTitle(title);
+      expect(control.classList.contains('text-[1.5em]')).toBe(true);
+      expect(control.classList.contains('leading-none')).toBe(true);
+    }
   });
 
   it('lets a newer search replace an in-flight result and ignores the stale response', async () => {
     threadStore.mergePage([item(99)], null, { reset: true });
     const olderSearch = deferred<{ entries: ThreadListItem[]; nextCursor: null }>();
     const newerSearch = deferred<{ entries: ThreadListItem[]; nextCursor: null }>();
-    mocks.serviceRequest.mockImplementation((_method, params: { query?: string }) => (
+    mocks.serviceRequest.mockImplementation((_method, params: { query?: string }) =>
       params.query === 'older' ? olderSearch.promise : newerSearch.promise
-    ));
+    );
 
     render(ChatHistorySection);
     const search = screen.getByRole('textbox', { name: 'Search chats' });
     await fireEvent.input(search, { target: { value: 'older' } });
     await waitFor(() => {
-      expect(mocks.serviceRequest).toHaveBeenCalledWith('session.list', expect.objectContaining({
-        query: 'older',
-      }));
+      expect(mocks.serviceRequest).toHaveBeenCalledWith(
+        'session.list',
+        expect.objectContaining({
+          query: 'older',
+        })
+      );
     });
 
     await fireEvent.input(search, { target: { value: 'newer' } });
     await waitFor(() => {
-      expect(mocks.serviceRequest).toHaveBeenCalledWith('session.list', expect.objectContaining({
-        query: 'newer',
-      }));
+      expect(mocks.serviceRequest).toHaveBeenCalledWith(
+        'session.list',
+        expect.objectContaining({
+          query: 'newer',
+        })
+      );
     });
 
     newerSearch.resolve({ entries: [item(200)], nextCursor: null });
