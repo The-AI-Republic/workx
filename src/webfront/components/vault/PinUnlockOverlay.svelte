@@ -202,17 +202,18 @@
 
   .unlock-title {
     margin: 0 0 0.5rem;
-    font-size: 1.25rem;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
     color: var(--workx-text, #00ff00);
     text-align: center;
   }
 
   .unlock-description {
     margin: 0 0 1.5rem;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary, #00cc00);
     text-align: center;
-    line-height: 1.4;
+    line-height: var(--leading-ui);
   }
 
   form {
@@ -230,8 +231,9 @@
   .pin-field input {
     width: 100%;
     padding: 0.75rem;
-    font-size: 1.5rem;
-    letter-spacing: 0.4em;
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+    letter-spacing: var(--tracking-pin);
     text-align: center;
     background: var(--workx-surface, #0a0a0a);
     border: 1px solid var(--workx-border, #00cc00);
@@ -247,22 +249,24 @@
 
   .unlock-error {
     color: var(--workx-error, #ff0000);
-    font-size: 0.8rem;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     margin-bottom: 0.75rem;
     text-align: center;
   }
 
   .lockout-message {
     color: var(--workx-warning, #ffff00);
-    font-size: 0.9rem;
+    font-size: var(--text-sm);
     text-align: center;
     margin-bottom: 1rem;
-    line-height: 1.4;
+    line-height: var(--leading-ui);
   }
 
   .countdown {
-    font-weight: 700;
-    font-size: 1.1rem;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
     display: inline-block;
     margin-left: 0.25rem;
   }
@@ -271,8 +275,9 @@
     width: 100%;
     padding: 0.625rem;
     border-radius: 0.5rem;
-    font-size: 0.95rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
     cursor: pointer;
     background: var(--workx-primary, #00ff00);
     color: var(--workx-background, #000);
@@ -288,7 +293,8 @@
     background: none;
     border: none;
     color: var(--workx-text-secondary, #00cc00);
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     cursor: pointer;
     margin-top: 1rem;
     padding: 0.25rem 0.5rem;
@@ -306,9 +312,9 @@
 
   .forgot-warning {
     margin: 0 0 1rem;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     color: var(--workx-error, #ff0000);
-    line-height: 1.4;
+    line-height: var(--leading-ui);
   }
 
   .forgot-actions {
@@ -320,7 +326,8 @@
   .btn-cancel, .btn-danger {
     padding: 0.5rem 1rem;
     border-radius: 0.375rem;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     cursor: pointer;
     border: 1px solid var(--workx-border, #00cc00);
   }

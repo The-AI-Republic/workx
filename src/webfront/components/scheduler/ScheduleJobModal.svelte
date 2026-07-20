@@ -226,7 +226,7 @@
           >{$_t('Job')}:</span>
           {#if isEditable}
             <textarea
-              class="w-full mt-2 p-2 rounded text-sm leading-relaxed resize-y outline-none
+              class="w-full mt-2 p-2 rounded text-sm leading-ui resize-y outline-none
                 {currentTheme === 'modern'
                   ? 'bg-chat-input dark:bg-chat-input-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat focus:border-chat-primary dark:focus:border-chat-primary-dark placeholder:text-chat-text-muted dark:placeholder:text-chat-text-muted-dark'
                   : 'bg-[rgba(0,0,0,0.5)] border border-term-dim-green text-term-bright-green font-terminal focus:border-term-bright-green placeholder:text-term-dim-green/60'}"
@@ -235,7 +235,7 @@
               rows="3"
             ></textarea>
           {:else}
-            <p class="mt-1 mb-0 text-sm leading-relaxed break-words
+            <p class="mt-1 mb-0 text-sm leading-ui break-words
               {currentTheme === 'modern'
                 ? 'text-chat-text dark:text-chat-text-dark font-chat'
                 : 'text-term-bright-green font-terminal'}"
@@ -320,8 +320,8 @@
                 <polyline points="12 6 12 12 16 14"></polyline>
               </svg>
             </span>
-            <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-bright-green font-terminal'}">{getScheduledDateDisplay()}</span>
-            <span class="text-sm {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">({getRelativeTime()})</span>
+            <span class="text-meta font-normal {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-bright-green font-terminal'}">{getScheduledDateDisplay()}</span>
+            <span class="text-meta font-normal {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">({getRelativeTime()})</span>
           </div>
         {/if}
 

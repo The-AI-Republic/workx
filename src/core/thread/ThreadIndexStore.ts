@@ -14,6 +14,8 @@ export interface ThreadIndexEntry {
   titleUpdatedAt: number;
   createdAt: number;
   lastActiveAt: number;
+  /** Null while the thread is an empty draft hidden from chat history. */
+  publishedAt: number | null;
   pinned: boolean;
   deletedAt: number | null;
   purgeAfter: number | null;
@@ -29,6 +31,8 @@ export interface ThreadIndexEntry {
 
 export interface ThreadListRequest {
   includeDeleted?: boolean;
+  /** Internal maintenance/routing read; user-facing history leaves this false. */
+  includeDrafts?: boolean;
   query?: string;
   limit?: number;
   cursor?: string;
@@ -43,6 +47,7 @@ interface ThreadCursor {
   v: 1;
   query: string;
   includeDeleted: boolean;
+  includeDrafts: boolean;
   pinned: boolean;
   lastActiveAt: number;
   sessionId: string;
@@ -73,6 +78,7 @@ export function createThreadIndexEntry(input: {
   agentMode?: AgentMode;
   workspace?: SessionWorkspace;
   origin?: ThreadIndexEntry['origin'];
+  publishedAt?: number | null;
 }): ThreadIndexEntry {
   const now = input.now ?? Date.now();
   const title = input.title?.trim() ?? '';
@@ -84,6 +90,7 @@ export function createThreadIndexEntry(input: {
     titleUpdatedAt: now,
     createdAt: now,
     lastActiveAt: now,
+    publishedAt: input.publishedAt === undefined ? now : input.publishedAt,
     pinned: false,
     deletedAt: null,
     purgeAfter: null,
@@ -286,22 +293,20 @@ export class ThreadIndexStore {
     }
     const query = normalizeSearchTitle(request.query ?? '');
     const includeDeleted = request.includeDeleted ?? false;
+    const includeDrafts = request.includeDrafts ?? false;
     const cursor = request.cursor ? this.decodeCursor(request.cursor) : null;
-    if (cursor && (cursor.query !== query || cursor.includeDeleted !== includeDeleted)) {
+    if (cursor && (
+      cursor.query !== query
+      || cursor.includeDeleted !== includeDeleted
+      || cursor.includeDrafts !== includeDrafts
+    )) {
       throw new ThreadIndexError('INVALID_ARGUMENT', 'Cursor does not match the list request');
     }
 
-    const raw = await this.adapter.getAll<ThreadIndexEntry>(THREAD_INDEX_STORE);
-    const repaired = raw.map((entry) => this.repair(entry));
-    const repairs = repaired.filter((entry, index) => entry !== raw[index]);
-    if (repairs.length > 0) {
-      // Re-read and repair in the same per-session lane as every other write.
-      // Persisting the stale row returned by getAll() could otherwise overwrite
-      // a rename or activity update that completed while list() was running.
-      await Promise.all(repairs.map((entry) => this.repairStored(entry.sessionId)));
-    }
+    const repaired = await this.readAllRepaired();
     const rows = repaired
       .filter((entry) => includeDeleted || entry.deletedAt === null)
+      .filter((entry) => includeDrafts || entry.publishedAt !== null)
       .filter((entry) => !query || entry.searchTitle.includes(query))
       .sort(compareEntries);
     const cursorStart = cursor
@@ -318,12 +323,34 @@ export class ThreadIndexStore {
             v: 1,
             query,
             includeDeleted,
+            includeDrafts,
             pinned: last.pinned,
             lastActiveAt: last.lastActiveAt,
             sessionId: last.sessionId,
           })
         : null,
     };
+  }
+
+  /** Internal recovery read for unpublished, non-deleted drafts. */
+  async listDrafts(): Promise<ThreadIndexEntry[]> {
+    await this.initialize();
+    return (await this.readAllRepaired())
+      .filter((entry) => entry.deletedAt === null && entry.publishedAt === null)
+      .sort(compareEntries);
+  }
+
+  private async readAllRepaired(): Promise<ThreadIndexEntry[]> {
+    const raw = await this.adapter.getAll<ThreadIndexEntry>(THREAD_INDEX_STORE);
+    const repaired = raw.map((entry) => this.repair(entry));
+    const repairs = repaired.filter((entry, index) => entry !== raw[index]);
+    if (repairs.length > 0) {
+      // Re-read and repair in the same per-session lane as every other write.
+      // Persisting the stale row returned by getAll() could otherwise overwrite
+      // a rename or activity update that completed while list() was running.
+      await Promise.all(repairs.map((entry) => this.repairStored(entry.sessionId)));
+    }
+    return repaired;
   }
 
   private repairStored(sessionId: string): Promise<void> {
@@ -417,14 +444,19 @@ export class ThreadIndexStore {
 
   private repair(entry: ThreadIndexEntry): ThreadIndexEntry {
     const expected = normalizeSearchTitle(entry.title ?? '');
+    // Rows created before draft publication existed are real history entries.
+    // Treat them as published rather than hiding an existing user's history.
+    const publishedAt = entry.publishedAt === undefined ? entry.createdAt : entry.publishedAt;
     if (
       entry.searchTitle === expected
       && entry.schemaVersion === 1
+      && entry.publishedAt === publishedAt
       && (entry.historyMode === 'legacy' || entry.historyMode === 'paginated')
     ) return entry;
     return {
       ...entry,
       searchTitle: expected,
+      publishedAt,
       historyMode: entry.historyMode === 'paginated' ? 'paginated' : 'legacy',
       schemaVersion: 1,
     };
@@ -448,16 +480,17 @@ export class ThreadIndexStore {
       const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
       const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
       const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-      const cursor = JSON.parse(new TextDecoder().decode(bytes)) as ThreadCursor;
+      const decoded = JSON.parse(new TextDecoder().decode(bytes)) as Partial<ThreadCursor>;
       if (
-        cursor.v !== 1
-        || typeof cursor.query !== 'string'
-        || typeof cursor.includeDeleted !== 'boolean'
-        || typeof cursor.pinned !== 'boolean'
-        || !Number.isFinite(cursor.lastActiveAt)
-        || typeof cursor.sessionId !== 'string'
+        decoded.v !== 1
+        || typeof decoded.query !== 'string'
+        || typeof decoded.includeDeleted !== 'boolean'
+        || (decoded.includeDrafts !== undefined && typeof decoded.includeDrafts !== 'boolean')
+        || typeof decoded.pinned !== 'boolean'
+        || !Number.isFinite(decoded.lastActiveAt)
+        || typeof decoded.sessionId !== 'string'
       ) throw new Error('invalid cursor');
-      return cursor;
+      return { ...decoded, includeDrafts: decoded.includeDrafts ?? false } as ThreadCursor;
     } catch {
       throw new ThreadIndexError('INVALID_ARGUMENT', 'Invalid list cursor');
     }

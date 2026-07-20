@@ -126,7 +126,7 @@
                 {task.subject}
               </span>
               {#if getBlockedByText(task)}
-                <span class="text-xs text-yellow-500/60 ml-1">({getBlockedByText(task)})</span>
+                <span class="text-meta font-normal text-yellow-500/60 ml-1">({getBlockedByText(task)})</span>
               {/if}
             </div>
           </li>

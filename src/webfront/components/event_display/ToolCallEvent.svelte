@@ -21,7 +21,7 @@
 <div class="tool-call-event">
   <div class={`text-sm ${event.style.textColor}`}>
     {#if event.metadata?.duration}
-      <span class={mutedText}>
+      <span class="text-meta font-normal {mutedText}">
         ({formatDuration(event.metadata.duration)})
       </span>
     {/if}
@@ -32,7 +32,7 @@
   </div>
 
   {#if event.metadata}
-    <div class="text-sm mt-1 {mutedText}">
+    <div class="text-meta font-normal mt-1 {mutedText}">
       {#if event.metadata.command}
         <div>{$_t("Command:")} {event.metadata.command}</div>
       {/if}

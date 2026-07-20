@@ -212,7 +212,7 @@
 
 <div class="p-6">
   <button
-    class="bg-transparent border-none cursor-pointer text-[15px] font-medium py-2 px-0 mb-4 flex items-center gap-1 transition-opacity duration-200 hover:opacity-80
+    class="bg-transparent border-none cursor-pointer text-sm font-medium py-2 px-0 mb-4 flex items-center gap-1 transition-opacity duration-200 hover:opacity-80
       {currentTheme === 'modern'
         ? 'font-chat text-chat-primary dark:text-chat-primary-dark'
         : 'font-terminal text-term-green'}"
@@ -301,12 +301,12 @@
                       ? 'bg-chat-surface dark:bg-chat-surface-dark'
                       : 'bg-term-bg'}"
                 >
-                  <span class="font-semibold text-[13px]
+                  <span class="font-semibold text-sm
                     {currentTheme === 'modern'
                       ? 'font-chat text-chat-text dark:text-chat-text-dark'
                       : 'font-terminal text-term-green'}"
                   >{option.label}</span>
-                  <span class="text-xs leading-relaxed
+                  <span class="text-meta font-normal
                     {currentTheme === 'modern'
                       ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
                       : 'font-terminal text-term-dim-green'}"
@@ -316,7 +316,7 @@
             </label>
           {/each}
         </div>
-        <div class="mt-1.5 text-sm leading-relaxed
+        <div class="mt-1.5 text-sm leading-ui
           {currentTheme === 'modern'
             ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'font-terminal text-term-dim-green'}"
@@ -335,12 +335,12 @@
       <div>
         <div class="flex items-center justify-between gap-4">
           <div class="flex flex-col gap-1">
-            <span class="text-[15px] font-medium
+            <span class="text-sm font-medium
               {currentTheme === 'modern'
                 ? 'font-chat text-chat-text dark:text-chat-text-dark'
                 : 'font-terminal text-term-green'}"
             >{$_t("Show token usage in tasks")}</span>
-            <span class="text-sm leading-relaxed
+            <span class="text-sm leading-ui
               {currentTheme === 'modern'
                 ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
                 : 'font-terminal text-term-dim-green'}"
@@ -365,12 +365,12 @@
       <div>
         <div class="flex items-center justify-between gap-4">
           <div class="flex flex-col gap-1">
-            <span class="text-[15px] font-medium
+            <span class="text-sm font-medium
               {currentTheme === 'modern'
                 ? 'font-chat text-chat-text dark:text-chat-text-dark'
                 : 'font-terminal text-term-green'}"
             >{$_t("Start on login")}</span>
-            <span class="text-sm leading-relaxed
+            <span class="text-sm leading-ui
               {currentTheme === 'modern'
                 ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
                 : 'font-terminal text-term-dim-green'}"
@@ -413,7 +413,7 @@
             <option value={lang.code}>{lang.title}</option>
           {/each}
         </select>
-        <div class="mt-1.5 text-sm leading-relaxed
+        <div class="mt-1.5 text-sm leading-ui
           {currentTheme === 'modern'
             ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'font-terminal text-term-dim-green'}"
@@ -449,7 +449,7 @@
             <option value={num}>{num} {num === 1 ? $_t("session") : $_t("sessions")}</option>
           {/each}
         </select>
-        <div class="mt-1.5 text-sm leading-relaxed
+        <div class="mt-1.5 text-sm leading-ui
           {currentTheme === 'modern'
             ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'font-terminal text-term-dim-green'}"
@@ -484,7 +484,7 @@
               ? 'font-chat bg-chat-surface dark:bg-chat-surface-dark text-chat-text dark:text-chat-text-dark border border-chat-border dark:border-chat-border-dark focus:outline-none focus:border-chat-primary dark:focus:border-chat-primary-dark focus:ring-3 focus:ring-chat-primary/10 dark:focus:ring-chat-primary-dark/10'
               : 'font-terminal bg-term-bg text-term-green border border-term-dim-green focus:outline-none focus:border-term-bright-green focus:ring-3 focus:ring-term-green/10'}"
         />
-        <div class="mt-1.5 text-sm leading-relaxed
+        <div class="mt-1.5 text-sm leading-ui
           {currentTheme === 'modern'
             ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'font-terminal text-term-dim-green'}"

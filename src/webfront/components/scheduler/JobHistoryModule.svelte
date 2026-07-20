@@ -244,7 +244,7 @@
       <!-- Sort + Filter row -->
       <div class="flex items-center gap-2 flex-wrap">
         <button
-          class="px-2 py-0.5 text-xs rounded cursor-pointer transition-all duration-200
+          class="px-2 py-0.5 text-sm rounded cursor-pointer transition-all duration-200
             {currentTheme === 'modern'
               ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
               : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
@@ -284,7 +284,7 @@
           <div class="relative">
             <SchedulerJobItem {...job} showActions={false} onDetails={handleDetails} />
             {#if job.completedAt}
-              <div class="absolute top-2 right-2 text-xs opacity-70
+              <div class="absolute top-2 right-2 text-meta font-normal opacity-70
                 {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
                 {formatCompletedTime(job.completedAt)}
               </div>

@@ -581,7 +581,7 @@
 
     <!-- Track 13: pasted-image attachment indicator -->
     {#if pendingAttachments.length > 0}
-      <div class="mb-1 flex items-center gap-2 text-xs {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+      <div class="mb-1 flex items-center gap-2 text-meta font-normal {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
         <span>📎 {pendingAttachments.length} {pendingAttachments.length === 1 ? $_t('image attached') : $_t('images attached')}</span>
         <button
           type="button"
@@ -596,7 +596,7 @@
          Visible exactly when Tab will accept: palette closed AND input empty
          OR the typed text is a live prefix of the suggestion. -->
     {#if suggestion && !isCommandMode && (!value.trim() || suggestion.toLowerCase().startsWith(value.toLowerCase()))}
-      <div class="mb-1 flex items-center gap-2 text-xs {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+      <div class="mb-1 flex items-center gap-2 text-meta font-normal {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
         <span class="opacity-70">Tab ↹</span>
         <span class="truncate">{suggestion}</span>
         <button
@@ -623,7 +623,7 @@
         onfocus={() => isFocused = true}
         onblur={handleBlur}
         style="--textarea-py: {currentTheme === 'modern' ? '0.75rem' : '0.5rem'}"
-        class="terminal-textarea w-full bg-transparent border-none outline-none resize-none overflow-y-auto leading-relaxed text-sm
+        class="terminal-textarea w-full bg-transparent border-none outline-none resize-none overflow-y-auto text-base
           {currentTheme === 'modern'
             ? 'text-chat-text dark:text-chat-text-dark font-chat px-4 py-3 caret-chat-text dark:caret-white'
             : 'text-term-green font-terminal px-3 py-2'}"

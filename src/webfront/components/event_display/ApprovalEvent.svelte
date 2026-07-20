@@ -292,11 +292,11 @@
             bind:value={planDraft}
             rows="12"
             spellcheck="false"
-            class="w-full px-2 py-1.5 border rounded text-xs font-mono focus:outline-none {inputClass}"
+            class="w-full px-2 py-1.5 border rounded text-sm font-mono focus:outline-none {inputClass}"
             disabled={processing}
           ></textarea>
           {#if planEditError}
-            <div class="text-red-400 text-xs">{planEditError}</div>
+            <div class="text-red-400 text-meta font-normal">{planEditError}</div>
           {/if}
           <div>
             <button
