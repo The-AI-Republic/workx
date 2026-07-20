@@ -561,11 +561,11 @@ describe('ModelClientFactory', () => {
       expect((client as any)._opts.providerRoutingSlug).toBe('deepseek');
     });
 
-    it('should use an explicit OpenHub pin that differs from the WorkX provider id', async () => {
+    it('should preserve the specific Google AI Studio OpenHub route', async () => {
       await factory.initialize(createMockAgentConfig({
         modelData: {
           model: { modelKey: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro', supportsReasoning: true, supportBackendMode: 3, contextWindow: 128000, maxOutputTokens: 8192, creator: 'Google' },
-          provider: { id: 'google-ai-studio', name: 'Google AI Studio', apiKey: '', timeout: 30000, openHubProviderSlug: 'google', models: [] },
+          provider: { id: 'google-ai-studio', name: 'Google AI Studio', apiKey: '', timeout: 30000, openHubProviderSlug: 'google-ai-studio', models: [] },
         },
       }));
       factory.updateAuthContext(createMockAuthManager({
@@ -576,7 +576,7 @@ describe('ModelClientFactory', () => {
 
       const client = await factory.createClient('google-ai-studio');
 
-      expect((client as any)._opts.providerRoutingSlug).toBe('google');
+      expect((client as any)._opts.providerRoutingSlug).toBe('google-ai-studio');
     });
 
     it('should cache backend-routed clients', async () => {

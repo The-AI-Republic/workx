@@ -73,7 +73,7 @@ describe('remoteCatalog', () => {
     ]))).toEqual({
       xai: 'xai',
       openai: 'openai',
-      'google-ai-studio': 'google',
+      'google-ai-studio': 'google-ai-studio',
       deepseek: 'deepseek',
       anthropic: 'anthropic',
     });
