@@ -315,7 +315,15 @@ async function refreshViaOidc(
   }
 }
 
-/** Legacy desktop-session refresh (`/auth/desktop/refresh`). Non-OIDC only. */
+/**
+ * Legacy desktop-session refresh (`/auth/desktop/refresh`). Non-OIDC only.
+ *
+ * @deprecated Part of the legacy desktop-token login flow, superseded by the
+ * OIDC refresh path above (`refresh_token` grant against the OIDC token
+ * endpoint). Only reached when OIDC is unconfigured for the environment; do not
+ * extend. Removal is gated on every target environment having its hosted
+ * `workx-desktop` OIDC client registered.
+ */
 async function refreshViaLegacyDesktop(
   refreshToken: string,
 ): Promise<DesktopTokenRefreshResult> {

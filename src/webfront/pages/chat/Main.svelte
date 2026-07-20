@@ -21,6 +21,9 @@
   import { welcomeAsciiLines } from '../../constants/welcomeAscii';
   // Platform store
   import { platform } from '../../stores/platformStore';
+  // Layout store — used to indent the status-line title clear of the
+  // narrow-mode menu button (rendered by AppShell) so they don't overlap.
+  import { isWideMode } from '../../stores/layoutStore';
   // Theme store
   import { uiTheme, themePreference, type UITheme } from '../../stores/themeStore';
   // Token usage visibility store
@@ -1215,12 +1218,17 @@
   /** Create an index-only chat. No agent graph is assembled here. */
   async function createNewThread() {
     try {
+      const reusable = threadStore.reuseActiveEmptyDraft();
+      if (reusable) {
+        await switchToThread(reusable.sessionId);
+        return;
+      }
       const c = await getInitializedUIClient();
       const response = await c.serviceRequest<{
         sessionId: string;
         state: 'SUSPENDED' | 'IDLE';
         entry?: ThreadIndexEntry;
-      }>('session.open', {});
+      }>('session.open', { surfaceId });
       const { sessionId } = response;
       if (response.entry) threadStore.mergeThread(response.entry);
       else threadStore.createThread(sessionId);
@@ -1577,10 +1585,13 @@
     <div class="flex flex-col flex-1 min-h-0 max-w-[1500px] mx-auto w-full">
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
-          <div class="flex items-center space-x-2">
+          <!-- In narrow mode AppShell renders a floating menu button at the
+               top-left; pad the title so it sits to the right of that button
+               instead of underneath it. -->
+          <div class="flex items-center space-x-2 {!$isWideMode ? 'pl-10' : ''}">
             <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("WorkX (Alpha)") : $_t("WorkX: Your personal AI (Alpha)")} />
             {#if zoomLevel !== 100}
-              <button onclick={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
+              <button onclick={resetZoom} class="text-sm leading-ui font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
                 [{zoomLevel}%] ✕
               </button>
             {/if}
@@ -1739,7 +1750,7 @@
             <div class="flex justify-center py-2">
               <button
                 type="button"
-                class="text-xs opacity-70 hover:opacity-100 underline"
+                class="text-sm opacity-70 hover:opacity-100 underline"
                 disabled={loadingOlderHistory}
                 onclick={loadOlderHistory}
               >
@@ -1758,11 +1769,11 @@
                 <p class="m-0 mb-2 font-semibold text-lg
                   {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark text-xl' : 'text-term-bright-green'}">{$_t("Hello $NAME$", { substitutions: [$userStore.userName || $userStore.userEmail] })}</p>
               {/if}
-              <pre class="welcome-ascii m-0 font-terminal text-[0.4rem] leading-none whitespace-pre">{#each welcomeAsciiLines as line, index (index)}<span class={line.color}>{line.text}</span>{/each}</pre>
-              <p class="m-0 text-[0.95rem] text-term-blue">
+              <pre class="welcome-ascii m-0 font-terminal text-ascii leading-none whitespace-pre">{#each welcomeAsciiLines as line, index (index)}<span class={line.color}>{line.text}</span>{/each}</pre>
+              <p class="m-0 text-base text-term-blue">
                 {platform.platformName === 'extension' ? $_t("General in-browser AI agent for work tasks") : $_t("Your personal AI assistant")}
               </p>
-              <p class="m-0 text-[0.95rem] text-term-dim-green">
+              <p class="m-0 text-base text-term-dim-green">
                 {$_t("Developed and supported by AI Republic")}
               </p>
               <a

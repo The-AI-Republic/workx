@@ -119,6 +119,13 @@ export function getLoginPageUrl(): string | null {
   return new URL(AUTH_ROUTE_PATHS.login, HOME_PAGE_BASE_URL).toString();
 }
 
+/**
+ * @deprecated Legacy desktop-token login. Superseded by OIDC + PKCE
+ * ({@link getDesktopAuthorizeUrl} / {@link hasDesktopOidc}). Kept only as the
+ * fallback for environments where the hosted `workx-desktop` OIDC client is not
+ * yet registered; enable OIDC per-environment (`WORKX_/VITE_AUTH_OIDC_ENABLED=true`)
+ * and this path will no longer run. Do not build new features on it.
+ */
 export function getDesktopLoginPageUrl(): string | null {
   if (!HOME_PAGE_BASE_URL || !AUTH_ROUTE_PATHS.login) return null;
   const loginUrl = new URL(AUTH_ROUTE_PATHS.login, HOME_PAGE_BASE_URL);

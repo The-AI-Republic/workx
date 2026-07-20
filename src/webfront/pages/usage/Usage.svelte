@@ -44,7 +44,7 @@
         : 'text-term-green font-terminal'}">{$_t('Token Usage')}</h1>
     <div class="ml-auto flex items-center gap-2">
       <button
-        class="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded cursor-pointer transition-all duration-200
+        class="flex items-center gap-1.5 px-2.5 py-1 text-sm rounded cursor-pointer transition-all duration-200
           {currentTheme === 'modern'
             ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
             : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}
@@ -54,7 +54,7 @@
         {$_t('By Model')}
       </button>
       <button
-        class="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded cursor-pointer transition-all duration-200
+        class="flex items-center gap-1.5 px-2.5 py-1 text-sm rounded cursor-pointer transition-all duration-200
           {currentTheme === 'modern'
             ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark'
             : 'bg-transparent border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
@@ -96,7 +96,7 @@
           <rect x="17" y="3" width="4" height="18" rx="1"></rect>
         </svg>
         <p class="text-sm font-medium mb-1">{$_t('No usage data yet')}</p>
-        <p class="text-xs opacity-70">{$_t('Token usage will appear here after running tasks')}</p>
+        <p class="text-meta font-normal opacity-70">{$_t('Token usage will appear here after running tasks')}</p>
       </div>
     {:else}
       <!-- Track 18: total cost summary (hidden when there is no cost yet,
@@ -113,7 +113,7 @@
           <span class="text-lg font-semibold
             {currentTheme === 'modern'
               ? 'text-chat-text dark:text-chat-text-dark font-chat'
-              : 'text-term-green font-terminal'}">{formatCost(totalCostUSD)}{#if anyCostEstimated}<span class="text-xs font-normal opacity-70"> &middot; {$_t('≈ estimated')}</span>{/if}</span>
+              : 'text-term-green font-terminal'}">{formatCost(totalCostUSD)}{#if anyCostEstimated}<span class="text-meta font-normal opacity-70"> &middot; {$_t('≈ estimated')}</span>{/if}</span>
         </div>
       {/if}
 

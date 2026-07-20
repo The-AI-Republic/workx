@@ -2943,6 +2943,11 @@ export class Session {
     input: InputItem[],
     clientMessageId?: string,
   ): Promise<void> {
+    // Capture the writer used by the commit below. Session initialization may
+    // intentionally degrade to memory-only operation when rollout storage is
+    // unavailable; that path must not publish an index row as durable history.
+    const durableRollout = this.services?.rollout;
+
     // One accepted submission becomes one durable user item. Preserve typed
     // multimodal content; JSON-stringifying each InputItem created phantom
     // messages and forced every display consumer to reverse-parse storage.
@@ -2966,6 +2971,17 @@ export class Session {
 
     // Record to SessionState history
     await this.recordConversationItemsDual(responseItems, { requireDurable: true });
+
+    // Empty sessions are drafts, not history. Publish only after the exact
+    // user item above is durable; publication failure must not turn that
+    // already-persisted message into a failed model submission.
+    if (durableRollout) {
+      try {
+        await this.services?.onUserMessagePersisted?.(this.sessionId);
+      } catch (error) {
+        console.warn('[Session] Failed to publish persisted conversation:', error);
+      }
+    }
 
     // Title generation is NOT triggered here: it runs exclusively from the
     // TaskRunner completion checkpoint (maybeGenerateTitle), after the AI

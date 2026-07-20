@@ -14,8 +14,50 @@ describe('ThreadIndexStore', () => {
     expect(createThreadIndexEntry({ sessionId: 'new' }).historyMode).toBe('paginated');
     const legacy = { ...createThreadIndexEntry({ sessionId: 'legacy' }) };
     delete legacy.historyMode;
+    delete (legacy as Partial<typeof legacy>).publishedAt;
     await adapter.put('thread_index', legacy);
-    expect(await store.require('legacy')).toMatchObject({ historyMode: 'legacy' });
+    expect(await store.require('legacy')).toMatchObject({
+      historyMode: 'legacy',
+      publishedAt: legacy.createdAt,
+    });
+  });
+
+  it('keeps empty drafts addressable while excluding them from history pages', async () => {
+    const store = new ThreadIndexStore(new MemoryStorageAdapter(), () => 50);
+    await store.createIfMissing(createThreadIndexEntry({
+      sessionId: 'draft',
+      now: 10,
+      publishedAt: null,
+    }));
+
+    expect(await store.require('draft')).toMatchObject({ publishedAt: null });
+    expect((await store.list()).entries).toEqual([]);
+    expect((await store.list({ includeDrafts: true })).entries).toMatchObject([
+      { sessionId: 'draft', publishedAt: null },
+    ]);
+
+    await store.patch('draft', { publishedAt: 50 });
+    expect((await store.list()).entries).toMatchObject([
+      { sessionId: 'draft', publishedAt: 50 },
+    ]);
+  });
+
+  it('returns only non-deleted unpublished rows for internal recovery', async () => {
+    const store = new ThreadIndexStore(new MemoryStorageAdapter());
+    await store.createIfMissing(createThreadIndexEntry({
+      sessionId: 'draft',
+      publishedAt: null,
+    }));
+    await store.createIfMissing(createThreadIndexEntry({ sessionId: 'published' }));
+    await store.createIfMissing(createThreadIndexEntry({
+      sessionId: 'deleted-draft',
+      publishedAt: null,
+    }));
+    await store.softDelete('deleted-draft');
+
+    expect(await store.listDrafts()).toMatchObject([
+      { sessionId: 'draft', publishedAt: null, deletedAt: null },
+    ]);
   });
 
   it('persists the session workspace independently from agent mode', async () => {

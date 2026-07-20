@@ -119,10 +119,14 @@
     padding: 12px 24px;
 
     /* Typography */
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1;
+    font-family: var(
+      --font-chat,
+      ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto,
+      sans-serif
+    );
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: var(--font-weight-semibold, 600);
+    line-height: var(--leading-none, 1);
     text-align: center;
 
     /* Visual appearance */

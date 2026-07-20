@@ -45,7 +45,7 @@
 <div class="flex gap-1.5 flex-wrap">
   {#each statuses as status}
     <button
-      class="px-2 py-0.5 text-xs rounded-full cursor-pointer transition-all duration-200 border
+      class="px-2 py-0.5 text-sm rounded-full cursor-pointer transition-all duration-200 border
         {selected.has(status)
           ? getStatusColor(status)
           : currentTheme === 'modern'

@@ -203,8 +203,9 @@
 
   .menu-title {
     margin: 0 0 1.5rem 0;
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -265,15 +266,16 @@
 
   .category-label {
     margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .category-description {
     margin: 0;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary);
-    line-height: 1.5;
+    line-height: var(--leading-normal);
   }
 </style>
