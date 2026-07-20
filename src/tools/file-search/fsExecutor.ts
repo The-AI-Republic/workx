@@ -23,11 +23,17 @@ export interface FileMeta {
 
 export type ReadOutcome = { contentLf: string } & FileMeta;
 export type StatOutcome = { exists: boolean; mtimeMs: number; size: number };
+/** Complete LF-normalized contents observed and committed by one successful mutation. */
+export interface FileMutationReceipt {
+  operation: 'created' | 'modified';
+  previousContentLf: string;
+  newContentLf: string;
+}
 export type EditOutcome =
-  | ({ ok: 'true'; newContentLf: string } & FileMeta)
+  | ({ ok: 'true' } & FileMutationReceipt & FileMeta)
   | { ok: 'false'; reason: string; message: string };
 export type WriteOutcome =
-  | ({ written: 'true' } & FileMeta)
+  | ({ written: 'true' } & FileMutationReceipt & FileMeta)
   | { written: 'false'; reason: string; message: string };
 
 export class FsUnsupportedPlatformError extends Error {

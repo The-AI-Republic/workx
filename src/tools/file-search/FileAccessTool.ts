@@ -20,6 +20,7 @@ import type { FileState } from '../../core/files/FileStateCache';
 import { fsExecutor, FsUnsupportedPlatformError, FsTimeoutError } from './fsExecutor';
 import { lexicalPathCheck } from './pathPolicy';
 import { sessionScope, type SessionScope, NO_WORKSPACE_MSG } from './sessionScope';
+import { emitLocalFileChange } from './localFileChange';
 
 const MAX_READ_BYTES = 5 * 1024 * 1024; // pre-read hard reject (design §4.7)
 const MAX_OUT_LINES = 2000;
@@ -31,7 +32,11 @@ abstract class FileAccessTool {
   abstract readonly parameters: Record<string, ParameterProperty>;
   abstract readonly required: string[];
   abstract readonly riskAssessor: IRiskAssessor;
-  protected abstract run(params: Record<string, any>, h: SessionScope & { workspaceRoot: string }): Promise<string>;
+  protected abstract run(
+    params: Record<string, any>,
+    h: SessionScope & { workspaceRoot: string },
+    context: ToolContext,
+  ): Promise<string>;
 
   toToolDefinition(platforms: Platform[]): ToolDefinition {
     return createToolDefinition(this.name, this.description, this.parameters, {
@@ -53,7 +58,7 @@ abstract class FileAccessTool {
           : `Path rejected (${lex.reason}). It must be inside the workspace and not a protected location.`;
       }
       try {
-        return await this.run(params, { ...h, workspaceRoot: h.workspaceRoot });
+        return await this.run(params, { ...h, workspaceRoot: h.workspaceRoot }, context);
       } catch (e) {
         if (e instanceof FsUnsupportedPlatformError) return e.message;
         if (e instanceof FsTimeoutError) {
@@ -80,7 +85,11 @@ export class ReadFileTool extends FileAccessTool {
   readonly required = ['path'];
   readonly riskAssessor = new StaticRiskAssessor(0); // read-only, auto-approve
 
-  protected async run(params: Record<string, any>, h: SessionScope & { workspaceRoot: string }): Promise<string> {
+  protected async run(
+    params: Record<string, any>,
+    h: SessionScope & { workspaceRoot: string },
+    _context: ToolContext,
+  ): Promise<string> {
     const path = String(params.path);
     const st = await fsExecutor.stat(h.workspaceRoot, path);
     if (!st.exists) return `File not found: ${path}`;
@@ -148,7 +157,11 @@ export class EditFileTool extends FileAccessTool {
   readonly required = ['path', 'old_string', 'new_string'];
   readonly riskAssessor = new FileWriteRiskAssessor();
 
-  protected async run(params: Record<string, any>, h: SessionScope & { workspaceRoot: string }): Promise<string> {
+  protected async run(
+    params: Record<string, any>,
+    h: SessionScope & { workspaceRoot: string },
+    context: ToolContext,
+  ): Promise<string> {
     const path = String(params.path);
     const oldString = String(params.old_string ?? '');
     const newString = String(params.new_string ?? '');
@@ -182,6 +195,16 @@ export class EditFileTool extends FileAccessTool {
 
     // Edit entry ⇒ offset undefined (R2): chainable, dedup-immune.
     h.cache?.set(key, { content: res.newContentLf, mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
+    await emitLocalFileChange({
+      context,
+      workspaceRoot: h.workspaceRoot,
+      path,
+      before: res.previousContentLf,
+      after: res.newContentLf,
+      operation: res.operation,
+      size: res.size,
+      mtimeMs: res.mtimeMs,
+    });
     return `Edited ${path} (${replaceAll ? 'all occurrences' : '1 occurrence'}).`;
   }
 }
@@ -200,7 +223,11 @@ export class WriteFileTool extends FileAccessTool {
   readonly required = ['path', 'content'];
   readonly riskAssessor = new FileWriteRiskAssessor();
 
-  protected async run(params: Record<string, any>, h: SessionScope & { workspaceRoot: string }): Promise<string> {
+  protected async run(
+    params: Record<string, any>,
+    h: SessionScope & { workspaceRoot: string },
+    context: ToolContext,
+  ): Promise<string> {
     const path = String(params.path);
     const content = String(params.content ?? '');
     const key = absKey(h.workspaceRoot, path);
@@ -225,8 +252,18 @@ export class WriteFileTool extends FileAccessTool {
     });
     if (res.written === 'false') return `Write not applied (${res.reason}): ${res.message}`;
 
-    h.cache?.set(key, { content: content.replace(/\r\n/g, '\n'), mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
-    return `${st.exists ? 'Overwrote' : 'Created'} ${path}.`;
+    h.cache?.set(key, { content: res.newContentLf, mtimeFloorMs: res.mtimeMs, offset: undefined, limit: undefined });
+    await emitLocalFileChange({
+      context,
+      workspaceRoot: h.workspaceRoot,
+      path,
+      before: res.previousContentLf,
+      after: res.newContentLf,
+      operation: res.operation,
+      size: res.size,
+      mtimeMs: res.mtimeMs,
+    });
+    return `${res.operation === 'modified' ? 'Overwrote' : 'Created'} ${path}.`;
   }
 }
 

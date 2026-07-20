@@ -282,6 +282,8 @@ export async function applyEdit(args: {
     const s = await fs.stat(j.abs);
     return {
       ok: 'true',
+      operation: existsAt ? 'modified' : 'created',
+      previousContentLf: '',
       newContentLf: contentLf,
       mtimeMs: mtimeMs(s),
       size: s.size,
@@ -374,6 +376,8 @@ export async function applyEdit(args: {
   const s2 = await fs.stat(j.abs);
   return {
     ok: 'true',
+    operation: 'modified',
+    previousContentLf: fresh,
     newContentLf: updated,
     mtimeMs: mtimeMs(s2),
     size: s2.size,
@@ -402,6 +406,8 @@ export async function writeIfUnchanged(args: {
     };
   }
   const existsAt = await exists(j.abs);
+  let operation: 'created' | 'modified';
+  let previousContentLf: string;
   if (args.expectedMtimeMs === null) {
     if (existsAt) {
       return {
@@ -410,6 +416,8 @@ export async function writeIfUnchanged(args: {
         message: 'File already exists; create-only write refused.',
       };
     }
+    operation = 'created';
+    previousContentLf = '';
   } else {
     if (!existsAt) {
       return {
@@ -426,6 +434,17 @@ export async function writeIfUnchanged(args: {
         message: 'File changed on disk since you read it. Re-read it before overwriting.',
       };
     }
+    const bytes = await fs.readFile(j.abs);
+    const dec = decode(bytes);
+    if (!dec) {
+      return {
+        written: 'false',
+        reason: 'unsupported_encoding',
+        message: 'UTF-16 files are not supported in v1.',
+      };
+    }
+    operation = 'modified';
+    previousContentLf = dec.contentLf;
   }
   const contentLf = args.content.replace(/\r\n/g, '\n');
   await ensureParent(j.abs);
@@ -433,6 +452,9 @@ export async function writeIfUnchanged(args: {
   const s2 = await fs.stat(j.abs);
   return {
     written: 'true',
+    operation,
+    previousContentLf,
+    newContentLf: contentLf,
     mtimeMs: mtimeMs(s2),
     size: s2.size,
     endings: args.endings,

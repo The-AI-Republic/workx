@@ -55,7 +55,8 @@
   let initialDataSourceId: string | undefined = $state(undefined);
   let initialDataSourceTab: 'details' | 'context' = $state('details');
 
-  // Settings component has its own AgentConfig instance (not shared with agent)
+  // The webfront has one AgentConfig cache. The agent runtime lives in a
+  // separate process and receives committed updates through messaging.
   let settingsConfig: AgentConfig | null = $state(null);
   let isInitializing: boolean = $state(true);
 
@@ -85,27 +86,13 @@
     initialDataSourceTab = query.get('tab') === 'context' ? 'context' : 'details';
   }
 
-  /**
-   * Load settings from ConfigStorageProvider with isolated AgentConfig
-   */
+  /** Load the webfront's shared, initialized configuration service. */
   async function loadSettings() {
-    let configInstance: any = null;
     try {
       isInitializing = true;
-      configInstance = new (AgentConfig as any)();
-
-      if (!configInstance) {
-        throw new Error('Failed to initialize AgentConfig');
-      }
-      await configInstance.initialize();
-      settingsConfig = configInstance;
+      settingsConfig = await AgentConfig.getInstance();
     } catch (error) {
       console.error('[Settings] Failed to load settings:', error);
-      // Even on error, expose the instance if it exists — AgentConfig.initialize()
-      // internally falls back to defaults, so the instance is still usable.
-      if (configInstance && !settingsConfig) {
-        settingsConfig = configInstance;
-      }
     } finally {
       isInitializing = false;
     }
@@ -376,8 +363,9 @@
 
   .settings-title {
     margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 

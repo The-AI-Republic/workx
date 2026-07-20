@@ -43,11 +43,13 @@ export const CREDENTIAL_SECURED_MARKER = '[SECURED]';
 
 export class AgentConfig implements IConfigService {
   private static instance: AgentConfig | null = null;
+  private static initializationPromise: Promise<AgentConfig> | null = null;
   private storage: ConfigStorage;
   private currentConfig: IAgentConfig;
   private eventHandlers: Map<string, Set<(e: IConfigChangeEvent) => void>>;
   private initialized: boolean = false;
   private currentGeneration = 0;
+  private persistenceQueue: Promise<void> = Promise.resolve();
 
   private constructor() {
     this.storage = new ConfigStorage();
@@ -60,12 +62,25 @@ export class AgentConfig implements IConfigService {
    * @returns Promise resolving to the singleton AgentConfig instance
    */
   public static async getInstance(): Promise<AgentConfig> {
-    if (!AgentConfig.instance) {
-      const instance = new AgentConfig();
-      await instance.initialize();
-      AgentConfig.instance = instance;
+    if (AgentConfig.instance) return AgentConfig.instance;
+
+    if (!AgentConfig.initializationPromise) {
+      AgentConfig.initializationPromise = (async () => {
+        const instance = new AgentConfig();
+        await instance.initialize();
+        AgentConfig.instance = instance;
+        return instance;
+      })();
     }
-    return AgentConfig.instance;
+
+    const pending = AgentConfig.initializationPromise;
+    try {
+      return await pending;
+    } finally {
+      if (AgentConfig.initializationPromise === pending) {
+        AgentConfig.initializationPromise = null;
+      }
+    }
   }
 
   /**
@@ -122,15 +137,16 @@ export class AgentConfig implements IConfigService {
    */
   public async reload(): Promise<void> {
     try {
+      // Do not let a reload in this process race a config write that has
+      // updated memory but has not reached the storage provider yet.
+      await this.persistenceQueue;
       const storedConfig = await this.storage.get();
+      const oldConfig = this.currentConfig;
 
       // Build full runtime config by merging stored data with default.json providers/models
       // (buildRuntimeConfig applies the Track 20 policy pin internally).
       this.currentConfig = buildRuntimeConfig(storedConfig);
-
-      // Track 20: reload() previously emitted nothing — the UI never learned a
-      // managed-policy change took effect. Emit so locked fields re-render.
-      this.emitChangeEvent('policy', null, this.currentConfig.policy ?? null);
+      this.emitConfigDiff(oldConfig, this.currentConfig);
     } catch (error) {
       console.error('Failed to reload config:', error);
       throw error;
@@ -203,19 +219,20 @@ export class AgentConfig implements IConfigService {
     // Re-pin so a locked value is restored even if it slipped through a
     // nested merge.
     this.pinPolicy();
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
-
-    // Emit change events if selectedModelKey changed
-    if (oldConfig.selectedModelKey !== newConfig.selectedModelKey) {
-      this.emitChangeEvent('model', oldConfig.selectedModelKey, newConfig.selectedModelKey);
-    }
-    if (oldConfig.preferences !== newConfig.preferences) {
-      this.emitChangeEvent('preferences', oldConfig.preferences, newConfig.preferences);
-    }
+    this.persistInBackground('config update');
+    this.emitConfigDiff(oldConfig, this.currentConfig);
 
     return { ...this.currentConfig };
+  }
+
+  /**
+   * Apply a config update and resolve only after that snapshot is durable.
+   * Cross-process save flows must use this before requesting a runtime reload.
+   */
+  async updateConfigAndPersist(config: Partial<IAgentConfig>): Promise<IAgentConfig> {
+    const updated = this.updateConfig(config);
+    await this.persistenceQueue;
+    return updated;
   }
 
   resetConfig(preserveApiKeys?: boolean): IAgentConfig {
@@ -236,9 +253,7 @@ export class AgentConfig implements IConfigService {
     this.currentConfig = newConfig;
     // Track 20: a reset must not clear an admin-managed value.
     this.pinPolicy();
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('config reset');
 
     return { ...this.currentConfig };
   }
@@ -302,7 +317,7 @@ export class AgentConfig implements IConfigService {
     const oldModelKey = this.currentConfig.selectedModelKey;
     this.currentConfig.selectedModelKey = compositeKey;
 
-    await this.storage.set(extractStoredConfig(this.currentConfig));
+    await this.enqueuePersist();
     this.emitChangeEvent('model', oldModelKey, compositeKey);
   }
 
@@ -338,7 +353,7 @@ export class AgentConfig implements IConfigService {
       this.currentConfig.efficientModelKey = compositeKey;
     }
 
-    await this.storage.set(extractStoredConfig(this.currentConfig));
+    await this.enqueuePersist();
     this.emitChangeEvent('efficientModel', oldKey, compositeKey ?? undefined);
   }
 
@@ -414,9 +429,7 @@ export class AgentConfig implements IConfigService {
     // Re-assert policy in case a pinned value lives under this provider.
     this.pinPolicy();
 
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('model config update');
 
     this.emitChangeEvent('model', oldModel, newModel);
 
@@ -449,9 +462,7 @@ export class AgentConfig implements IConfigService {
 
     this.currentConfig.providers[provider.id] = provider;
     this.pinPolicy();
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('provider creation');
 
     this.emitChangeEvent('provider', null, this.currentConfig.providers[provider.id]);
 
@@ -491,9 +502,7 @@ export class AgentConfig implements IConfigService {
 
     this.currentConfig.providers[id] = updated;
     this.pinPolicy();
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('provider update');
 
     this.emitChangeEvent('provider', existing, this.currentConfig.providers[id]);
 
@@ -514,9 +523,7 @@ export class AgentConfig implements IConfigService {
     const deleted = this.currentConfig.providers[id];
     delete this.currentConfig.providers[id];
     this.pinPolicy();
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('provider deletion');
 
     this.emitChangeEvent('provider', deleted, null);
   }
@@ -563,7 +570,7 @@ export class AgentConfig implements IConfigService {
     provider.apiKey = CREDENTIAL_SECURED_MARKER;
     this.currentConfig.providers[providerId] = provider;
 
-    await this.storage.set(extractStoredConfig(this.currentConfig));
+    await this.enqueuePersist();
     this.emitChangeEvent('provider', null, provider);
 
     return provider;
@@ -625,7 +632,7 @@ export class AgentConfig implements IConfigService {
     provider.apiKey = '';
     this.currentConfig.providers[providerId] = provider;
 
-    await this.storage.set(extractStoredConfig(this.currentConfig));
+    await this.enqueuePersist();
     this.emitChangeEvent('provider', provider, { ...provider, apiKey: '' });
   }
 
@@ -786,9 +793,7 @@ export class AgentConfig implements IConfigService {
 
     this.currentConfig.profiles[profile.name] = profile;
     this.pinPolicy();
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('profile creation');
 
     this.emitChangeEvent('profile', null, profile);
 
@@ -808,9 +813,7 @@ export class AgentConfig implements IConfigService {
     const updated = { ...previous, ...safe };
     this.currentConfig.profiles[name] = updated;
     this.pinPolicy();
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('profile update');
 
     this.emitChangeEvent('profile', previous, this.currentConfig.profiles[name]);
 
@@ -830,9 +833,7 @@ export class AgentConfig implements IConfigService {
       delete this.currentConfig.profiles[name];
     }
     this.pinPolicy();
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('profile deletion');
 
     this.emitChangeEvent('profile', deleted, null);
   }
@@ -850,9 +851,7 @@ export class AgentConfig implements IConfigService {
     profile.lastUsed = Date.now();
     this.pinPolicy();
 
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('active profile update');
 
     this.emitChangeEvent('profile', null, profile);
   }
@@ -890,9 +889,7 @@ export class AgentConfig implements IConfigService {
     this.currentConfig = data.config;
     // Track 20: an imported config must not override admin-managed values.
     this.pinPolicy();
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('config import');
 
     return { ...this.currentConfig };
   }
@@ -928,9 +925,7 @@ export class AgentConfig implements IConfigService {
 
     this.currentConfig.tools = newConfig as IToolsConfig;
     this.pinPolicy();
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('tools config update');
     this.emitChangeEvent('tools' as any, oldConfig, this.currentConfig.tools);
 
     return this.currentConfig.tools as IToolsConfig;
@@ -960,9 +955,7 @@ export class AgentConfig implements IConfigService {
 
     this.currentConfig.tools = tools as IToolsConfig;
     this.pinPolicy();
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('tool enablement update');
     this.emitChangeEvent('tools' as any, null, this.currentConfig.tools);
   }
 
@@ -982,9 +975,7 @@ export class AgentConfig implements IConfigService {
 
     this.currentConfig.tools = tools as IToolsConfig;
     this.pinPolicy();
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('tool enablement update');
     this.emitChangeEvent('tools' as any, null, this.currentConfig.tools);
   }
 
@@ -1025,10 +1016,73 @@ export class AgentConfig implements IConfigService {
     };
     this.pinPolicy();
 
-    this.storage.set(extractStoredConfig(this.currentConfig)).catch(err => {
-      console.error('Failed to persist config:', err);
-    });
+    this.persistInBackground('tool config update');
     this.emitChangeEvent('tools' as any, oldConfig, this.currentConfig.tools.perToolConfig[toolName]);
+  }
+
+  /** Queue immutable config snapshots so concurrent saves cannot overtake one another. */
+  private enqueuePersist(config: IAgentConfig = this.currentConfig): Promise<void> {
+    // Config is persisted as plain JSON. Snapshot it now so later mutations or
+    // Svelte state proxies cannot change an already queued write.
+    const storedSnapshot = JSON.parse(
+      JSON.stringify(extractStoredConfig(config))
+    ) as ReturnType<typeof extractStoredConfig>;
+    const write = this.persistenceQueue
+      .catch(() => undefined)
+      .then(() => this.storage.set(storedSnapshot));
+    this.persistenceQueue = write;
+    return write;
+  }
+
+  private persistInBackground(context: string): void {
+    void this.enqueuePersist().catch((error) => {
+      console.error(`[AgentConfig] Failed to persist ${context}:`, error);
+    });
+  }
+
+  /** Emit only the runtime sections whose hydrated values actually changed. */
+  private emitConfigDiff(oldConfig: IAgentConfig, newConfig: IAgentConfig): void {
+    const changes: Array<{
+      section: IConfigChangeEvent['section'];
+      oldValue: unknown;
+      newValue: unknown;
+    }> = [
+      { section: 'model', oldValue: oldConfig.selectedModelKey, newValue: newConfig.selectedModelKey },
+      {
+        section: 'efficientModel',
+        oldValue: oldConfig.efficientModelKey ?? oldConfig.modelForTitleGenerate,
+        newValue: newConfig.efficientModelKey ?? newConfig.modelForTitleGenerate,
+      },
+      { section: 'provider', oldValue: oldConfig.providers, newValue: newConfig.providers },
+      {
+        section: 'profile',
+        oldValue: { profiles: oldConfig.profiles, activeProfile: oldConfig.activeProfile },
+        newValue: { profiles: newConfig.profiles, activeProfile: newConfig.activeProfile },
+      },
+      { section: 'preferences', oldValue: oldConfig.preferences, newValue: newConfig.preferences },
+      { section: 'cache', oldValue: oldConfig.cache, newValue: newConfig.cache },
+      { section: 'extension', oldValue: oldConfig.extension, newValue: newConfig.extension },
+      { section: 'approval', oldValue: oldConfig.approval, newValue: newConfig.approval },
+      { section: 'hooks', oldValue: oldConfig.hooks, newValue: newConfig.hooks },
+      { section: 'tools', oldValue: oldConfig.tools, newValue: newConfig.tools },
+      { section: 'policy', oldValue: oldConfig.policy, newValue: newConfig.policy },
+      {
+        section: 'enabledPlugins',
+        oldValue: oldConfig.enabledPlugins,
+        newValue: newConfig.enabledPlugins,
+      },
+      { section: 'appServer', oldValue: oldConfig.appServer, newValue: newConfig.appServer },
+    ];
+
+    for (const change of changes) {
+      if (!this.configValuesEqual(change.oldValue, change.newValue)) {
+        this.emitChangeEvent(change.section, change.oldValue, change.newValue);
+      }
+    }
+  }
+
+  private configValuesEqual(left: unknown, right: unknown): boolean {
+    return Object.is(left, right) || JSON.stringify(left) === JSON.stringify(right);
   }
 
   // Event emitter functionality

@@ -266,13 +266,14 @@
   }
 
   .shortcut-label {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   .shortcut-description,
   .shortcut-current,
   .warning {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     opacity: 0.75;
     margin-top: 0.25rem;
   }

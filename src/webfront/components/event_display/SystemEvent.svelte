@@ -6,6 +6,7 @@
   import type { ProcessedEventAction } from '@/types/ui';
   import { getInitializedUIClient } from '@/core/messaging';
   import { push } from 'svelte-spa-router';
+  import { uiTheme } from '../../stores/themeStore';
 
   let { event }: { event: ProcessedEvent } = $props();
   let actionState: Record<string, 'idle' | 'pending' | 'success' | 'error'> = $state({});
@@ -36,7 +37,10 @@
 </script>
 
 <div class="system-event">
-  <div class="text-sm text-gray-500 whitespace-pre-wrap font-mono">
+  <div class="text-sm whitespace-pre-wrap
+    {$uiTheme === 'modern'
+      ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
+      : 'font-mono text-term-dim-green'}">
     {typeof event.content === 'string' ? event.content : JSON.stringify(event.content, null, 2)}
   </div>
   {#if event.actions?.length}
@@ -85,7 +89,8 @@
 
   .action-message {
     margin: 0.5rem 0 0;
-    font-size: 0.8rem;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
   }
 
   .action-message.error {

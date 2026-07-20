@@ -190,7 +190,7 @@
       // Update allowed origins from text area
       handleOriginsInput();
 
-      await settingsConfig.updateConfig({ extension: currentExtension });
+      await settingsConfig.updateConfigAndPersist({ extension: currentExtension });
 
       // Notify backend of config update
       getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));
@@ -414,8 +414,9 @@
     border: none;
     color: var(--workx-primary);
     cursor: pointer;
-    font-size: 0.9375rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     padding: 0.5rem 0;
     margin-bottom: 1rem;
     display: flex;
@@ -430,8 +431,9 @@
 
   .settings-title {
     margin: 0 0 1.5rem 0;
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -457,8 +459,9 @@
 
   .section-title {
     margin: 0 0 1rem 0;
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -469,8 +472,9 @@
   .form-label {
     display: block;
     margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     color: var(--workx-text);
   }
 
@@ -481,7 +485,8 @@
     border-radius: 0.375rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     transition: all 0.2s;
   }
 
@@ -498,8 +503,9 @@
     border-radius: 0.375rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
-    font-family: 'Courier New', Courier, monospace;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-family: var(--font-mono);
     resize: vertical;
     transition: all 0.2s;
   }
@@ -517,7 +523,8 @@
     border-radius: 0.375rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     transition: all 0.2s;
   }
 
@@ -532,7 +539,8 @@
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    font-size: 0.9375rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text);
   }
 
@@ -545,9 +553,9 @@
 
   .help-text {
     margin-top: 0.375rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary);
-    line-height: 1.4;
+    line-height: var(--leading-ui);
   }
 
   .button-group {
@@ -557,8 +565,9 @@
   .btn {
     padding: 0.75rem 1.5rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
     transition: all 0.2s;
     border: 1px solid var(--workx-primary);
@@ -592,7 +601,8 @@
     gap: 0.5rem;
     padding: 0.75rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-top: 1rem;
   }
 

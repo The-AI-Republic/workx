@@ -197,7 +197,7 @@
         const config = settingsConfig.getConfig();
         const providerConfig = config.providers?.openai;
         if (providerConfig) {
-          await settingsConfig.updateConfig({
+          await settingsConfig.updateConfigAndPersist({
             providers: {
               ...config.providers,
               openai: { ...providerConfig, authMethod: 'chatgpt_oauth' },
@@ -250,7 +250,7 @@
         const config = settingsConfig.getConfig();
         const providerConfig = config.providers?.openai;
         if (providerConfig) {
-          await settingsConfig.updateConfig({
+          await settingsConfig.updateConfigAndPersist({
             providers: {
               ...config.providers,
               openai: { ...providerConfig, authMethod: 'api_key' },
@@ -793,7 +793,7 @@
       // Persist the user's preference after the runtime confirms the effective
       // access state. The runtime remains the source of truth for display.
       const config = settingsConfig.getConfig();
-      await settingsConfig.updateConfig({
+      await settingsConfig.updateConfigAndPersist({
         preferences: {
           ...config.preferences,
           useOwnApiKey: newValue,
@@ -1060,7 +1060,7 @@
     </div>
 
     <!-- ChatGPT OAuth Section (OpenAI only, direct API mode) -->
-    {#if currentProvider === 'openai' && useOwnApiKey}
+    {#if currentProvider === 'openai' && (!isUserLoggedIn || useOwnApiKey)}
       <div class="form-group chatgpt-oauth-section">
         <label class="form-label">{t("ChatGPT Subscription")}</label>
         {#if chatgptOAuthConnected}
@@ -1503,8 +1503,9 @@
     border: none;
     color: var(--workx-primary);
     cursor: pointer;
-    font-size: 0.9375rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     padding: 0.5rem 0;
     display: flex;
     align-items: center;
@@ -1536,8 +1537,9 @@
 
   .section-title {
     margin: 0 0 1rem 0;
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -1549,10 +1551,11 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
   }
 
   .auth-status.authenticated {
@@ -1572,8 +1575,9 @@
   .form-label {
     display: block;
     margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     color: var(--workx-text);
   }
 
@@ -1589,8 +1593,9 @@
     border-radius: 0.5rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
-    font-family: 'SF Mono', 'Monaco', monospace;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-family: var(--font-mono);
     transition: all 0.2s;
   }
 
@@ -1633,7 +1638,8 @@
     border-radius: 0.5rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     cursor: pointer;
     transition: all 0.2s;
   }
@@ -1651,7 +1657,8 @@
 
   .help-text {
     margin-top: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text-secondary);
   }
 
@@ -1667,8 +1674,9 @@
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
     transition: all 0.2s;
     border: 1px solid var(--workx-primary);
@@ -1735,7 +1743,8 @@
     gap: 0.5rem;
     padding: 0.75rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-top: 1rem;
   }
 
@@ -1777,15 +1786,15 @@
   }
 
   .security-title {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     margin-bottom: 0.25rem;
     color: var(--workx-text);
   }
 
   .security-text {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary);
-    line-height: 1.5;
+    line-height: var(--leading-normal);
   }
 
   /* Provider Information */
@@ -1817,15 +1826,17 @@
   }
 
   .provider-info-label {
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     color: var(--workx-text-secondary);
     flex-shrink: 0;
   }
 
   .provider-info-value {
-    font-size: 0.875rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
     max-width: 150px;
     overflow: hidden;
@@ -1838,8 +1849,9 @@
     border: none;
     color: var(--workx-primary);
     cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;
     transition: all 0.2s;
@@ -1867,13 +1879,15 @@
   }
 
   .toggle-label {
-    font-size: 0.9375rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .toggle-description {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text-secondary);
   }
 
@@ -1966,7 +1980,8 @@
 
   .chatgpt-oauth-status .btn-sm {
     padding: 0.25rem 0.5rem;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-left: auto;
   }
 
@@ -1986,18 +2001,19 @@
   }
 
   .divider-text {
-    font-size: 0.8rem;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-wider);
   }
 
   /* Custom endpoints (BYOK) */
   .custom-help {
     margin: 0 0 1rem 0;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary, var(--workx-text));
     opacity: 0.8;
-    line-height: 1.4;
+    line-height: var(--leading-ui);
   }
 
   .custom-list {
@@ -2023,13 +2039,15 @@
   }
 
   .custom-item-name {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .custom-item-meta {
-    font-size: 0.75rem;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     color: var(--workx-text-secondary, var(--workx-text));
     opacity: 0.75;
     overflow: hidden;
@@ -2049,7 +2067,8 @@
 
   .btn-sm {
     padding: 0.35rem 0.7rem;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     flex-shrink: 0;
   }
 </style>

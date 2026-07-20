@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { push } from 'svelte-spa-router';
+  import { location, push } from 'svelte-spa-router';
   import {
     userStore,
     userInitials,
@@ -13,6 +13,7 @@
     DESKTOP_OIDC_REDIRECT,
   } from '../../stores/userStore';
   import { uiTheme } from '../../stores/themeStore';
+  import { MORE_ITEMS, isNavActive, type NavItem } from '../../stores/layoutStore';
   import { platform } from '../../stores/platformStore';
   import { AUTH_ROUTE_PATHS, HOME_PAGE_BASE_URL, LLM_API_URL, buildHostedAuthUrl } from '../../lib/constants';
   import { generatePKCEChallenge, randomUrlToken } from '@/core/auth/PKCEHelper';
@@ -27,6 +28,8 @@
     user?: { name?: string | null; email?: string | null; avatar?: string | null; userType?: number } | null;
   };
 
+  let { onNavigate }: { onNavigate?: () => void } = $props();
+
   let isLoggingIn = $state(false);
   let cancelLogin: (() => void) | null = $state(null);
 
@@ -35,6 +38,7 @@
   let promoTooltipTimer: ReturnType<typeof setTimeout> | null = null;
   let hasShownPromoTooltip = $state(false);
   const hasHostedAuth = Boolean(HOME_PAGE_BASE_URL && AUTH_ROUTE_PATHS.login);
+  const userCenterNavItems = MORE_ITEMS.filter((item) => item.id !== 'settings');
 
   // Watch for user state changes to show promo tooltip when not logged in (only once)
   $effect(() => {
@@ -122,6 +126,10 @@
           expectedState = randomUrlToken();
           loginUrl = getDesktopAuthorizeUrl({ codeChallenge: pkce.codeChallenge, state: expectedState });
         } else {
+          // @deprecated Legacy desktop-token flow — reached only when OIDC is
+          // unconfigured (`hasDesktopOidc()` false). Superseded by the OIDC +
+          // PKCE branch above; kept as a fallback until every environment has
+          // its hosted `workx-desktop` OIDC client registered.
           loginUrl = getDesktopLoginPageUrl();
         }
         if (!loginUrl) throw new Error('Hosted auth is not configured');
@@ -332,11 +340,19 @@
   function openUsage() {
     showMenu = false;
     push('/usage');
+    onNavigate?.();
   }
 
   function openSettings() {
     showMenu = false;
     push('/settings');
+    onNavigate?.();
+  }
+
+  function openFoldedNavItem(item: NavItem) {
+    showMenu = false;
+    push(item.route);
+    onNavigate?.();
   }
 
   async function handleLogout() {
@@ -467,6 +483,26 @@
           : 'h-px bg-term-dim-green/30'}"></div>
 
         <!-- Menu Items -->
+        {#each userCenterNavItems as item (item.id)}
+          {@const active = isNavActive(item.route, $location)}
+          <button
+            class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150
+              {$uiTheme === 'modern'
+                ? active
+                  ? 'text-chat-text dark:text-chat-text-dark font-chat rounded-md m-1 w-[calc(100%-8px)] bg-chat-primary/10 dark:bg-chat-primary-dark/10'
+                  : 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat rounded-md m-1 w-[calc(100%-8px)] hover:bg-white/10'
+                : active
+                  ? 'text-term-green font-terminal bg-term-green/10'
+                  : 'text-term-green font-terminal hover:bg-term-green/10'}"
+            onclick={() => openFoldedNavItem(item)}
+            role="menuitem"
+            aria-current={active ? 'page' : undefined}
+          >
+            <span class="folded-nav-icon">{@html item.icon}</span>
+            <span>{$_t(item.label)}</span>
+          </button>
+        {/each}
+
         <button
           class="flex items-center gap-2.5 w-full py-2.5 px-3 bg-transparent border-none cursor-pointer text-sm text-left transition-colors duration-150
             {$uiTheme === 'modern'
@@ -536,6 +572,20 @@
 </div>
 
 <style>
+  .folded-nav-icon {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .folded-nav-icon :global(svg) {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+  }
+
   .loading-dot {
     animation: pulse 1s infinite;
   }

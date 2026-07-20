@@ -87,7 +87,7 @@
       const current = settingsConfig.getConfig().appServer;
       // Partial shape is fine: normalizeAppServerConfig fills defaults at read.
       const appServer = { ...(current ?? {}), enabled: true } as IAppServerConfig;
-      await settingsConfig.updateConfig({ appServer });
+      await settingsConfig.updateConfigAndPersist({ appServer });
       const client = await getInitializedUIClient();
       // Push the config into the runtime's AgentConfig BEFORE restarting —
       // appServer.restart re-reads config in the sidecar process, which
@@ -247,7 +247,7 @@
 
     try {
       isSaving = true;
-      await settingsConfig.updateConfig({ tools: currentTools });
+      await settingsConfig.updateConfigAndPersist({ tools: currentTools });
 
       // Notify backend of config update
       getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));
@@ -315,7 +315,7 @@
 
 <div class="p-6">
   <button
-    class="bg-transparent border-none cursor-pointer text-[15px] font-medium py-2 px-0 mb-4 flex items-center gap-1 transition-opacity duration-200 hover:opacity-80
+    class="bg-transparent border-none cursor-pointer text-sm font-medium py-2 px-0 mb-4 flex items-center gap-1 transition-opacity duration-200 hover:opacity-80
       {primaryClasses}"
     onclick={handleBack}
   >← {$_t("Back")}</button>
@@ -338,7 +338,7 @@
           />
           <span>{$_t("Enable All Tools")}</span>
         </label>
-        <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Master toggle to enable or disable all browser and agent tools")}</div>
+        <div class="mt-1.5 text-sm leading-ui {textSecondaryClasses}">{$_t("Master toggle to enable or disable all browser and agent tools")}</div>
       </div>
     </div>
 
@@ -382,7 +382,7 @@
             { id: 'page-vision-tool', bind: 'page_vision_tool', label: $_t("Page Vision Tool"), help: $_t("Visual analysis of page content and layout") }
           ] as tool}
             <div class="{tool !== undefined ? 'mb-6 last:mb-0' : ''}" data-setting-id={tool.id}>
-              <label class="flex items-center gap-2 cursor-pointer text-[15px] {textClasses}">
+              <label class="flex items-center gap-2 cursor-pointer text-sm {textClasses}">
                 <input
                   type="checkbox"
                   bind:checked={currentTools[tool.bind]}
@@ -391,7 +391,7 @@
                 />
                 <span>{tool.label}</span>
               </label>
-              <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{tool.help}</div>
+              <div class="mt-1.5 text-sm leading-ui {textSecondaryClasses}">{tool.help}</div>
             </div>
           {/each}
         </div>
@@ -426,7 +426,7 @@
       {#if agentToolsExpanded}
         <div class="p-4 border-t {isModern ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
           <div class="mb-6" data-setting-id="exec-command">
-            <label class="flex items-center gap-2 cursor-pointer text-[15px] {textClasses}">
+            <label class="flex items-center gap-2 cursor-pointer text-sm {textClasses}">
               <input
                 type="checkbox"
                 bind:checked={currentTools.execCommand}
@@ -435,11 +435,11 @@
               />
               <span>{$_t("Execute Commands")}</span>
             </label>
-            <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Allow agent to execute system commands (use with caution)")}</div>
+            <div class="mt-1.5 text-sm leading-ui {textSecondaryClasses}">{$_t("Allow agent to execute system commands (use with caution)")}</div>
           </div>
 
           <div class="mb-6" data-setting-id="web-search">
-            <label class="flex items-center gap-2 cursor-pointer text-[15px] {textClasses}">
+            <label class="flex items-center gap-2 cursor-pointer text-sm {textClasses}">
               <input
                 type="checkbox"
                 bind:checked={currentTools.webSearch}
@@ -448,11 +448,11 @@
               />
               <span>{$_t("Web Search")}</span>
             </label>
-            <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Enable web search capabilities for the agent")}</div>
+            <div class="mt-1.5 text-sm leading-ui {textSecondaryClasses}">{$_t("Enable web search capabilities for the agent")}</div>
           </div>
 
           <div class="mb-6" data-setting-id="file-operations">
-            <label class="flex items-center gap-2 cursor-pointer text-[15px] opacity-50 cursor-not-allowed {textClasses}">
+            <label class="flex items-center gap-2 cursor-pointer text-sm opacity-50 cursor-not-allowed {textClasses}">
               <input
                 type="checkbox"
                 bind:checked={currentTools.fileOperations}
@@ -462,11 +462,11 @@
               />
               <span class="italic {textSecondaryClasses}">{$_t("File Operations (Not Available)")}</span>
             </label>
-            <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Allow agent to read, write, and manage files (Coming in future update)")}</div>
+            <div class="mt-1.5 text-sm leading-ui {textSecondaryClasses}">{$_t("Allow agent to read, write, and manage files (Coming in future update)")}</div>
           </div>
 
           <div data-setting-id="mcp-tools">
-            <label class="flex items-center gap-2 cursor-pointer text-[15px] {textClasses}">
+            <label class="flex items-center gap-2 cursor-pointer text-sm {textClasses}">
               <input
                 type="checkbox"
                 bind:checked={currentTools.mcpTools}
@@ -475,7 +475,7 @@
               />
               <span>{$_t("MCP Tools")}</span>
             </label>
-            <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Enable Model Context Protocol tools from connected MCP servers")}</div>
+            <div class="mt-1.5 text-sm leading-ui {textSecondaryClasses}">{$_t("Enable Model Context Protocol tools from connected MCP servers")}</div>
           </div>
         </div>
       {/if}
@@ -520,7 +520,7 @@
               class="w-full py-2.5 px-2.5 rounded-md text-sm transition-all duration-200 {inputClasses}"
               placeholder="30000"
             />
-            <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Maximum time (in milliseconds) a tool can run before timeout (default: 30000)")}</div>
+            <div class="mt-1.5 text-sm leading-ui {textSecondaryClasses}">{$_t("Maximum time (in milliseconds) a tool can run before timeout (default: 30000)")}</div>
           </div>
 
           <!-- Legacy Sandbox Policy (non-desktop) -->
@@ -537,7 +537,7 @@
                 <option value="workspace-write">{$_t("Workspace Write")}</option>
                 <option value="danger-full-access">{$_t("Full Access (Dangerous)")}</option>
               </select>
-              <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Security level for tool execution environment")}</div>
+              <div class="mt-1.5 text-sm leading-ui {textSecondaryClasses}">{$_t("Security level for tool execution environment")}</div>
             </div>
           {/if}
         </div>
@@ -592,7 +592,7 @@
                 <option value="safe">{$_t("Safe")}</option>
                 <option value="power">{$_t("Power")}</option>
               </select>
-              <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">
+              <div class="mt-1.5 text-sm leading-ui {textSecondaryClasses}">
                 {#if executionMode === 'safe'}
                   {$_t("All commands run inside an OS-native sandbox. Writes restricted to workspace directory.")}
                 {:else if executionMode === 'power'}
@@ -616,7 +616,7 @@
                 <option value="ro">{$_t("Read-Only")}</option>
                 <option value="none">{$_t("No Access")}</option>
               </select>
-              <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("How the workspace directory is mounted in the sandbox")}</div>
+              <div class="mt-1.5 text-sm leading-ui {textSecondaryClasses}">{$_t("How the workspace directory is mounted in the sandbox")}</div>
             </div>
 
             <!-- Network Mode -->
@@ -631,13 +631,13 @@
                 <option value="host">{$_t("Allowed")}</option>
                 <option value="sandbox">{$_t("Restricted")}</option>
               </select>
-              <div class="mt-1.5 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Whether sandboxed commands can access the network")}</div>
+              <div class="mt-1.5 text-sm leading-ui {textSecondaryClasses}">{$_t("Whether sandboxed commands can access the network")}</div>
             </div>
 
             <!-- Bind Mounts -->
             <div data-setting-id="bind-mounts">
               <label class="block mb-2 text-sm font-medium {textClasses}">{$_t("Additional Bind Mounts")}</label>
-              <div class="mb-2 text-sm leading-relaxed {textSecondaryClasses}">{$_t("Extra directories accessible inside the sandbox")}</div>
+              <div class="mb-2 text-sm leading-ui {textSecondaryClasses}">{$_t("Extra directories accessible inside the sandbox")}</div>
 
               {#if bindMounts.length > 0}
                 <div class="flex flex-col gap-1.5 mb-2">
@@ -701,7 +701,7 @@
           </span>
         </div>
         <div class="p-4 border-t {isModern ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
-          <div class="mb-4 text-sm leading-relaxed {textSecondaryClasses}">
+          <div class="mb-4 text-sm leading-ui {textSecondaryClasses}">
             {$_t("Control your real Chrome browser through the WorkX extension instead of a separate automation browser. Native connection is automatic on macOS/Linux. For Windows or fallback pairing, copy the token below into Extension side panel → Settings → Extension → Desktop Bridge.")}
           </div>
 
