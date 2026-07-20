@@ -543,6 +543,35 @@ describe('ModelClientFactory', () => {
       await expect((client as any)._opts.refreshAuthorizationToken()).resolves.toBe('jwt-456');
     });
 
+    it('should pass a configured upstream provider pin to gateway-routed clients', async () => {
+      const previousProviderSlug = process.env.WORKX_GATEWAY_PROVIDER_SLUG;
+      process.env.WORKX_GATEWAY_PROVIDER_SLUG = 'deepseek';
+
+      try {
+        await factory.initialize(createMockAgentConfig({
+          modelData: {
+            model: { modelKey: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'DeepSeek' },
+            provider: { id: 'deepseek', name: 'DeepSeek', apiKey: '', timeout: 30000, models: [] },
+          },
+        }));
+        factory.updateAuthContext(createMockAuthManager({
+          shouldUseBackend: true,
+          gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
+          accessToken: 'jwt-123',
+        }));
+
+        const client = await factory.createClient('deepseek');
+
+        expect((client as any)._opts.providerRoutingSlug).toBe('deepseek');
+      } finally {
+        if (previousProviderSlug === undefined) {
+          delete process.env.WORKX_GATEWAY_PROVIDER_SLUG;
+        } else {
+          process.env.WORKX_GATEWAY_PROVIDER_SLUG = previousProviderSlug;
+        }
+      }
+    });
+
     it('should cache backend-routed clients', async () => {
       await factory.initialize(createMockAgentConfig({
         modelData: {

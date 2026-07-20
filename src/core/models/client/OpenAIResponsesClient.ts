@@ -114,6 +114,8 @@ export interface OpenAIResponsesConfig {
   useCredentials?: boolean;
   /** Track 11: allow the model to emit multiple tool calls per response. Default false. */
   parallelToolCalls?: boolean;
+  /** Optional OpenHub upstream-provider slug added to Chat Completions requests. */
+  providerRoutingSlug?: string;
 }
 
 /**
@@ -135,6 +137,8 @@ export class OpenAIResponsesClient extends ModelClient {
   protected useCredentials: boolean;
   /** Track 11: emitted as `parallel_tool_calls` in the request payload. */
   protected readonly parallelToolCalls: boolean;
+  /** OpenHub provider-selection pin; absent for direct and legacy routing. */
+  protected readonly providerRoutingSlug?: string;
 
   // OpenAI SDK client instance
   protected client: OpenAI;
@@ -150,6 +154,7 @@ export class OpenAIResponsesClient extends ModelClient {
 
     this.apiKey = config.apiKey;
     this.parallelToolCalls = config.parallelToolCalls ?? false;
+    this.providerRoutingSlug = config.providerRoutingSlug?.trim() || undefined;
     this.baseUrl = config.baseUrl || 'https://api.openai.com/v1';
 
     // Validate baseUrl is a valid URL to catch configuration errors early
@@ -307,7 +312,7 @@ export class OpenAIResponsesClient extends ModelClient {
   async complete(request: CompletionRequest): Promise<CompletionResponse> {
     this.validateRequest(request);
 
-    const response = await this.client.chat.completions.create({
+    const requestParams: any = {
       model: request.model,
       messages: request.messages
         .filter(m => m.role !== 'tool')
@@ -318,7 +323,12 @@ export class OpenAIResponsesClient extends ModelClient {
       temperature: request.temperature,
       max_tokens: request.maxTokens,
       stream: false,
-    });
+    };
+    if (this.providerRoutingSlug) {
+      requestParams.provider = this.providerRoutingSlug;
+    }
+
+    const response = await this.client.chat.completions.create(requestParams);
 
     const choice = response.choices[0];
     return {

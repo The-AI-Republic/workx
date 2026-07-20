@@ -12,6 +12,7 @@ import { FireworksChatCompletionClient } from './client/FireworksChatCompletionC
 import { TogetherChatCompletionClient } from './client/TogetherChatCompletionClient';
 import { AnthropicClient } from './client/AnthropicClient';
 import { AgentConfig } from '../../config/AgentConfig';
+import { resolveRuntimeUrls } from '../../config/runtimeUrls';
 import { getConfigStorage } from '../storage/ConfigStorageProvider';
 import { TestAuthContext, type AuthContext } from '../auth/AuthContext';
 
@@ -57,6 +58,7 @@ interface ClientConstructionSignature {
   providerBaseUrl: string | null;
   providerOrganization: string | null;
   gatewayLlmBaseUrl: string | null;
+  gatewayProviderSlug: string | null;
   model: {
     modelKey: string | null;
     supportsReasoning: boolean;
@@ -290,7 +292,6 @@ export class ModelClientFactory {
     // 2. Gateway default when logged in (single gateway credential routes any
     //    catalog model, so this default may come from a different provider).
     if (!efficientKey && this.isBackendRouting()) {
-      const { resolveRuntimeUrls } = await import('../../config/runtimeUrls');
       const defaultModel = resolveRuntimeUrls().gatewayDefaultEfficientModel;
       if (defaultModel) {
         const sameProviderKey = `${selectedProvider}:${defaultModel}`;
@@ -476,6 +477,7 @@ export class ModelClientFactory {
     }
 
     const parallelToolCalls = this.resolveParallelToolCalls();
+    const providerRoutingSlug = resolveRuntimeUrls().gatewayProviderSlug ?? undefined;
     let modelConfig: any = undefined;
     let supportsReasoning = false;
     let supportsReasoningSummaries = false;
@@ -521,6 +523,7 @@ export class ModelClientFactory {
       parallelToolCalls,
       getAuthorizationToken: tokenProvider,
       refreshAuthorizationToken: async () => this.auth.current()?.refreshAccessToken?.() ?? null,
+      providerRoutingSlug,
     });
   }
 
@@ -976,6 +979,7 @@ export class ModelClientFactory {
       providerBaseUrl: providerConfig?.baseUrl ?? null,
       providerOrganization: providerConfig?.organization ?? null,
       gatewayLlmBaseUrl: this.auth.current()?.getGatewayLlmBaseUrl?.() ?? null,
+      gatewayProviderSlug: resolveRuntimeUrls().gatewayProviderSlug,
       model: {
         modelKey: model?.modelKey ?? null,
         supportsReasoning: model?.supportsReasoning ?? false,

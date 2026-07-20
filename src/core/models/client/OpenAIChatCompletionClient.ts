@@ -48,6 +48,8 @@ export interface OpenAIChatCompletionConfig {
   getAuthorizationToken?: () => Promise<string | null>;
   /** Refresh bearer auth after a 401 and return the replacement token. */
   refreshAuthorizationToken?: () => Promise<string | null>;
+  /** Optional OpenHub upstream-provider slug added to Chat Completions requests. */
+  providerRoutingSlug?: string;
 }
 
 /**
@@ -92,6 +94,7 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
       modelConfig: config.modelConfig,
       useCredentials: config.useCredentials,
       parallelToolCalls: config.parallelToolCalls,
+      providerRoutingSlug: config.providerRoutingSlug,
     }, retryConfig);
 
     // Backend/gateway routing: rewrite backend URLs when needed and resolve
@@ -834,6 +837,9 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
         messages: messages,
         stream: true,
       };
+      if (this.providerRoutingSlug) {
+        requestParams.provider = this.providerRoutingSlug;
+      }
 
       // Add tools if present
       if (prompt.tools && prompt.tools.length > 0) {

@@ -8,6 +8,7 @@ const ENV_KEYS = [
   'WORKX_GATEWAY_BASE_URL',
   'WORKX_GATEWAY_API_BASE_URL',
   'WORKX_GATEWAY_LLM_API_URL',
+  'WORKX_GATEWAY_PROVIDER_SLUG',
   'WORKX_GATEWAY_MCP_URL',
   'WORKX_GATEWAY_CATALOG_URL',
   'WORKX_GATEWAY_MCP_NAME',
@@ -22,6 +23,7 @@ const ENV_KEYS = [
   'VITE_GATEWAY_BASE_URL',
   'VITE_GATEWAY_API_BASE_URL',
   'VITE_GATEWAY_LLM_API_URL',
+  'VITE_GATEWAY_PROVIDER_SLUG',
   'VITE_GATEWAY_MCP_URL',
   'VITE_GATEWAY_CATALOG_URL',
   'VITE_GATEWAY_MCP_NAME',
@@ -62,6 +64,7 @@ describe('resolveRuntimeUrls', () => {
       llmApiUrl: '/api/llm',
       gatewayBaseUrl: null,
       gatewayLlmApiUrl: null,
+      gatewayProviderSlug: null,
       gatewayMcpUrl: null,
       gatewayCatalogUrl: null,
       gatewayMcpName: 'gateway',
@@ -77,6 +80,7 @@ describe('resolveRuntimeUrls', () => {
         llmApiUrl: 'default',
         gatewayBaseUrl: 'default',
         gatewayLlmApiUrl: 'default',
+        gatewayProviderSlug: 'default',
         gatewayMcpUrl: 'default',
         gatewayCatalogUrl: 'default',
         gatewayMcpName: 'default',
@@ -165,6 +169,7 @@ describe('resolveRuntimeUrls', () => {
   it('honors explicit gateway overlay settings', () => {
     process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
     process.env.WORKX_GATEWAY_LLM_API_URL = 'https://llm.example.com/openai';
+    process.env.WORKX_GATEWAY_PROVIDER_SLUG = 'deepseek';
     process.env.WORKX_GATEWAY_MCP_URL = 'https://mcp.example.com/mcp';
     process.env.WORKX_GATEWAY_MCP_NAME = 'first-party-gateway';
     process.env.WORKX_GATEWAY_MCP_AUTH_MODE = 'session-jwt';
@@ -175,6 +180,7 @@ describe('resolveRuntimeUrls', () => {
     const urls = resolveRuntimeUrls();
 
     expect(urls.gatewayLlmApiUrl).toBe('https://llm.example.com/openai');
+    expect(urls.gatewayProviderSlug).toBe('deepseek');
     expect(urls.gatewayMcpUrl).toBe('https://mcp.example.com/mcp');
     expect(urls.gatewayMcpName).toBe('first-party-gateway');
     expect(urls.gatewayMcpAuthMode).toBe('session-jwt');
@@ -182,6 +188,7 @@ describe('resolveRuntimeUrls', () => {
     expect(urls.gatewayMcpToolDiscovery).toBe('folded');
     expect(urls.llmRoutingMode).toBe('legacy');
     expect(urls.source.llmRoutingMode).toBe('env');
+    expect(urls.source.gatewayProviderSlug).toBe('env');
   });
 
   it('defaults gateway MCP auth to api-key when an env key is configured', () => {
