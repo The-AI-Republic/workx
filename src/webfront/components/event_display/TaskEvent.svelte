@@ -30,7 +30,7 @@
     </div>
 
     {#if event.metadata}
-      <div class="text-sm mt-1
+      <div class="text-meta font-normal mt-1
         {currentTheme === 'modern'
           ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
           : 'text-gray-500'}">

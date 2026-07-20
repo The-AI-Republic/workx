@@ -46,12 +46,13 @@
   }
 
   .shortcut-label {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   .shortcut-description {
     margin-top: 2px;
-    font-size: 12px;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     opacity: 0.72;
   }
 
@@ -62,6 +63,7 @@
     border-radius: 4px;
     background: color-mix(in srgb, var(--workx-surface, #111) 90%, white);
     font: inherit;
-    font-size: 12px;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
   }
 </style>

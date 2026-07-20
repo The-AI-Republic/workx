@@ -773,8 +773,9 @@
     border: none;
     color: var(--workx-primary);
     cursor: pointer;
-    font-size: 0.9375rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     padding: 0.5rem 0;
     margin-bottom: 1rem;
     display: flex;
@@ -789,16 +790,17 @@
 
   .settings-title {
     margin: 0 0 0.5rem 0;
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .settings-description {
     margin: 0 0 1.5rem 0;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary);
-    line-height: 1.5;
+    line-height: var(--leading-normal);
   }
 
   .settings-form {
@@ -861,8 +863,9 @@
 
   .section-title {
     margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -925,23 +928,25 @@
   }
 
   .server-name {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .server-url {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text-secondary);
     word-break: break-all;
   }
 
   .status-badge {
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     padding: 0.125rem 0.5rem;
     border-radius: 1rem;
     text-transform: uppercase;
-    letter-spacing: 0.025em;
+    letter-spacing: var(--tracking-wide);
   }
 
   .badge-success {
@@ -972,7 +977,8 @@
     padding: 0.5rem;
     background: color-mix(in srgb, var(--workx-error) 10%, transparent);
     border-radius: 0.375rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-error);
   }
 
@@ -1001,7 +1007,8 @@
   .limit-message {
     text-align: center;
     color: var(--workx-text-secondary);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-top: 0.5rem;
   }
 
@@ -1026,12 +1033,13 @@
   }
 
   .tool-name {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .tool-server {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     padding: 0.125rem 0.375rem;
     background: color-mix(in srgb, var(--workx-primary) 10%, transparent);
     color: var(--workx-primary);
@@ -1040,17 +1048,18 @@
 
   .tool-description {
     margin: 0;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary);
-    line-height: 1.4;
+    line-height: var(--leading-ui);
   }
 
   /* Buttons */
   .btn {
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
     transition: all 0.2s;
     border: 1px solid transparent;
@@ -1083,7 +1092,8 @@
 
   .btn-small {
     padding: 0.375rem 0.75rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
   }
 
   .btn-icon {
@@ -1115,8 +1125,9 @@
   .form-label {
     display: block;
     margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     color: var(--workx-text);
   }
 
@@ -1127,7 +1138,8 @@
     border-radius: 0.375rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     transition: all 0.2s;
   }
 
@@ -1142,7 +1154,8 @@
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    font-size: 0.9375rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text);
   }
 
@@ -1155,9 +1168,9 @@
 
   .help-text {
     margin-top: 0.375rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary);
-    line-height: 1.4;
+    line-height: var(--leading-ui);
   }
 
   .form-error {
@@ -1167,7 +1180,8 @@
     padding: 0.75rem;
     background: color-mix(in srgb, var(--workx-error) 10%, transparent);
     border-radius: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-error);
     margin-top: 1rem;
   }
@@ -1207,8 +1221,9 @@
 
   .modal-header h3 {
     margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -1249,7 +1264,8 @@
     gap: 0.5rem;
     padding: 0.75rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-top: 1rem;
     max-width: 600px;
   }
