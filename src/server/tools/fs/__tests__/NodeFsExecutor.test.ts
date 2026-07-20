@@ -127,6 +127,9 @@ describe('NodeFsExecutor read/write round-trip', () => {
       bom: false,
     });
     expect(ok.written).toBe('true');
+    if (ok.written === 'true') {
+      expect(ok).toMatchObject({ operation: 'created', previousContentLf: '', newContentLf: 'hi' });
+    }
     const collide = await writeIfUnchanged({
       workspaceRoot: workspace,
       path: 'new.txt',
@@ -139,6 +142,44 @@ describe('NodeFsExecutor read/write round-trip', () => {
     if (collide.written === 'false') expect(collide.reason).toBe('exists');
   });
 
+  it('write_if_unchanged returns the complete preimage and committed overwrite', async () => {
+    const before = 'l1\nl2\nl3\nl4\nl5';
+    const after = 'l1\nl2\nL3\nl4\nl5';
+    await fs.writeFile(path.join(workspace, 'overwrite.txt'), before);
+    const s = await stat(workspace, 'overwrite.txt');
+    const result = await writeIfUnchanged({
+      workspaceRoot: workspace,
+      path: 'overwrite.txt',
+      content: after,
+      expectedMtimeMs: s.mtimeMs,
+      endings: 'LF',
+      bom: false,
+    });
+
+    expect(result).toMatchObject({
+      written: 'true', operation: 'modified', previousContentLf: before, newContentLf: after,
+    });
+    expect(await fs.readFile(path.join(workspace, 'overwrite.txt'), 'utf-8')).toBe(after);
+  });
+
+  it('write_if_unchanged refuses an unsupported preimage instead of emitting a lossy receipt', async () => {
+    const target = path.join(workspace, 'utf16-overwrite.txt');
+    const original = Buffer.from([0xFF, 0xFE, 0x41, 0x00]);
+    await fs.writeFile(target, original);
+    const s = await stat(workspace, 'utf16-overwrite.txt');
+    const result = await writeIfUnchanged({
+      workspaceRoot: workspace,
+      path: 'utf16-overwrite.txt',
+      content: 'replacement',
+      expectedMtimeMs: s.mtimeMs,
+      endings: 'LF',
+      bom: false,
+    });
+
+    expect(result).toMatchObject({ written: 'false', reason: 'unsupported_encoding' });
+    expect(await fs.readFile(target)).toEqual(original);
+  });
+
   it('write_if_unchanged re-applies CRLF and BOM exactly', async () => {
     const r = await writeIfUnchanged({
       workspaceRoot: workspace,
@@ -149,6 +190,11 @@ describe('NodeFsExecutor read/write round-trip', () => {
       bom: true,
     });
     expect(r.written).toBe('true');
+    if (r.written === 'true') {
+      expect(r).toMatchObject({
+        operation: 'created', previousContentLf: '', newContentLf: 'a\nb\nc',
+      });
+    }
     const bytes = await fs.readFile(path.join(workspace, 'c.txt'));
     expect(bytes.subarray(0, 3)).toEqual(Buffer.from([0xEF, 0xBB, 0xBF]));
     expect(bytes.subarray(3).toString('utf-8')).toBe('a\r\nb\r\nc');
@@ -192,9 +238,30 @@ describe('NodeFsExecutor edit', () => {
       expectedContentLf: '',
     });
     expect(res.ok).toBe('true');
-    if (res.ok === 'true') expect(res.newContentLf).toBe('hello\nworld');
+    if (res.ok === 'true') {
+      expect(res).toMatchObject({
+        operation: 'created', previousContentLf: '', newContentLf: 'hello\nworld',
+      });
+    }
     const onDisk = await fs.readFile(path.join(workspace, 'new-create.txt'), 'utf-8');
     expect(onDisk).toBe('hello\nworld');
+  });
+
+  it('classifies an existing empty file as modified and captures its preimage', async () => {
+    await fs.writeFile(path.join(workspace, 'empty.txt'), '');
+    const res = await applyEdit({
+      workspaceRoot: workspace,
+      path: 'empty.txt',
+      oldString: '',
+      newString: 'hello',
+      replaceAll: false,
+      expectedMtimeMs: 0,
+      expectedContentLf: '',
+    });
+
+    expect(res).toMatchObject({
+      ok: 'true', operation: 'modified', previousContentLf: '', newContentLf: 'hello',
+    });
   });
 
   it('rejects no_match when old_string does not appear in fresh content', async () => {
@@ -275,7 +342,9 @@ describe('NodeFsExecutor edit', () => {
     });
     expect(res.ok).toBe('true');
     if (res.ok === 'true') {
+      expect(res.previousContentLf).toBe('x\nx\nx');
       expect(res.newContentLf).toBe('y\ny\ny');
+      expect(res.operation).toBe('modified');
       expect(res.endings).toBe('CRLF');
       expect(res.bom).toBe(true);
     }
