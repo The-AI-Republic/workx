@@ -171,12 +171,15 @@
   let warnText = $derived($uiTheme === 'modern'
     ? 'text-chat-status-warning dark:text-chat-status-warning-dark'
     : 'text-term-yellow');
+  let bgClass = $derived($uiTheme === 'modern'
+    ? 'bg-chat-status-warning/10 dark:bg-chat-status-warning-dark/10'
+    : 'bg-term-yellow/10');
   let inputClass = $derived($uiTheme === 'modern'
     ? 'bg-chat-input dark:bg-chat-input-dark border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark placeholder:text-chat-text-muted dark:placeholder:text-chat-text-muted-dark focus:border-chat-primary dark:focus:border-chat-primary-dark'
     : 'bg-term-bg border-term-dim-green text-term-green placeholder:text-term-dim-green focus:border-term-green');
 </script>
 
-<div class="approval-event border {borderClass} bg-yellow-500/10 rounded p-3">
+<div class="approval-event border {borderClass} {bgClass} rounded p-3">
   <div class="flex items-center gap-2 mb-2">
     <div class="font-semibold {warnText}">
       {event.title}
