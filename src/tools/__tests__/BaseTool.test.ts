@@ -732,7 +732,7 @@ describe('BaseTool', () => {
       (vi.mocked(chrome.tabs.get) as any).mockResolvedValue(mockTab);
 
       const tab = await tool.callValidateTabId(42);
-      expect(tab).toBe(mockTab);
+      expect(tab).toEqual(expect.objectContaining({ id: 42, url: 'https://example.com' }));
       expect(chrome.tabs.get).toHaveBeenCalledWith(42);
     });
 
@@ -755,7 +755,7 @@ describe('BaseTool', () => {
       (vi.mocked(chrome.tabs.query) as any).mockResolvedValue([mockTab]);
 
       const tab = await tool.callGetActiveTab();
-      expect(tab).toBe(mockTab);
+      expect(tab).toEqual(expect.objectContaining({ id: 1 }));
       expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
     });
 

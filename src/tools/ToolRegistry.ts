@@ -31,23 +31,17 @@ import {
   type ToolProgressCallback,
 } from './runtimeMetadata';
 import type { ToolExposureProfile, ToolRegistryExposureEntry } from './exposure';
+import type { BrowserPageContext } from '../core/platform/IPlatformAdapter';
 // Note: parseNodeId is dynamically imported in enrichDomParameters to keep
 // ToolRegistry cross-platform (extension-only DOM utils stay out of the
 // desktop/server bundles).
 
 /**
- * Tools that receive the §4.5 per-session metadata seam (workspaceRoot +
- * the mutable FileStateCache + agentMode). Keep in sync with the tools
- * registered by registerFileSearchTools(). Every other tool gets only
- * { tabId } — the cache must NOT be reachable from arbitrary tool handlers.
+ * Tools that receive the mutable per-session FileStateCache. The immutable
+ * TurnExecutionContext is safe to provide to every tool, but the cache must
+ * remain restricted to these handlers so another tool cannot forge freshness.
  */
-const FILE_SEAM_TOOLS = new Set<string>([
-  'read_file',
-  'edit_file',
-  'write_file',
-  'grep',
-  'glob',
-]);
+const FILE_SEAM_TOOLS = new Set<string>(['read_file', 'edit_file', 'write_file', 'grep', 'glob']);
 
 /**
  * Interface for event collection (used for testing)
@@ -105,7 +99,7 @@ export type PreExecuteDecision =
  */
 export type PreExecuteCheck = (
   toolName: string,
-  parameters: Record<string, unknown>,
+  parameters: Record<string, unknown>
 ) => PreExecuteDecision;
 
 export class ToolRegistry {
@@ -114,6 +108,7 @@ export class ToolRegistry {
   private approvalGate?: ApprovalGate;
   private preExecuteCheck?: PreExecuteCheck;
   private paymentCapability?: PaymentCapability;
+  private pageContextProvider?: () => Promise<BrowserPageContext>;
 
   constructor(eventCollector?: IEventCollector) {
     this.eventCollector = eventCollector;
@@ -132,6 +127,16 @@ export class ToolRegistry {
    */
   getApprovalGate(): ApprovalGate | undefined {
     return this.approvalGate;
+  }
+
+  /** Install the platform-specific source of browser page context used by approvals. */
+  setPageContextProvider(provider: (() => Promise<BrowserPageContext>) | undefined): void {
+    this.pageContextProvider = provider;
+  }
+
+  /** Resolve the current browser page without coupling core execution to a platform API. */
+  async getCurrentPageContext(): Promise<BrowserPageContext> {
+    return this.pageContextProvider ? this.pageContextProvider() : {};
   }
 
   /**
@@ -195,11 +200,12 @@ export class ToolRegistry {
   private createEntry(
     tool: ToolDefinition,
     handler: ToolHandler,
-    optionsOrAssessor?: IRiskAssessor | ToolRegistrationOptions,
+    optionsOrAssessor?: IRiskAssessor | ToolRegistrationOptions
   ): ToolRegistryEntry {
-    const opts: ToolRegistrationOptions = optionsOrAssessor && 'assess' in optionsOrAssessor
-      ? { riskAssessor: optionsOrAssessor as IRiskAssessor }
-      : (optionsOrAssessor as ToolRegistrationOptions ?? {});
+    const opts: ToolRegistrationOptions =
+      optionsOrAssessor && 'assess' in optionsOrAssessor
+        ? { riskAssessor: optionsOrAssessor as IRiskAssessor }
+        : ((optionsOrAssessor as ToolRegistrationOptions) ?? {});
 
     const runtime: ToolRuntimeMetadata = {
       concurrency: {
@@ -229,7 +235,7 @@ export class ToolRegistry {
   async register(
     tool: ToolDefinition,
     handler: ToolHandler,
-    optionsOrAssessor?: IRiskAssessor | ToolRegistrationOptions,
+    optionsOrAssessor?: IRiskAssessor | ToolRegistrationOptions
   ): Promise<void> {
     // Validate tool definition
     this.validateToolDefinition(tool);
@@ -299,7 +305,7 @@ export class ToolRegistry {
   async replace(
     tool: ToolDefinition,
     handler: ToolHandler,
-    optionsOrAssessor?: IRiskAssessor | ToolRegistrationOptions,
+    optionsOrAssessor?: IRiskAssessor | ToolRegistrationOptions
   ): Promise<void> {
     this.validateToolDefinition(tool);
     const toolName = this.getToolName(tool);
@@ -323,14 +329,14 @@ export class ToolRegistry {
    * Discover tools based on query criteria
    */
   async discover(query?: ToolDiscoveryQuery): Promise<ToolDiscoveryResult> {
-    let tools = Array.from(this.tools.values()).map(entry => entry.definition);
+    let tools = Array.from(this.tools.values()).map((entry) => entry.definition);
 
     // Note: ToolDefinition doesn't have category, version, or metadata fields
     // These filters won't work with the current ToolDefinition type
 
     if (query?.namePattern) {
       const regex = new RegExp(query.namePattern, 'i');
-      tools = tools.filter(tool => regex.test(this.getToolName(tool)));
+      tools = tools.filter((tool) => regex.test(this.getToolName(tool)));
     }
 
     // category, capabilities, and version filters are not supported
@@ -351,11 +357,13 @@ export class ToolRegistry {
     if (!entry) {
       return {
         valid: false,
-        errors: [{
-          parameter: '_tool',
-          message: `Tool '${toolName}' not found`,
-          code: 'NOT_FOUND',
-        }],
+        errors: [
+          {
+            parameter: '_tool',
+            message: `Tool '${toolName}' not found`,
+            code: 'NOT_FOUND',
+          },
+        ],
       };
     }
 
@@ -424,7 +432,7 @@ export class ToolRegistry {
       code: string,
       message: string,
       details?: unknown,
-      eventIdPrefix = 'evt_exec_error',
+      eventIdPrefix = 'evt_exec_error'
     ) => {
       this.emitEvent({
         id: `${eventIdPrefix}_${request.toolName}_${request.callId ?? ''}`,
@@ -495,13 +503,13 @@ export class ToolRegistry {
       if (this.preExecuteCheck) {
         const preDecision = this.preExecuteCheck(
           request.toolName,
-          request.parameters as Record<string, unknown>,
+          request.parameters as Record<string, unknown>
         );
         if (preDecision.behavior === 'deny') {
           emitTerminalError(
             'PRE_EXECUTE_DENIED',
             `Tool '${request.toolName}' denied by pre-execute gate`,
-            { reason: preDecision.decisionReason },
+            { reason: preDecision.decisionReason }
           );
           return {
             success: false,
@@ -521,11 +529,14 @@ export class ToolRegistry {
       // fail-OPEN auto-approve it). Keyed off Track 02 isReadOnly, which
       // is registry-native and fail-closed on every platform. The single,
       // sufficient enforcement point — see .ai_design 14_plan_review.
-      if (this.planReviewActive && !this.isReadOnly(request.toolName, request.parameters as Record<string, unknown>)) {
+      if (
+        this.planReviewActive &&
+        !this.isReadOnly(request.toolName, request.parameters as Record<string, unknown>)
+      ) {
         emitTerminalError(
           'APPROVAL_DENIED',
           `Tool '${request.toolName}' is frozen during plan review — read-only actions only until the plan is approved`,
-          { reason: 'plan-review-freeze' },
+          { reason: 'plan-review-freeze' }
         );
         return {
           success: false,
@@ -540,16 +551,36 @@ export class ToolRegistry {
 
       // Approval gate check (if configured)
       if (this.approvalGate) {
-        const context = request.metadata ? {
-          currentUrl: request.metadata.currentUrl as string | undefined,
-          currentDomain: request.metadata.currentDomain as string | undefined,
-          cwd: request.metadata.cwd as string | undefined,
-          sessionId: request.sessionId,
-          turnId: request.turnId,
-        } : {
-          sessionId: request.sessionId,
-          turnId: request.turnId,
-        };
+        const isDataTool = request.toolName.startsWith('data_');
+        const hasDesktopTurnSnapshot = isDataTool || request.toolName.startsWith('component_');
+        const dataTurnSnapshot = hasDesktopTurnSnapshot
+          ? (request.metadata?.dataTurnSnapshot as
+              | import('@/core/data-sources').DataTurnSnapshot
+              | undefined)
+          : undefined;
+        const dataTurnAccessSnapshot = dataTurnSnapshot
+          ? {
+              origin: { ...dataTurnSnapshot.origin },
+              attended: dataTurnSnapshot.attended,
+              durableLearningEligible: dataTurnSnapshot.durableLearningEligible,
+            }
+          : undefined;
+        const context = request.metadata
+          ? {
+              currentUrl: request.metadata.currentUrl as string | undefined,
+              currentDomain: request.metadata.currentDomain as string | undefined,
+              cwd: request.metadata.cwd as string | undefined,
+              sessionId: request.sessionId,
+              turnId: request.turnId,
+              ...(dataTurnAccessSnapshot ? { dataTurnSnapshot: dataTurnAccessSnapshot } : {}),
+              ...(request.toolName === 'data_learn_context' && dataTurnSnapshot
+                ? { currentUserText: dataTurnSnapshot.currentUserText }
+                : {}),
+            }
+          : {
+              sessionId: request.sessionId,
+              turnId: request.turnId,
+            };
 
         // Enrich browser_dom parameters with element metadata for risk assessment
         let approvalParameters = request.parameters;
@@ -575,7 +606,7 @@ export class ToolRegistry {
           emitTerminalError(
             'APPROVAL_DENIED',
             `Tool '${request.toolName}' was denied by the approval system`,
-            reason ? { reason } : undefined,
+            reason ? { reason } : undefined
           );
           return {
             success: false,
@@ -615,28 +646,45 @@ export class ToolRegistry {
           }
         : undefined;
 
-      // Create execution context.
-      // The §4.5 seam (workspaceRoot + the live, mutable per-session
-      // FileStateCache + agentMode) is forwarded ONLY to the file/search
-      // tools that consume it. Broadcasting the mutable cache handle to every
-      // MCP/browser/plugin tool would let any tool forge read-before-edit
-      // freshness entries and defeat the advisory edit gate — and would leak
-      // currentUrl/currentDomain that pre-§4.5 tools never received. Every
-      // other tool keeps the historical { tabId }-only metadata.
+      // The immutable executionContext is shared with every tool. Mutable
+      // FileStateCache remains restricted to file tools.
       const isFileTool = FILE_SEAM_TOOLS.has(request.toolName);
+      const isDataTool = request.toolName.startsWith('data_');
+      const hasDesktopTurnSnapshot = isDataTool || request.toolName.startsWith('component_');
+      const originalDataTurnSnapshot = hasDesktopTurnSnapshot
+        ? (request.metadata?.dataTurnSnapshot as
+            | import('@/core/data-sources').DataTurnSnapshot
+            | undefined)
+        : undefined;
+      const dataTurnAccessSnapshot = originalDataTurnSnapshot
+        ? {
+            origin: { ...originalDataTurnSnapshot.origin },
+            attended: originalDataTurnSnapshot.attended,
+            durableLearningEligible: originalDataTurnSnapshot.durableLearningEligible,
+          }
+        : undefined;
       const context: ToolContext = {
         sessionId: request.sessionId,
         turnId: request.turnId,
         toolName: request.toolName,
         callId: request.callId,
+        ...(request.executionContext ? { executionContext: request.executionContext } : {}),
         metadata: isFileTool
           ? {
               ...(request.metadata ?? {}),
               tabId: request.tabId, // Pass tabId from request to tool via metadata
             }
-          : {
-              tabId: request.tabId,
-            },
+          : hasDesktopTurnSnapshot
+            ? {
+                tabId: request.tabId,
+                dataTurnSnapshot: dataTurnAccessSnapshot,
+                ...(request.toolName === 'data_learn_context' && originalDataTurnSnapshot
+                  ? { currentUserText: originalDataTurnSnapshot.currentUserText }
+                  : {}),
+              }
+            : {
+                tabId: request.tabId,
+              },
         onProgress: emitProgress,
         signal: request.signal,
         // Track 23: the resource-fetch tool reads this to settle a 402.
@@ -714,7 +762,6 @@ export class ToolRegistry {
         data: result,
         duration: Date.now() - startTime,
       };
-
     } catch (error: any) {
       // Emit execution error event
       this.emitEvent({
@@ -841,7 +888,17 @@ export class ToolRegistry {
    * Iterate over all registered tool entries.
    * Returns [toolName, entry] pairs for cloning/filtering.
    */
-  entries(): IterableIterator<[string, { definition: ToolDefinition; handler: ToolHandler; riskAssessor?: IRiskAssessor; exposure?: ToolExposureProfile }]> {
+  entries(): IterableIterator<
+    [
+      string,
+      {
+        definition: ToolDefinition;
+        handler: ToolHandler;
+        riskAssessor?: IRiskAssessor;
+        exposure?: ToolExposureProfile;
+      },
+    ]
+  > {
     return this.tools.entries();
   }
 
@@ -861,7 +918,7 @@ export class ToolRegistry {
    * List all registered tools
    */
   listTools(): ToolDefinition[] {
-    return Array.from(this.tools.values()).map(entry => entry.definition);
+    return Array.from(this.tools.values()).map((entry) => entry.definition);
   }
 
   /**
@@ -888,7 +945,6 @@ export class ToolRegistry {
   async cleanup(): Promise<void> {
     // No resources to clean up at the registry level
   }
-
 
   /**
    * Enrich browser_dom parameters with element metadata from DOM snapshot
@@ -990,7 +1046,7 @@ export class ToolRegistry {
       type: 'object',
       properties: {},
       required: [],
-      additionalProperties: false
+      additionalProperties: false,
     };
   }
 
@@ -1050,6 +1106,19 @@ export class ToolRegistry {
       };
     }
 
+    if ('anyOf' in schema) {
+      const matches = schema.anyOf.some(
+        (branch) => this.validateParameterType(paramName, value, branch) === null
+      );
+      return matches
+        ? null
+        : {
+            parameter: paramName,
+            message: 'Value does not match any allowed type',
+            code: 'TYPE_MISMATCH',
+          };
+    }
+
     // Type checking
     switch (schema.type) {
       case 'string':
@@ -1101,7 +1170,11 @@ export class ToolRegistry {
         // Validate array items if schema is provided
         if ('items' in schema && schema.items) {
           for (let i = 0; i < value.length; i++) {
-            const itemError = this.validateParameterType(`${paramName}[${i}]`, value[i], schema.items);
+            const itemError = this.validateParameterType(
+              `${paramName}[${i}]`,
+              value[i],
+              schema.items
+            );
             if (itemError) {
               return itemError;
             }
@@ -1121,7 +1194,11 @@ export class ToolRegistry {
         if ('properties' in schema && schema.properties) {
           for (const [propKey, propSchema] of Object.entries(schema.properties)) {
             if (propKey in value) {
-              const propError = this.validateParameterType(`${paramName}.${propKey}`, value[propKey], propSchema);
+              const propError = this.validateParameterType(
+                `${paramName}.${propKey}`,
+                value[propKey],
+                propSchema
+              );
               if (propError) {
                 return propError;
               }

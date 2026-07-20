@@ -1,5 +1,5 @@
 /**
- * FileWriteRiskAssessor — risk for the mutating code-mode file tools
+ * FileWriteRiskAssessor — risk for the mutating local file tools
  * (edit_file, write_file). Design §4.8 layer 2.
  *
  * Returns a score above the shared `riskAbove:30 ⇒ ASK` threshold so an

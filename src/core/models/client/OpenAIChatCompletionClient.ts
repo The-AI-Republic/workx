@@ -321,9 +321,13 @@ export class OpenAIChatCompletionClient extends OpenAIResponsesClient {
             continue;
           }
 
-          // Check for auth errors
+          // Check for auth errors. A 401 from the gateway is not always an
+          // auth failure — it also signals billing conditions (no credit
+          // account / insufficient balance / exhausted quota) with an
+          // actionable message. Preserve those; only mask genuine auth
+          // failures. See reclassifyGateway401 on the base class.
           if (error.statusCode === 401) {
-            throw new ModelClientError('Authentication failed - check API key', 401, this.provider.name);
+            throw this.reclassifyGateway401(error);
           }
 
           // Non-retryable errors

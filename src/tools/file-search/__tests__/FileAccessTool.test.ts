@@ -22,9 +22,16 @@ import type { ToolContext } from '../../BaseTool';
 const WS = '/ws';
 
 function ctx(over: Record<string, any> = {}): ToolContext {
+  const hasWorkingDirectory = Object.prototype.hasOwnProperty.call(over, 'workingDirectory');
+  const workingDirectory = hasWorkingDirectory ? over.workingDirectory : WS;
+  const { workingDirectory: _workingDirectory, mode = 'code', ...metadata } = over;
   return {
     sessionId: 's', turnId: 't', toolName: 'x',
-    metadata: { workspaceRoot: WS, agentMode: 'code', ...over },
+    executionContext: {
+      sessionId: 's', turnId: 't', mode,
+      ...(workingDirectory ? { workspace: { workingDirectory } } : {}),
+    },
+    metadata,
   } as ToolContext;
 }
 
@@ -33,22 +40,24 @@ beforeEach(() => {
 });
 
 describe('FileAccessTool gating', () => {
-  it('disabled outside code mode', async () => {
-    const out = await new ReadFileTool().createHandler()({ path: 'a.ts' }, ctx({ agentMode: 'general' }));
-    expect(out).toMatch(/Code mode only/i);
+  it('is available in general mode', async () => {
+    mockFs.stat.mockResolvedValue({ exists: true, mtimeMs: 1, size: 3 });
+    mockFs.readFile.mockResolvedValue({ contentLf: 'a\nb', mtimeMs: 1, size: 3, endings: 'LF', encoding: 'utf8', bom: false });
+    const out = await new ReadFileTool().createHandler()({ path: 'a.ts' }, ctx({ mode: 'general' }));
+    expect(out).toContain('1\ta');
   });
   it('disabled with no workspace', async () => {
-    const out = await new ReadFileTool().createHandler()({ path: 'a.ts' }, ctx({ workspaceRoot: undefined }));
-    expect(out).toMatch(/project folder/i);
+    const out = await new ReadFileTool().createHandler()({ path: 'a.ts' }, ctx({ workingDirectory: undefined }));
+    expect(out).toMatch(/working folder/i);
   });
   it('rejects a path outside the workspace', async () => {
     const out = await new ReadFileTool().createHandler()({ path: '../etc/passwd' }, ctx());
     expect(out).toMatch(/outside_workspace|rejected/i);
   });
-  it('undefined agentMode (session-less) is NOT mode-blocked', async () => {
+  it('mode does not affect access when a workspace is present', async () => {
     mockFs.stat.mockResolvedValue({ exists: true, mtimeMs: 1, size: 3 });
     mockFs.readFile.mockResolvedValue({ contentLf: 'a\nb', mtimeMs: 1, size: 3, endings: 'LF', encoding: 'utf8', bom: false });
-    const out = await new ReadFileTool().createHandler()({ path: 'a.ts' }, ctx({ agentMode: undefined }));
+    const out = await new ReadFileTool().createHandler()({ path: 'a.ts' }, ctx({ mode: 'general' }));
     expect(out).toContain('1\ta');
   });
 });

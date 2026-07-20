@@ -21,7 +21,15 @@ export interface ChatHandlerDeps {
    * callers (e.g. external app-server automation) get a stable identifier.
    */
   submitOp: (op: Op, context: SubmissionContext) => Promise<string | void>;
-  getHistory: (sessionKey: string) => Promise<unknown[]>;
+  getHistory: (
+    sessionKey: string,
+    options: { limit?: number; beforeSequence?: number },
+  ) => Promise<{
+    revision: number;
+    items: unknown[];
+    turns: unknown[];
+    nextCursor: number | null;
+  }>;
 }
 
 /**
@@ -128,8 +136,30 @@ async function handleChatHistory(
     throw invalidRequest('sessionKey is required');
   }
 
-  const history = await _deps.getHistory(sessionKey);
-  return { sessionKey, messages: history };
+  const limit = params?.limit;
+  if (
+    limit !== undefined
+    && (typeof limit !== 'number' || !Number.isInteger(limit) || limit < 1 || limit > 100)
+  ) {
+    throw invalidRequest('"limit" must be an integer from 1 to 100');
+  }
+  const beforeSequence = params?.beforeSequence;
+  if (
+    beforeSequence !== undefined
+    && (
+      typeof beforeSequence !== 'number'
+      || !Number.isSafeInteger(beforeSequence)
+      || beforeSequence < 0
+    )
+  ) {
+    throw invalidRequest('"beforeSequence" must be a non-negative safe integer');
+  }
+
+  const history = await _deps.getHistory(sessionKey, {
+    limit,
+    beforeSequence,
+  });
+  return { sessionKey, ...history, messages: history.items };
 }
 
 // ─────────────────────────────────────────────────────────────────────────

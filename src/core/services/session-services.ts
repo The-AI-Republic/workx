@@ -17,6 +17,14 @@ import {
   computeRewindSlice,
   buildSummarizedFork,
 } from '@/core/session/rewind';
+import { RolloutRecorder, type Cursor } from '@/storage/rollout';
+import { RolloutForkWriter } from '@/core/thread/RolloutForkWriter';
+import { SessionServiceError } from './SessionServiceError';
+import {
+  finishResponseLatencyTrace,
+  markResponseLatency,
+  startResponseLatencyTrace,
+} from '@/core/diagnostics/responseLatency';
 
 export interface SessionServiceDeps {
   /** Registry for multi-session management (required). */
@@ -30,12 +38,37 @@ export interface SessionServiceDeps {
     removeSession(sessionId: string): Promise<void>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getSession(sessionId: string): any;
-    getPrimarySession(): { sessionId: string } | undefined;
     setMaxConcurrent(limit: number): void;
+    openSession?(options?: Record<string, unknown>): Promise<any>;
+    hydrateSession?(sessionId: string): Promise<any>;
+    submitToSession?(sessionId: string, op: any): Promise<string>;
+    enqueueSubmission?(input: {
+      sessionId: string;
+      clientMessageId: string;
+      op: Extract<import('@/core/protocol/types').Op, { type: 'UserInput' }>;
+      tabId?: number;
+    }): Promise<any>;
+    listThreads?(request?: Record<string, unknown>): Promise<any>;
+    getThread?(sessionId: string, includeDeleted?: boolean): Promise<any>;
+    getRolloutSnapshot?(sessionId: string): Promise<any>;
+    renameThread?(sessionId: string, title: string): Promise<any>;
+    pinThread?(sessionId: string, pinned: boolean): Promise<any>;
+    deleteThread?(sessionId: string, abortRunning?: boolean): Promise<any>;
+    undeleteThread?(sessionId: string): Promise<any>;
+    setThreadMode?(sessionId: string, mode: 'general' | 'code'): Promise<any>;
+    setThreadWorkingDirectory?(sessionId: string, workingDirectory: string): Promise<any>;
+    suspendSession?(sessionId: string): Promise<boolean>;
+    compatCloseSession?(sessionId: string): Promise<boolean>;
+    setViewed?(surfaceId: string, sessionId: string): Promise<any>;
+    heartbeatSurface?(surfaceId: string, leaseId: string): Promise<any>;
+    releaseSurface?(surfaceId: string, leaseId: string): Promise<boolean>;
+    resolveAttention?(surfaceId: string, requestId: string): Promise<any>;
+    attachSession?(sessionId: string, after?: { runtimeEpoch: string; eventSeq: number }): Promise<any>;
+    getHistoryPage?(
+      sessionId: string,
+      options?: { limit?: number; beforeSequence?: number },
+    ): Promise<any>;
   };
-
-  /** Callback for platform-specific tab reset (extension-only) */
-  resetTabs?: () => Promise<void>;
 
   /** Load rollout history for a session ID (platform-specific storage) */
   loadRolloutHistory?: (sessionId: string) => Promise<{ sessionId: string; rolloutItems: unknown[] } | null>;
@@ -46,7 +79,7 @@ export interface SessionServiceDeps {
    * existing per-agent ModelClientFactory, never constructed in core.
    * Returns undefined on failure → caller falls back to a plain slice.
    */
-  summarizeForRewind?: (items: ResponseItem[]) => Promise<string | undefined>;
+  summarizeForRewind?: (sessionId: string, items: ResponseItem[]) => Promise<string | undefined>;
 }
 
 /**
@@ -54,32 +87,134 @@ export interface SessionServiceDeps {
  */
 function requireSession(deps: SessionServiceDeps, sessionId: string | undefined) {
   if (!sessionId) {
-    throw new Error('sessionId is required');
+    throw new SessionServiceError('INVALID_ARGUMENT', 'sessionId is required');
   }
   const agentSession = deps.registry.getSession(sessionId);
   if (!agentSession?.agent) {
-    throw new Error(`Session not found: ${sessionId}`);
+    throw new SessionServiceError('SESSION_NOT_LIVE', `Session not live: ${sessionId}`, true);
   }
   return agentSession;
 }
 
+function isAbsoluteWorkingDirectory(path: string): boolean {
+  return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path) || path.startsWith('\\\\');
+}
+
 export function createSessionServices(deps: SessionServiceDeps): Record<string, ServiceHandler> {
-  const { registry, resetTabs } = deps;
+  const { registry } = deps;
 
   return {
-    /**
-     * Get state for a specific session.
-     * Requires: { sessionId: string }
-     */
-    'session.getState': async (params) => {
-      const { sessionId } = (params ?? {}) as { sessionId?: string };
-      const agentSession = requireSession(deps, sessionId);
+    'session.open': async (params) => {
+      if (!registry.openSession) throw new Error('Index-only session open is unavailable');
+      return registry.openSession((params ?? {}) as Record<string, unknown>);
+    },
 
-      return {
-        ...agentSession.getState(),
-        activeSessionCount: registry.getActiveCount(),
-        maxConcurrentSessions: registry.getMaxConcurrent(),
+    'session.hydrate': async (params) => {
+      const { sessionId } = (params ?? {}) as { sessionId?: string };
+      if (!sessionId) throw new Error('sessionId is required');
+      if (!registry.hydrateSession) throw new Error('Managed session hydration is unavailable');
+      await registry.hydrateSession(sessionId);
+      return { success: true, sessionId };
+    },
+
+    'session.get': async (params) => {
+      const { sessionId, includeDeleted } = (params ?? {}) as {
+        sessionId?: string;
+        includeDeleted?: boolean;
       };
+      if (!sessionId) throw new Error('sessionId is required');
+      if (!registry.getThread) throw new Error('Thread index is unavailable');
+      return { entry: await registry.getThread(sessionId, includeDeleted) };
+    },
+
+    'session.getRollout': async (params) => {
+      const { sessionId } = (params ?? {}) as { sessionId?: string };
+      if (!sessionId) throw new Error('sessionId is required');
+      if (registry.getRolloutSnapshot) return registry.getRolloutSnapshot(sessionId);
+      const provider = await RolloutRecorder.getProvider();
+      const metadata = await provider.getMetadata(sessionId);
+      const records = metadata ? await provider.getItemsByRolloutId(sessionId) : [];
+      return {
+        sessionId,
+        revision: metadata?.itemCount ?? 0,
+        items: records.map((record) => ({ type: record.type, payload: record.payload })),
+      };
+    },
+
+    'session.submit': async (params) => {
+      const { sessionId, clientMessageId, items, tabId, responseLatencyStartedAtMs } = (params ?? {}) as {
+        sessionId?: string;
+        clientMessageId?: string;
+        items?: Extract<import('@/core/protocol/types').Op, { type: 'UserInput' }>['items'];
+        tabId?: number;
+        responseLatencyStartedAtMs?: number;
+      };
+      if (!sessionId) throw new Error('sessionId is required');
+      if (!clientMessageId) throw new Error('clientMessageId is required');
+      if (!items) throw new Error('items are required');
+      startResponseLatencyTrace({
+        sessionId,
+        clientMessageId,
+        startedAtMs: responseLatencyStartedAtMs,
+      });
+      try {
+        if (registry.enqueueSubmission) {
+          const result = await registry.enqueueSubmission({
+            sessionId,
+            clientMessageId,
+            op: { type: 'UserInput', items },
+            tabId,
+          });
+          markResponseLatency(
+            clientMessageId,
+            result.status === 'accepted'
+              ? 'service_ack_accepted'
+              : result.status === 'queued'
+                ? 'service_ack_queued'
+                : 'service_ack_rejected',
+          );
+          if (result.status === 'rejected') {
+            finishResponseLatencyTrace(clientMessageId, 'submission_rejected');
+          }
+          return result;
+        }
+        if (!registry.submitToSession) throw new Error('Managed session submit is unavailable');
+        const submissionId = await registry.submitToSession(sessionId, {
+          type: 'UserInput',
+          items,
+          clientMessageId,
+        });
+        markResponseLatency(clientMessageId, 'service_ack_accepted');
+        return { status: 'accepted', clientMessageId, submissionId };
+      } catch (error) {
+        finishResponseLatencyTrace(clientMessageId, 'submission_failed');
+        throw error;
+      }
+    },
+
+    'session.attach': async (params) => {
+      const { sessionId, surfaceId, after, cursor } = (params ?? {}) as {
+        sessionId?: string;
+        surfaceId?: string;
+        after?: { runtimeEpoch: string; eventSeq: number };
+        cursor?: { runtimeEpoch: string; eventSeq: number };
+      };
+      if (!sessionId) throw new Error('sessionId is required');
+      if (!registry.attachSession) throw new Error('Session attach is unavailable');
+      const attached = await registry.attachSession(sessionId, after ?? cursor);
+      if (surfaceId && registry.setViewed) await registry.setViewed(surfaceId, sessionId);
+      return attached;
+    },
+
+    'session.history': async (params) => {
+      const { sessionId, limit, beforeSequence } = (params ?? {}) as {
+        sessionId?: string;
+        limit?: number;
+        beforeSequence?: number;
+      };
+      if (!sessionId) throw new Error('sessionId is required');
+      if (!registry.getHistoryPage) throw new Error('Paginated history is unavailable');
+      return registry.getHistoryPage(sessionId, { limit, beforeSequence });
     },
 
     /**
@@ -122,23 +257,6 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
     },
 
     /**
-     * Reset a specific session.
-     * Requires: { sessionId: string }
-     */
-    'session.reset': async (params) => {
-      const { sessionId } = (params ?? {}) as { sessionId?: string };
-      const agentSession = requireSession(deps, sessionId);
-
-      await agentSession.reset();
-
-      if (resetTabs) {
-        await resetTabs();
-      }
-
-      return { timestamp: Date.now() };
-    },
-
-    /**
      * Resume a session from stored history.
      * Loads rollout history, closes the current primary session if one exists,
      * and creates a new session via the registry.
@@ -159,13 +277,17 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
         throw new Error('Conversation not found or has no history');
       }
 
-      // Close existing primary session before creating the resumed one
-      const primarySession = registry.getPrimarySession();
-      if (primarySession) {
-        await registry.removeSession(primarySession.sessionId);
+      if (registry.openSession && registry.hydrateSession) {
+        await registry.openSession({
+          sessionId: rolloutData.sessionId,
+          publishedAt: Date.now(),
+        });
+        const hydrated = await registry.hydrateSession(rolloutData.sessionId);
+        const history = hydrated.agent?.getSession().getConversationHistory();
+        return { sessionId: rolloutData.sessionId, history: history?.items ?? [] };
       }
 
-      // Create new session with resume data
+      // Eager compatibility path preserves all other sessions.
       const newSession = await registry.createSession({
         type: 'primary',
         resume: {
@@ -183,17 +305,32 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
     },
 
     /**
+     * List persisted conversations (rollouts) with cursor-based pagination.
+     * Rollout storage resolves per platform where this service runs: the
+     * extension service worker uses IndexedDB, the desktop runtime sidecar
+     * and server use SQLite. The desktop WebView cannot read rollout storage
+     * directly (it is owned by the runtime sidecar), so its chat-history UI
+     * reaches the data through this service.
+     * Params: { pageSize?: number; cursor?: { timestamp: number; id: string } }
+     */
+    'session.listConversations': async (params) => {
+      const { pageSize = 20, cursor } = (params ?? {}) as {
+        pageSize?: number;
+        cursor?: Cursor;
+      };
+      return await RolloutRecorder.listConversations(pageSize, cursor);
+    },
+
+    /**
      * Track 15: list the current primary conversation's user turns so the
      * rewind selector can pick a target. Flushes the live source session
      * first (D13) so the newest in-flight turns are visible.
      */
-    'session.turns': async () => {
-      const primary = registry.getPrimarySession();
-      if (!primary) {
-        return { turns: [] };
-      }
-      await registry.getSession(primary.sessionId)?.agent?.getSession()?.flushRollout?.();
-      const turns = await listUserTurns(primary.sessionId);
+    'session.turns': async (params) => {
+      const { sessionId } = (params ?? {}) as { sessionId?: string };
+      if (!sessionId) throw new Error('sessionId is required');
+      await registry.getSession(sessionId)?.agent?.getSession()?.flushRollout?.();
+      const turns = await listUserTurns(sessionId);
       return { turns };
     },
 
@@ -205,18 +342,20 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
      * Requires: { targetSequence: number, mode?: 'conversation'|'summarize_up_to' }
      */
     'session.rewind': async (params) => {
-      const { targetSequence, mode } = (params ?? {}) as {
+      const { sessionId, targetSequence, mode } = (params ?? {}) as {
+        sessionId?: string;
         targetSequence?: number;
         mode?: 'conversation' | 'summarize_up_to';
       };
       if (typeof targetSequence !== 'number') {
         throw new Error('targetSequence is required');
       }
-      const primary = registry.getPrimarySession();
-      if (!primary) {
-        throw new Error('No active conversation to rewind');
-      }
-      const sourceConvId = primary.sessionId;
+      if (!sessionId) throw new Error('sessionId is required');
+      const sourceConvId = sessionId;
+      const sourceWorkingDirectory = registry
+        .getSession(sourceConvId)
+        ?.agent?.getSession()?.getWorkingDirectory?.()
+        ?? (await registry.getThread?.(sourceConvId))?.workspace?.workingDirectory;
 
       // D13: flush the live source session so the slice sees all turns.
       await registry.getSession(sourceConvId)?.agent?.getSession()?.flushRollout?.();
@@ -242,19 +381,42 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
         forked = await buildSummarizedFork(
           sourceConvId,
           targetSequence,
-          deps.summarizeForRewind,
+          (items) => deps.summarizeForRewind!(sourceConvId, items),
         );
       } else {
         forked = await computeRewindSlice(sourceConvId, targetSequence);
       }
 
-      // Abort + close the source session (D7), then create the fork.
-      await registry.removeSession(sourceConvId);
+      const reservedSessionId = crypto.randomUUID();
+      if (registry.openSession) {
+        await RolloutForkWriter.write({
+          sessionId: reservedSessionId,
+          sourceSessionId: forked.sourceConversationId,
+          items: forked.rolloutItems,
+        });
+        await registry.openSession({
+          sessionId: reservedSessionId,
+          origin: { kind: 'fork', sourceSessionId: forked.sourceConversationId },
+          ...(sourceWorkingDirectory
+            ? { workspace: { workingDirectory: sourceWorkingDirectory } }
+            : {}),
+        });
+        return {
+          sessionId: reservedSessionId,
+          history: forked.rolloutItems,
+          rewoundText,
+        };
+      }
+
+      // Eager compatibility path still preserves the source runtime.
       const newSession = await registry.createSession({
         type: 'primary',
+        sessionId: reservedSessionId,
         fork: {
+          sessionId: reservedSessionId,
           sourceConversationId: forked.sourceConversationId,
           rolloutItems: forked.rolloutItems,
+          ...(sourceWorkingDirectory ? { workingDirectory: sourceWorkingDirectory } : {}),
         },
       });
       if (!newSession.agent) {
@@ -271,7 +433,16 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
     /**
      * List all active sessions (no sessionId needed — registry-level query).
      */
-    'session.list': async () => {
+    'session.list': async (params) => {
+      if (registry.listThreads) {
+        const page = await registry.listThreads((params ?? {}) as Record<string, unknown>);
+        return {
+          ...page,
+          sessions: registry.listSessions(),
+          maxConcurrent: registry.getMaxConcurrent(),
+          activeCount: registry.getActiveCount(),
+        };
+      }
       return {
         sessions: registry.listSessions(),
         maxConcurrent: registry.getMaxConcurrent(),
@@ -294,19 +465,15 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
      * Create a new session.
      */
     'session.create': async () => {
+      if (registry.openSession) {
+        const opened = await registry.openSession();
+        return { success: true, sessionId: opened.sessionId, state: opened.state };
+      }
       if (!registry.canCreateSession()) {
         return { success: false, error: 'Maximum concurrent sessions reached' };
       }
 
       const session = await registry.createSession({ type: 'primary' });
-
-      // Ensure backend routing configured properly for this new session
-      if (session?.agent) {
-        const agentSession = registry.getSession(session.sessionId);
-        if (agentSession?.agent) {
-          await agentSession.agent.refreshModelClient();
-        }
-      }
 
       return {
         success: true,
@@ -337,8 +504,121 @@ export function createSessionServices(deps: SessionServiceDeps): Record<string, 
         return { success: false, error: 'sessionId is required' };
       }
 
-      await registry.removeSession(sessionId);
+      if (registry.compatCloseSession) {
+        await registry.compatCloseSession(sessionId);
+      } else if (registry.suspendSession) {
+        await registry.suspendSession(sessionId);
+      } else {
+        await registry.removeSession(sessionId);
+      }
       return { success: true };
+    },
+
+    'session.pin': async (params) => {
+      const { sessionId, pinned } = (params ?? {}) as { sessionId?: string; pinned?: boolean };
+      if (!sessionId || typeof pinned !== 'boolean') throw new Error('sessionId and pinned are required');
+      if (!registry.pinThread) throw new Error('Thread index is unavailable');
+      return registry.pinThread(sessionId, pinned);
+    },
+
+    'session.rename': async (params) => {
+      const { sessionId, title } = (params ?? {}) as { sessionId?: string; title?: string };
+      if (!sessionId || typeof title !== 'string') throw new Error('sessionId and title are required');
+      if (!registry.renameThread) throw new Error('Thread index is unavailable');
+      return registry.renameThread(sessionId, title);
+    },
+
+    'session.delete': async (params) => {
+      const { sessionId, abortRunning } = (params ?? {}) as {
+        sessionId?: string;
+        abortRunning?: boolean;
+      };
+      if (!sessionId) throw new Error('sessionId is required');
+      if (!registry.deleteThread) throw new Error('Thread index is unavailable');
+      return registry.deleteThread(sessionId, abortRunning);
+    },
+
+    'session.undelete': async (params) => {
+      const { sessionId } = (params ?? {}) as { sessionId?: string };
+      if (!sessionId) throw new Error('sessionId is required');
+      if (!registry.undeleteThread) throw new Error('Thread index is unavailable');
+      return registry.undeleteThread(sessionId);
+    },
+
+    'session.setMode': async (params) => {
+      const { sessionId, mode } = (params ?? {}) as {
+        sessionId?: string;
+        mode?: 'general' | 'code';
+      };
+      if (!sessionId || (mode !== 'general' && mode !== 'code')) {
+        throw new Error('sessionId and a valid mode are required');
+      }
+      if (!registry.setThreadMode) throw new Error('Thread index is unavailable');
+      return { entry: await registry.setThreadMode(sessionId, mode) };
+    },
+
+    /** Change one conversation's local working folder without changing mode. */
+    'session.setWorkingDirectory': async (params) => {
+      const { sessionId, workingDirectory } = (params ?? {}) as {
+        sessionId?: string;
+        workingDirectory?: string;
+      };
+      if (!sessionId) throw new Error('sessionId is required');
+      if (typeof workingDirectory !== 'string' || !workingDirectory.trim()) {
+        throw new Error('workingDirectory is required');
+      }
+      const normalized = workingDirectory.trim();
+      if (!isAbsoluteWorkingDirectory(normalized)) {
+        throw new Error('workingDirectory must be an absolute path');
+      }
+      await registry.hydrateSession?.(sessionId);
+      const agentSession = requireSession(deps, sessionId);
+      const session = agentSession.agent.getSession();
+      if (session.getRunningTasks().size > 0) {
+        throw new Error('Cannot change the working folder while a task is running');
+      }
+      session.setWorkingDirectory(normalized);
+      await session.saveState();
+      const entry = await registry.setThreadWorkingDirectory?.(sessionId, normalized);
+      return {
+        success: true,
+        workingDirectory: session.getWorkingDirectory(),
+        ...(entry ? { entry } : {}),
+      };
+    },
+
+    'session.setViewed': async (params) => {
+      const { surfaceId, sessionId } = (params ?? {}) as {
+        surfaceId?: string;
+        sessionId?: string;
+      };
+      if (!surfaceId || !sessionId) throw new Error('surfaceId and sessionId are required');
+      if (!registry.setViewed) throw new Error('Surface leases are unavailable');
+      return { lease: await registry.setViewed(surfaceId, sessionId) };
+    },
+
+    'session.heartbeat': async (params) => {
+      const { surfaceId, leaseId } = (params ?? {}) as { surfaceId?: string; leaseId?: string };
+      if (!surfaceId || !leaseId) throw new Error('surfaceId and leaseId are required');
+      if (!registry.heartbeatSurface) throw new Error('Surface leases are unavailable');
+      return { lease: await registry.heartbeatSurface(surfaceId, leaseId) };
+    },
+
+    'session.releaseSurface': async (params) => {
+      const { surfaceId, leaseId } = (params ?? {}) as { surfaceId?: string; leaseId?: string };
+      if (!surfaceId || !leaseId) throw new Error('surfaceId and leaseId are required');
+      if (!registry.releaseSurface) throw new Error('Surface leases are unavailable');
+      return { released: await registry.releaseSurface(surfaceId, leaseId) };
+    },
+
+    'session.resolveAttention': async (params) => {
+      const { surfaceId, requestId } = (params ?? {}) as {
+        surfaceId?: string;
+        requestId?: string;
+      };
+      if (!surfaceId || !requestId) throw new Error('surfaceId and requestId are required');
+      if (!registry.resolveAttention) throw new Error('Foreground attention is unavailable');
+      return registry.resolveAttention(surfaceId, requestId);
     },
   };
 }

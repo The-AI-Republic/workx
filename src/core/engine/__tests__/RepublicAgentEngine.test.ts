@@ -469,7 +469,7 @@ describe('RepublicAgentEngine', () => {
       engine.submitOperation({ type: 'Compact', mode: 'auto' });
       await new Promise(r => setTimeout(r, 10));
 
-      expect(mockSession.compact).toHaveBeenCalledWith('auto', expect.anything());
+    expect(mockSession.compact).toHaveBeenCalledWith('auto', expect.anything(), undefined);
     });
 
     it('should delegate ManualCompact to session.compact with manual mode', async () => {
@@ -479,7 +479,7 @@ describe('RepublicAgentEngine', () => {
       engine.submitOperation({ type: 'ManualCompact' });
       await new Promise(r => setTimeout(r, 10));
 
-      expect(mockSession.compact).toHaveBeenCalledWith('manual', expect.anything());
+    expect(mockSession.compact).toHaveBeenCalledWith('manual', expect.anything(), undefined);
     });
 
     it('should emit CompactionCompleted event with statistics', async () => {

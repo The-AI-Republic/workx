@@ -768,7 +768,8 @@ describe('NavigationTool', () => {
         return makeTab({ status: 'loading' });
       });
 
-      const condition = (tab: chrome.tabs.Tab) => tab.status === 'complete';
+      const condition: Parameters<typeof tool.navigateAndWaitFor>[2] =
+        (tab) => tab.status === 'complete';
       const result = await tool.navigateAndWaitFor(1, 'https://dest.com', condition, 5000);
       expect(result.status).toBe('complete');
       expect(result.url).toBe('https://dest.com');

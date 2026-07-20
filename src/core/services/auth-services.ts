@@ -21,6 +21,15 @@ import {
 const AUTH_SERVICE = 'auth';
 const ACCESS_TOKEN_ACCOUNT = 'access_token';
 const REFRESH_TOKEN_ACCOUNT = 'refresh_token';
+// OIDC client config captured at login so the runtime can refresh tokens
+// without depending on the sidecar's process.env (which never receives the
+// WebView-only VITE_/WORKX_ auth vars). The WebView supplies these at login;
+// persisting them lets refreshViaOidc rebuild the exact token request that
+// login used — otherwise refresh resolves a null clientId and silently
+// downgrades to the legacy (non-svc:hub) path, which the gateway rejects as
+// "Invalid JWT".
+const OIDC_CLIENT_ID_ACCOUNT = 'oidc_client_id';
+const OIDC_TOKEN_URL_ACCOUNT = 'oidc_token_url';
 
 export interface AuthServiceDeps {
   /** Registry for resolving active sessions when auth state changes. */
@@ -36,7 +45,7 @@ export interface AuthServiceDeps {
    * matches the existing `agent.initAuth` contract.
    */
   createAuthManager?: (shouldUseBackend: boolean, backendBaseUrl: string | null) => IAuthManager;
-  setAuthManager?: (authManager: IAuthManager | null) => void;
+  updateAuthContext?: (authManager: IAuthManager | null) => void;
 
   /**
    * Resolve the runtime credential store. The desktop runtime returns the
@@ -102,27 +111,7 @@ export interface AuthServiceDeps {
   };
 }
 
-function applyAuthManagerToSessions(
-  registry: AuthServiceDeps['registry'],
-  authManager: IAuthManager | null,
-): Promise<void> {
-  const sessions = registry.listSessions() as Array<{ sessionId: string; state: string }>;
-  return Promise.all(
-    sessions
-      .filter((s) => s.state !== 'terminated')
-      .map(async (s) => {
-        const agentSession = registry.getSession(s.sessionId);
-        if (!agentSession?.agent) return;
-        const factory = agentSession.agent.getModelClientFactory();
-        factory.setAuthManager(authManager);
-        await agentSession.agent.refreshModelClient();
-      }),
-  ).then(() => undefined);
-}
-
 export function createAuthServices(deps: AuthServiceDeps): Record<string, ServiceHandler> {
-  const { registry } = deps;
-
   async function refreshProfile(accessToken: string): Promise<RuntimeUserProfileSnapshot | null> {
     const raw = deps.fetchUserProfile ? await deps.fetchUserProfile(accessToken) : null;
     return normalizeRuntimeProfile(raw);
@@ -163,6 +152,7 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
     accessToken: string,
     refreshToken: string,
     backendBaseUrl: string | null,
+    oidc?: { clientId: string; tokenUrl: string },
   ) {
     if (!deps.getCredentialStore) {
       throw new Error('finalizeLogin: credential store not available on this platform');
@@ -171,15 +161,22 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
     await Promise.all([
       credentialStore.set(AUTH_SERVICE, ACCESS_TOKEN_ACCOUNT, accessToken),
       credentialStore.set(AUTH_SERVICE, REFRESH_TOKEN_ACCOUNT, refreshToken),
+      // Capture the OIDC client config from this login so token refresh can
+      // reuse it (the sidecar has no access to the WebView's auth env).
+      ...(oidc
+        ? [
+            credentialStore.set(AUTH_SERVICE, OIDC_CLIENT_ID_ACCOUNT, oidc.clientId),
+            credentialStore.set(AUTH_SERVICE, OIDC_TOKEN_URL_ACCOUNT, oidc.tokenUrl),
+          ]
+        : []),
     ]);
 
     // Switch the agent to backend routing exactly like `agent.initAuth`. Doing
     // it here in one round-trip removes a race window where the tokens are
     // persisted but the AuthManager still has no tokenGetter.
-    if (deps.createAuthManager && deps.setAuthManager) {
+    if (deps.createAuthManager && deps.updateAuthContext) {
       const authManager = deps.createAuthManager(true, backendBaseUrl ?? null);
-      deps.setAuthManager(authManager);
-      await applyAuthManagerToSessions(registry, authManager);
+      deps.updateAuthContext(authManager);
     }
 
     await deps.runtimeState?.setAuthState({
@@ -316,7 +313,10 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
       if (!data.access_token || !data.refresh_token) {
         throw new Error('auth.exchangeOIDCCode: token endpoint did not return access_token and refresh_token');
       }
-      return finalizeLogin(data.access_token, data.refresh_token, backendBaseUrl ?? null);
+      return finalizeLogin(data.access_token, data.refresh_token, backendBaseUrl ?? null, {
+        clientId,
+        tokenUrl,
+      });
     },
 
     /**
@@ -450,10 +450,9 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
           credentialStore.delete(AUTH_SERVICE, REFRESH_TOKEN_ACCOUNT).catch(() => undefined),
         ]);
       }
-      if (deps.createAuthManager && deps.setAuthManager) {
+      if (deps.createAuthManager && deps.updateAuthContext) {
         const authManager = deps.createAuthManager(false, null);
-        deps.setAuthManager(authManager);
-        await applyAuthManagerToSessions(registry, authManager);
+        deps.updateAuthContext(authManager);
       }
       const auth = deps.runtimeState
         ? await deps.runtimeState.setAuthState({

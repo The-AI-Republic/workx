@@ -611,7 +611,7 @@ describe('DataExtractionTool', () => {
       expect(result.success).toBe(true);
       // The inner result from executeImpl returns success: false
       expect(result.data.success).toBe(false);
-      expect(result.data.error).toContain('Bound tab not found');
+      expect(result.data.error).toContain('Tab not found');
     });
 
     it('should return success false when scripting throws', async () => {

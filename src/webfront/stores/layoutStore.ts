@@ -17,10 +17,11 @@ const WIDE_BREAKPOINT = '(min-width: 1500px)';
 /**
  * Readable store that tracks whether the viewport is in "wide" mode
  * (>= 769 px). Falls back to `false` when running outside a browser
- * (SSR / tests).
+ * (SSR / tests). `window.matchMedia` is absent under jsdom, so guard for
+ * it too — otherwise subscribing throws in the test environment.
  */
 export const isWideMode: Readable<boolean> = readable(false, (set) => {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
     return;
   }
 
@@ -49,7 +50,7 @@ export interface NavItem {
 /**
  * Canonical list of top-level navigation destinations.
  * Icons are inline SVG strings (24x24 viewBox, stroke-based, currentColor)
- * matching the style used in FooterBar.svelte.
+ * matching the style used in NavTab.svelte.
  */
 export const NAV_ITEMS: NavItem[] = [
   {
@@ -115,18 +116,14 @@ export const MORE_ITEMS: NavItem[] = [
 ];
 
 /** Nav item ids folded into the "More" menu, hidden from the left panel's inline list. */
-export const MORE_FOLDED_IDS: ReadonlySet<string> = new Set(
-  MORE_ITEMS.map((item) => item.id),
-);
+export const MORE_FOLDED_IDS: ReadonlySet<string> = new Set(MORE_ITEMS.map((item) => item.id));
 
 /**
  * Primary nav items shown inline in the left panel — {@link NAV_ITEMS} minus any
  * item folded into the "More" menu. Used by {@link LeftPanel}. The narrow-mode
  * {@link FooterBar} still renders the full {@link NAV_ITEMS} list.
  */
-export const PANEL_NAV_ITEMS: NavItem[] = NAV_ITEMS.filter(
-  (item) => !MORE_FOLDED_IDS.has(item.id),
-);
+export const PANEL_NAV_ITEMS: NavItem[] = NAV_ITEMS.filter((item) => !MORE_FOLDED_IDS.has(item.id));
 
 // ---------------------------------------------------------------------------
 // Active route detection

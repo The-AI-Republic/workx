@@ -15,7 +15,9 @@
 
   let currentTheme = $derived($uiTheme);
   let shouldShowTokenUsage = $derived($showTokenUsage);
-  let shouldHideCard = $derived(!shouldShowTokenUsage);
+  // Failure cards carry the error reason in `content` — they must render even
+  // when token usage display is off (which only targets completion stats).
+  let shouldHideCard = $derived(!shouldShowTokenUsage && event.status !== 'error');
 </script>
 
 {#if !shouldHideCard}

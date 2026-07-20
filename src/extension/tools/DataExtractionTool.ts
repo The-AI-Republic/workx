@@ -1,4 +1,4 @@
-import { BaseTool, type BaseToolOptions, type ToolDefinition } from '../../tools/BaseTool';
+import { BaseTool, type BaseToolOptions, type ToolDefinition, type ScopedBrowserTab } from '../../tools/BaseTool';
 
 /** Extraction mode */
 export type ExportFormat = 'json' | 'csv' | 'xml' | 'markdown';
@@ -50,7 +50,7 @@ export interface DataExtractionResult {
   error?: string;
 }
 
-type BoundExtractionTab = chrome.tabs.Tab & { id: number };
+type BoundExtractionTab = ScopedBrowserTab & { id: number };
 
 export class DataExtractionTool extends BaseTool {
   protected toolDefinition: ToolDefinition;
@@ -217,7 +217,7 @@ export class DataExtractionTool extends BaseTool {
     if (typeof tabId !== 'number' || tabId < 0) {
       throw new Error('No bound tab');
     }
-    const tab = await chrome.tabs.get(tabId);
+    const tab = await this.getOwnedTab(tabId);
     if (typeof tab.id !== 'number') throw new Error('Bound tab not found');
     return tab as BoundExtractionTab;
   }

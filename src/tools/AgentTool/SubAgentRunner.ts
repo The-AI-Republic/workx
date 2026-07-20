@@ -114,8 +114,7 @@ export class SubAgentRunner implements IAgentRunner {
   private hasActiveTasks(): boolean {
     try {
       const session = this.parentEngine.getSession?.();
-      const active = session?.listActiveTasks?.() ?? [];
-      return active.length > 0;
+      return session?.hasLiveBackgroundWork?.() === true;
     } catch {
       return false;
     }
@@ -278,9 +277,11 @@ export class SubAgentRunner implements IAgentRunner {
       // Foreground: await result, cleanup before returning to caller.
       try {
         const result = await this.execute(context, params);
+        await this.markTypedTaskTerminated(context, result);
         return this.toSubAgentResult(context, result);
       } finally {
         await this.cleanup(context);
+        await context.parentEngine.getSession?.()?.completeTrackedBackgroundTask?.(context.runId);
         // Track 10: foreground run finished — safe boundary to flush any
         // deferred sub-agent type-def rebuild (design § Active-Session
         // Semantics Rule 2).
@@ -312,7 +313,7 @@ export class SubAgentRunner implements IAgentRunner {
         }
         // (Track 04) Update typed state to terminal on parent session even
         // when quietBackground suppresses LLM-visible notification delivery.
-        this.markTypedTaskTerminated(context, result);
+        await this.markTypedTaskTerminated(context, result);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         const failed: AgentRunResult = {
@@ -329,7 +330,7 @@ export class SubAgentRunner implements IAgentRunner {
             this.formatTaskNotification(context, params, failed),
           );
         }
-        this.markTypedTaskTerminated(context, failed);
+        await this.markTypedTaskTerminated(context, failed);
       } finally {
         try {
           await this.cleanup(context);
@@ -370,7 +371,7 @@ export class SubAgentRunner implements IAgentRunner {
    * endTime). The Session's eviction timer takes over from here; the
    * RunningTask entry stays in activeTasks until the grace window expires.
    */
-  private markTypedTaskTerminated(context: AgentContext, result: AgentRunResult): void {
+  private async markTypedTaskTerminated(context: AgentContext, result: AgentRunResult): Promise<void> {
     const parentSession = context.parentEngine.getSession?.();
     if (!parentSession?.getTask) return;
     const entry = parentSession.getTask(context.runId);
@@ -384,6 +385,12 @@ export class SubAgentRunner implements IAgentRunner {
         ? 'killed'
         : 'failed';
     ts.endTime = Date.now();
+    // Surface the failure reason (e.g. "no LLM credit account for this
+    // identity") so the background-task UI can render it instead of a bare
+    // "failed" status. result.error carries the message on failure.
+    if (ts.status === 'failed' && result.error) {
+      ts.error = result.error;
+    }
     ts.notified = true; // safeEnqueueNotification just ran (or was suppressed)
     if (result.tokenUsage) {
       ts.tokenUsage = {
@@ -405,6 +412,7 @@ export class SubAgentRunner implements IAgentRunner {
     // helper to nudge: trigger one tick by calling retainTask(false).
     parentSession.retainTask?.(context.runId, ts.retain);
     parentSession.markBackgroundTaskStateChanged?.(ts, prevStatus);
+    await parentSession.completeTrackedBackgroundTask?.(context.runId);
 
     // Track 10: a background task just terminated — flush any deferred
     // sub-agent type-def rebuild now that this is a safe boundary.
@@ -705,9 +713,6 @@ export class SubAgentRunner implements IAgentRunner {
       parentSessionForRegistry.registerTaskState(taskState, {
         context,
         abortController,
-        scopedTabIds: parentConfig.browserContext?.tabId !== undefined
-          ? [parentConfig.browserContext.tabId]
-          : undefined,
       });
     }
 

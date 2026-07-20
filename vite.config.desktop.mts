@@ -5,6 +5,8 @@ import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 // @ts-ignore - plain .mjs data module, no types (dependency-free by design)
 import { featureDefine } from './vite.featureFlags.mjs';
+// @ts-ignore - plain .mjs data module, no types (dependency-free by design)
+import { versionDefine } from './vite.version.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -28,6 +30,7 @@ export default defineConfig({
   envDir: resolve(__dirname, 'src/desktop'), // Load .env from src/desktop
   define: {
     __BUILD_MODE__: JSON.stringify('desktop'),
+    ...versionDefine(),
     // Track 22 — desktop matrix (heavier subsystems default ON here).
     ...featureDefine('desktop', process.env),
   },

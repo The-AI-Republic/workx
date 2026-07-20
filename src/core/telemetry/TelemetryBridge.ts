@@ -4,7 +4,7 @@
  *
  * Two taps feed it:
  *  - {@link observe}: the per-session event chokepoint, wired by the
- *    {@link withTelemetry} decorator at `AgentRegistry.createSession`.
+ *    {@link withTelemetry} decorator at `SessionManager.createSession`.
  *  - {@link observeScheduler}: the scheduler emitter (a separate emitter
  *    family that bypasses the agent chokepoint), wired by the `tap?`
  *    parameter of `Scheduler.connectToChannel`.
@@ -365,7 +365,7 @@ export class TelemetryBridge {
 export const telemetryBridge = new TelemetryBridge();
 
 /**
- * Decorator applied at `AgentRegistry.createSession` to both dispatcher
+ * Decorator applied at `SessionManager.createSession` to both dispatcher
  * branches. Telemetry observation is wrapped in its own try/catch and the
  * real dispatcher ALWAYS runs — `RepublicAgent.emitEvent`'s own catch would
  * otherwise swallow the real event if observe() threw before forwarding.

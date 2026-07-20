@@ -121,17 +121,11 @@ export class ApprovalGate {
     // Fast path: check blocked domains
     const domain = fullContext.currentDomain;
     if (domain && this.blockedDomains.length > 0) {
-      if (this.blockedDomains.some(d => this.matchesDomainPattern(domain, d))) {
-        await this.recordHistory(toolName, 0, RiskLevel.Critical, 'deny', 'auto', ['Blocked domain']);
+      if (this.blockedDomains.some((d) => this.matchesDomainPattern(domain, d))) {
+        await this.recordHistory(toolName, 0, RiskLevel.Critical, 'deny', 'auto', [
+          'Blocked domain',
+        ]);
         return 'deny';
-      }
-    }
-
-    // Fast path: check trusted domains
-    if (domain && this.trustedDomains.length > 0) {
-      if (this.trustedDomains.some(d => this.matchesDomainPattern(domain, d))) {
-        await this.recordHistory(toolName, 0, RiskLevel.None, 'auto_approve', 'auto', ['Trusted domain']);
-        return 'auto_approve';
       }
     }
 
@@ -157,18 +151,89 @@ export class ApprovalGate {
     // Recalculate level after enhancement
     assessment.level = scoreToRiskLevel(assessment.score);
 
+    // A tool-specific assessor may declare a trusted-context hard denial
+    // (for example, rejecting install requests from remote sessions).
+    // Ordinary `action: deny` remains advisory for backward compatibility.
+    if (assessment.hardDeny) {
+      await this.recordHistory(
+        toolName,
+        assessment.score,
+        assessment.level,
+        'deny',
+        'auto',
+        assessment.factors
+      );
+      return 'deny';
+    }
+
+    // Trusted domains remain an approval shortcut for ordinary actions, but
+    // they cannot override a tool-defined explicit consent boundary. The
+    // assessment must therefore run before this legacy fast path.
+    if (
+      !assessment.requiresExplicitUserApproval &&
+      domain &&
+      this.trustedDomains.length > 0 &&
+      this.trustedDomains.some((trustedDomain) => this.matchesDomainPattern(domain, trustedDomain))
+    ) {
+      await this.recordHistory(toolName, 0, RiskLevel.None, 'auto_approve', 'auto', [
+        'Trusted domain',
+      ]);
+      return 'auto_approve';
+    }
+
     // 3. Evaluate policy deny rules (enforced even in YOLO mode)
     const effectiveScore = assessment.score;
     const ruleDecision = this.policyEngine.evaluate(toolName, parameters, effectiveScore);
 
     if (ruleDecision === 'deny') {
-      await this.recordHistory(toolName, assessment.score, assessment.level, 'deny', 'auto', assessment.factors);
+      await this.recordHistory(
+        toolName,
+        assessment.score,
+        assessment.level,
+        'deny',
+        'auto',
+        assessment.factors
+      );
       return 'deny';
+    }
+
+    // Some actions are themselves consent boundaries rather than ordinary
+    // risk decisions. Installing executable code is the first consumer: it
+    // always needs a fresh human response, even in YOLO mode, and cannot be
+    // approved by a plugin hook or remembered session decision.
+    if (assessment.requiresExplicitUserApproval) {
+      const explicitKey = `explicit:${this.buildMemoryKey(toolName, parameters, domain)}`;
+      const inFlight = this.inFlightApprovalChecks.get(explicitKey);
+      if (inFlight) return inFlight;
+      const approvalCheck = this.runUserApprovalFlow(
+        toolName,
+        parameters,
+        assessment,
+        domain,
+        fullContext,
+        options,
+        true
+      );
+      this.inFlightApprovalChecks.set(explicitKey, approvalCheck);
+      try {
+        return await approvalCheck;
+      } finally {
+        if (this.inFlightApprovalChecks.get(explicitKey) === approvalCheck) {
+          this.inFlightApprovalChecks.delete(explicitKey);
+        }
+      }
     }
 
     // YOLO mode: auto-approve everything not denied by policy rules
     if (this.mode === 'yolo') {
-      await this.recordHistory(toolName, assessment.score, assessment.level, 'auto_approve', 'auto', ['YOLO mode']);
+      await this.recordHistory(
+        toolName,
+        assessment.score,
+        assessment.level,
+        'auto_approve',
+        'auto',
+        ['YOLO mode']
+      );
       return 'auto_approve';
     }
 
@@ -177,10 +242,18 @@ export class ApprovalGate {
     const memoryKey = this.buildMemoryKey(toolName, parameters, domain);
     const remembered = this.sessionMemory.get(memoryKey);
     if (remembered) {
-      const withinMargin = remembered.approvedRiskScore === undefined
-        || assessment.score <= remembered.approvedRiskScore + RISK_CEILING_MARGIN;
+      const withinMargin =
+        remembered.approvedRiskScore === undefined ||
+        assessment.score <= remembered.approvedRiskScore + RISK_CEILING_MARGIN;
       if (withinMargin) {
-        await this.recordHistory(toolName, assessment.score, assessment.level, remembered.decision, 'auto', ['Remembered session decision']);
+        await this.recordHistory(
+          toolName,
+          assessment.score,
+          assessment.level,
+          remembered.decision,
+          'auto',
+          ['Remembered session decision']
+        );
         return remembered.decision;
       }
       // Risk escalated beyond margin — fall through to normal policy evaluation
@@ -202,7 +275,14 @@ export class ApprovalGate {
 
     // 6. Handle the decision
     if (decision === 'auto_approve') {
-      await this.recordHistory(toolName, assessment.score, assessment.level, 'auto_approve', 'auto', assessment.factors);
+      await this.recordHistory(
+        toolName,
+        assessment.score,
+        assessment.level,
+        'auto_approve',
+        'auto',
+        assessment.factors
+      );
       return 'auto_approve';
     }
 
@@ -211,10 +291,18 @@ export class ApprovalGate {
       const result = await inFlight;
       const rememberedAfterWait = this.sessionMemory.get(memoryKey);
       if (rememberedAfterWait) {
-        const withinMargin = rememberedAfterWait.approvedRiskScore === undefined
-          || assessment.score <= rememberedAfterWait.approvedRiskScore + RISK_CEILING_MARGIN;
+        const withinMargin =
+          rememberedAfterWait.approvedRiskScore === undefined ||
+          assessment.score <= rememberedAfterWait.approvedRiskScore + RISK_CEILING_MARGIN;
         if (withinMargin) {
-          await this.recordHistory(toolName, assessment.score, assessment.level, rememberedAfterWait.decision, 'auto', ['Remembered session decision']);
+          await this.recordHistory(
+            toolName,
+            assessment.score,
+            assessment.level,
+            rememberedAfterWait.decision,
+            'auto',
+            ['Remembered session decision']
+          );
           return rememberedAfterWait.decision;
         }
       }
@@ -227,7 +315,7 @@ export class ApprovalGate {
       assessment,
       domain,
       fullContext,
-      options,
+      options
     );
     this.inFlightApprovalChecks.set(memoryKey, approvalCheck);
     try {
@@ -246,8 +334,9 @@ export class ApprovalGate {
     domain: string | undefined,
     fullContext: ApprovalContext,
     options?: ApprovalCheckOptions,
+    skipHooks = false
   ): Promise<ApprovalCheckResult> {
-    if (this.hookDispatcher) {
+    if (this.hookDispatcher && !skipHooks) {
       const hookInput: HookInput = {
         hook_event_name: 'PermissionRequest',
         session_id: fullContext.sessionId ?? '',
@@ -262,12 +351,26 @@ export class ApprovalGate {
           snapshot: options?.hookSnapshot,
         });
         if (hookResult.permissionDecision === 'approve') {
-          await this.recordHistory(toolName, assessment.score, assessment.level, 'auto_approve', 'auto', ['Approved by hook']);
+          await this.recordHistory(
+            toolName,
+            assessment.score,
+            assessment.level,
+            'auto_approve',
+            'auto',
+            ['Approved by hook']
+          );
           return 'auto_approve';
         }
         if (hookResult.permissionDecision === 'block') {
-          await this.recordHistory(toolName, assessment.score, assessment.level, 'deny', 'auto', ['Blocked by hook']);
-          this.firePermissionDeniedHook(toolName, parameters, 'Blocked by hook', fullContext.sessionId);
+          await this.recordHistory(toolName, assessment.score, assessment.level, 'deny', 'auto', [
+            'Blocked by hook',
+          ]);
+          this.firePermissionDeniedHook(
+            toolName,
+            parameters,
+            'Blocked by hook',
+            fullContext.sessionId
+          );
           return 'deny';
         }
       } catch {
@@ -304,12 +407,31 @@ export class ApprovalGate {
     const response = await this.approvalManager.requestApproval(approvalRequest);
 
     if (response.decision === 'approve') {
-      await this.recordHistory(toolName, assessment.score, assessment.level, 'auto_approve', 'user', assessment.factors);
+      await this.recordHistory(
+        toolName,
+        assessment.score,
+        assessment.level,
+        'auto_approve',
+        'user',
+        assessment.factors
+      );
       return 'auto_approve';
     }
 
-    await this.recordHistory(toolName, assessment.score, assessment.level, 'deny', 'user', assessment.factors);
-    this.firePermissionDeniedHook(toolName, parameters, response.reason ?? 'Denied by user', fullContext.sessionId);
+    await this.recordHistory(
+      toolName,
+      assessment.score,
+      assessment.level,
+      'deny',
+      'user',
+      assessment.factors
+    );
+    this.firePermissionDeniedHook(
+      toolName,
+      parameters,
+      response.reason ?? 'Denied by user',
+      fullContext.sessionId
+    );
     // Return user's alternative text alongside denial when present
     if (response.reason && response.reason !== 'Denied by user') {
       return { decision: 'deny', reason: response.reason };
@@ -325,7 +447,7 @@ export class ApprovalGate {
     parameters: Record<string, any>,
     decision: ApprovalDecision,
     domain?: string,
-    riskScore?: number,
+    riskScore?: number
   ): void {
     const key = this.buildMemoryKey(toolName, parameters, domain);
     this.sessionMemory.set(key, {
@@ -357,10 +479,14 @@ export class ApprovalGate {
    */
   private getAskThreshold(): number {
     switch (this.mode) {
-      case 'balanced': return 30;
-      case 'high_speed': return 60;
-      case 'yolo': return 100; // unreachable (yolo handled above)
-      default: return 30;
+      case 'balanced':
+        return 30;
+      case 'high_speed':
+        return 60;
+      case 'yolo':
+        return 100; // unreachable (yolo handled above)
+      default:
+        return 30;
     }
   }
 
@@ -370,10 +496,14 @@ export class ApprovalGate {
    */
   private getTimeoutForMode(): number {
     switch (this.mode) {
-      case 'balanced': return 0; // No timeout — always wait for user
-      case 'high_speed': return 600000; // 10 minutes, auto-approve on expiry
-      case 'yolo': return 600000; // unreachable (yolo handled above)
-      default: return 0;
+      case 'balanced':
+        return 0; // No timeout — always wait for user
+      case 'high_speed':
+        return 600000; // 10 minutes, auto-approve on expiry
+      case 'yolo':
+        return 600000; // unreachable (yolo handled above)
+      default:
+        return 0;
     }
   }
 
@@ -414,7 +544,7 @@ export class ApprovalGate {
     toolName: string,
     parameters: Record<string, any>,
     reason: string,
-    sessionId?: string,
+    sessionId?: string
   ): void {
     if (!this.hookDispatcher) return;
     const hookInput: HookInput = {
@@ -445,7 +575,11 @@ export class ApprovalGate {
    * - Terminal: `terminal||{command}` (full command string, like Claude Code)
    * - Other tools: `{toolName}` (broad tool-level trust)
    */
-  private buildMemoryKey(toolName: string, parameters: Record<string, any>, domain?: string): string {
+  private buildMemoryKey(
+    toolName: string,
+    parameters: Record<string, any>,
+    domain?: string
+  ): string {
     // Web tools (extension DOM tool)
     if (toolName === 'browser_dom') {
       const action = parameters.action || 'unknown';
@@ -482,12 +616,18 @@ export class ApprovalGate {
    */
   private mapRiskLevelToApproval(level: string): 'low' | 'medium' | 'high' | 'critical' {
     switch (level) {
-      case 'none': return 'low';
-      case 'low': return 'low';
-      case 'medium': return 'medium';
-      case 'high': return 'high';
-      case 'critical': return 'critical';
-      default: return 'medium';
+      case 'none':
+        return 'low';
+      case 'low':
+        return 'low';
+      case 'medium':
+        return 'medium';
+      case 'high':
+        return 'high';
+      case 'critical':
+        return 'critical';
+      default:
+        return 'medium';
     }
   }
 }

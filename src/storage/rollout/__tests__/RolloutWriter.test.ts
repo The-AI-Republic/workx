@@ -208,6 +208,31 @@ describe('RolloutWriter', () => {
     it('should propagate errors from flush', async () => {
       await expect(writer.flush()).resolves.not.toThrow();
     });
+
+    it('recovers after a failed append without consuming its sequence', async () => {
+      await provider.putMetadata({
+        id: rolloutId,
+        created: Date.now(),
+        updated: Date.now(),
+        itemCount: 0,
+        status: 'active',
+        sessionMeta: { id: rolloutId, timestamp: '', originator: 'test', cliVersion: '1.0.0' },
+      });
+      const addItems = vi.spyOn(provider, 'addItems');
+      addItems.mockRejectedValueOnce(new Error('transient storage failure'));
+
+      await expect(writer.addItems(rolloutId, [
+        { type: 'response_item', payload: { type: 'message', content: 'failed' } },
+      ])).rejects.toThrow('transient storage failure');
+      expect(writer.getCurrentSequence()).toBe(0);
+
+      await writer.addItems(rolloutId, [
+        { type: 'response_item', payload: { type: 'message', content: 'retry' } },
+      ]);
+      const records = await provider.getItemsByRolloutId(rolloutId);
+      expect(records).toMatchObject([{ sequence: 0 }]);
+      expect(writer.getCurrentSequence()).toBe(1);
+    });
   });
 
   describe('Sequence Management', () => {

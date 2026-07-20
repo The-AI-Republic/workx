@@ -204,4 +204,38 @@ describe('RepublicAgentEngine — queue priority ordering (Track 08)', () => {
     expect(order).toEqual(['UserInput', 'Interrupt']);
     expect(mockSession.addToHistory).not.toHaveBeenCalled();
   });
+
+  it('settles a tracked compact operation after its handler completes', async () => {
+    const { engine, mockSession } = createEngine();
+    await engine.initialize();
+
+    const tracked = engine.submitTrackedOperation({ type: 'ManualCompact' });
+
+    await expect(tracked.settled).resolves.toEqual({ outcome: 'completed' });
+    expect(mockSession.compact).toHaveBeenCalledWith(
+      'manual',
+      expect.anything(),
+      expect.any(AbortSignal),
+    );
+  });
+
+  it('cancels a queued tracked compact without invoking the handler', async () => {
+    const { engine, mockSession } = createEngine();
+    await engine.initialize();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    mockSession.spawnTask.mockImplementationOnce(async () => gate);
+
+    engine.submitOperation({
+      type: 'UserInput',
+      items: [{ type: 'text', text: 'hold queue' }],
+    });
+    const tracked = engine.submitTrackedOperation({ type: 'ManualCompact' });
+    tracked.cancel('delete');
+
+    await expect(tracked.settled).resolves.toEqual({ outcome: 'cancelled' });
+    release();
+    await flush();
+    expect(mockSession.compact).not.toHaveBeenCalled();
+  });
 });

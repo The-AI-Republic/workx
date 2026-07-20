@@ -54,6 +54,16 @@ function redactString(input: string): string {
   return out;
 }
 
+/**
+ * Redact secrets (provider API keys, Bearer/JWT tokens, `key=value` secrets,
+ * URL userinfo) from a free-text string. Shared beyond diagnostics so a thrown
+ * error message never surfaces a credential to the user, the LLM, or a stored
+ * rollout — see {@link module:core/errors/sanitizeError}. Pure; never mutates.
+ */
+export function redactSecretsInText(input: string): string {
+  return redactString(input);
+}
+
 function redactValue(value: unknown, keyIsSensitive = false): unknown {
   if (typeof value === 'string') {
     return keyIsSensitive ? REPLACEMENT : redactString(value);

@@ -2,11 +2,11 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "WorkX",
   "mainBinaryName": "WorkX",
-  "version": "0.1.1",
+  "version": "../package.json",
   "identifier": "com.airepublic.workx",
   "build": {
-    "beforeBuildCommand": { "script": "npm run build:desktop && npm run build:desktop-runtime-sidecar && npm run build:sidecar && npm run build:ripgrep-sidecar", "cwd": ".." },
-    "beforeDevCommand": { "script": "npm run build:desktop-runtime-sidecar && npm run build:sidecar && npm run build:ripgrep-sidecar && npm run dev:desktop", "cwd": ".." },
+    "beforeBuildCommand": { "script": "npm run build:desktop && npm run build:desktop-runtime-sidecar && npm run build:ripgrep-sidecar", "cwd": ".." },
+    "beforeDevCommand": { "script": "npm run build:desktop-runtime-sidecar && npm run build:ripgrep-sidecar && npm run dev:desktop", "cwd": ".." },
     "devUrl": "http://localhost:5174",
     "frontendDist": "../dist/desktop"
   },
@@ -14,7 +14,7 @@
     "active": true,
     "category": "DeveloperTool",
     "copyright": "",
-    "externalBin": ["binaries/chrome-devtools-mcp", "binaries/rg"],
+    "externalBin": ["binaries/rg"],
     "resources": {
       "sidecar/desktop-runtime": "desktop-runtime"
     },
@@ -74,7 +74,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUwNEQyMTEzQzc3OTI0MzEKUldReEpIbkhFeUZOVUZBa01rK0s1RVlvYXVFc0EzNExaK2loUFhhbVR3TGszUUwvcFBkRG84V1cK",
       "endpoints": [
-        "https://github.com/The-AI-Republic/workx/releases/latest/download/latest.json"
+        "https://workx-desktop-releases.s3.us-west-2.amazonaws.com/{{target}}-{{arch}}/latest.json"
       ],
       "windows": {
         "installMode": "passive"

@@ -6,8 +6,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { AgentRegistry } from '@/core/registry/AgentRegistry';
+import { SessionManager } from '@/core/registry/SessionManager';
 import { setConfigStorage, type ConfigStorageProvider } from '@/core/storage/ConfigStorageProvider';
+import { lifecycleTestRegistryConfig } from '@/__test-utils__/lifecycleTestAssembler';
 
 // Mock RepublicAgent with class
 vi.mock('@/core/RepublicAgent', () => {
@@ -76,7 +77,7 @@ const mockChrome = {
 };
 
 describe('Session Creation Performance (SC-006)', () => {
-  let registry: AgentRegistry;
+  let registry: SessionManager;
   const mockConfig = {
     on: vi.fn(),
     off: vi.fn(),
@@ -86,7 +87,9 @@ describe('Session Creation Performance (SC-006)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    AgentRegistry.resetInstance();
+    mockConfig.getConfig.mockReturnValue({});
+    mockConfig.getModelConfig.mockReturnValue({ modelKey: 'test' });
+    SessionManager.resetInstance();
     global.chrome = mockChrome as any;
     const storageData = new Map<string, unknown>();
     const configStorage: ConfigStorageProvider = {
@@ -126,12 +129,12 @@ describe('Session Creation Performance (SC-006)', () => {
     };
     setConfigStorage(configStorage);
 
-    registry = AgentRegistry.getInstance({ maxConcurrent: 10 });
+    registry = SessionManager.getInstance(lifecycleTestRegistryConfig({ maxConcurrent: 10 }));
     registry.initialize(mockConfig as any);
   });
 
   afterEach(() => {
-    AgentRegistry.resetInstance();
+    SessionManager.resetInstance();
   });
 
   it('should create a single session in <100ms', async () => {

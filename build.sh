@@ -15,7 +15,9 @@ By default this runs an unsigned build:
 The Tauri build also runs the configured beforeBuildCommand, which rebuilds:
   - desktop web UI
   - desktop runtime sidecar
-  - chrome-devtools-mcp sidecar
+  - ripgrep sidecar
+(The chrome-devtools-mcp sidecar is parked — desktop browser automation
+runs through the extension bridge; see scripts/build-sidecar.mjs to re-enable.)
 
 Examples:
   ./build.sh

@@ -21,6 +21,7 @@ import { AppServerRateLimiter } from './connection/rateLimiter';
 import { ConnectionWatchdog } from './connection/ConnectionWatchdog';
 import { RequestQueue } from './queue/RequestQueue';
 import { AppServerStatusController, type AppServerStatusSnapshot } from './status/AppServerStatus';
+import { NodeBridge } from './node-bridge/NodeBridge';
 
 export interface AppServerManagerDeps {
   config: Partial<IAppServerConfig> | undefined;
@@ -38,6 +39,8 @@ export interface AppServerManagerDeps {
 
 export class AppServerManager {
   readonly status = new AppServerStatusController();
+  /** Node-mode connection coordinator (extension browser bridge). */
+  readonly nodeBridge = new NodeBridge();
   private readonly registry = new AppServerConnectionRegistry();
   private readonly channel: AppServerChannel;
   private readonly config: IAppServerConfig;
@@ -97,6 +100,7 @@ export class AppServerManager {
       sessionFactory: this.deps.sessionFactory,
       sessionDisposer: this.deps.sessionDisposer,
       allowedScopes: this.deps.allowedScopes,
+      nodeBridge: this.nodeBridge,
     });
 
     this.transport = new AppServerWebSocketTransport({
@@ -107,6 +111,7 @@ export class AppServerManager {
       maxPayloadBytes: this.config.maxPayloadBytes,
       maxBufferedBytes: this.config.maxBufferedBytes,
       rejectBrowserOrigins: this.config.rejectBrowserOrigins,
+      allowedOrigins: this.config.allowedOrigins ?? [],
       processor,
       status: this.status,
       profile: this.deps.profile ?? 'desktop-runtime',
@@ -123,6 +128,7 @@ export class AppServerManager {
 
   async stop(reason = 'stop'): Promise<void> {
     this.status.set({ status: 'stopping' });
+    this.nodeBridge.clear();
     await this.transport?.stop(reason);
     await this.queue?.shutdown(reason);
     this.watchdog?.stopAll();

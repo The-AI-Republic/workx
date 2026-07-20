@@ -2,20 +2,21 @@ import type { PostTurnContext } from '../sessionSummary/SessionSummaryHook';
 import type { Session } from '../Session';
 import type { ModelClient } from '../models/ModelClient';
 import { shouldAutoCompactTokens } from './tokenPressure';
+import type { TrackedEngineSubmission } from '../engine/RepublicAgentEngine';
 
 export const MAX_CONSECUTIVE_AUTO_COMPACT_FAILURES = 3;
 
 export interface AutoCompactHookOptions {
   session: Session;
   getModelClient: () => ModelClient | undefined;
-  submitCompact: () => string;
+  submitCompact: () => TrackedEngineSubmission | string;
   maxConsecutiveFailures?: number;
 }
 
 export class AutoCompactHook {
   private readonly session: Session;
   private readonly getModelClient: () => ModelClient | undefined;
-  private readonly submitCompact: () => string;
+  private readonly submitCompact: () => TrackedEngineSubmission | string;
   private readonly maxConsecutiveFailures: number;
 
   private unregisterPostTurn?: () => void;
@@ -93,7 +94,15 @@ export class AutoCompactHook {
     this.lastQueuedTokenTotal = currentTokens ?? 0;
 
     try {
-      this.submitCompact();
+      const tracked = this.submitCompact();
+      if (typeof tracked !== 'string') {
+        void tracked.settled.then(({ outcome }) => {
+          this.pending = false;
+          this.queuedAtCompactionCount = undefined;
+          this.lastQueuedTokenTotal = 0;
+          if (outcome === 'failed') this.consecutiveFailures += 1;
+        });
+      }
     } catch (err) {
       this.pending = false;
       this.consecutiveFailures += 1;

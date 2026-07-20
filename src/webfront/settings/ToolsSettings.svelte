@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { AgentConfig } from '@/config/AgentConfig';
-  import type { IToolsConfig } from '@/config/types';
+  import type { IAppServerConfig, IToolsConfig } from '@/config/types';
   import { t, _t } from '../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
   import { getConfigStorage } from '@/core/storage/ConfigStorageProvider';
@@ -43,6 +43,82 @@
   let sandboxStatus: string | null = $state(null);
   let isDesktop = $state(false);
 
+  // Browser bridge (desktop only): pair the WorkX Chrome extension as the
+  // desktop agent's live-browser executor.
+  interface BridgeStatusView {
+    appServerRunning: boolean;
+    appServerUrl: string | null;
+    extensionConnected: boolean;
+    nodes: Array<{ displayName: string; version: string; toolCount: number }>;
+  }
+  let bridgeView: BridgeStatusView | null = $state(null);
+  let bridgeBusy = $state(false);
+  let bridgeMessage = $state('');
+  let bridgeTokenCopied = $state(false);
+
+  async function refreshBridgeStatus() {
+    try {
+      const client = await getInitializedUIClient();
+      const appServer = await client.serviceRequest<{
+        enabled: boolean;
+        status: string;
+        url?: string;
+      }>('appServer.getStatus');
+      const bridge = await client.serviceRequest<{
+        connected: boolean;
+        nodes: Array<{ displayName: string; version: string; toolCount: number }>;
+      }>('browserBridge.getStatus');
+      bridgeView = {
+        appServerRunning: appServer?.status === 'ready',
+        appServerUrl: appServer?.url ?? null,
+        extensionConnected: bridge?.connected === true,
+        nodes: bridge?.nodes ?? [],
+      };
+    } catch (error) {
+      console.warn('[ToolsSettings] bridge status unavailable:', error);
+      bridgeView = null;
+    }
+  }
+
+  async function enableAppServer() {
+    try {
+      bridgeBusy = true;
+      bridgeMessage = '';
+      const current = settingsConfig.getConfig().appServer;
+      // Partial shape is fine: normalizeAppServerConfig fills defaults at read.
+      const appServer = { ...(current ?? {}), enabled: true } as IAppServerConfig;
+      await settingsConfig.updateConfig({ appServer });
+      const client = await getInitializedUIClient();
+      // Push the config into the runtime's AgentConfig BEFORE restarting —
+      // appServer.restart re-reads config in the sidecar process, which
+      // otherwise still holds the old in-memory `enabled: false`.
+      await client.serviceRequest('agent.configUpdate');
+      await client.serviceRequest('appServer.restart');
+      await refreshBridgeStatus();
+      bridgeMessage = t('App server started. The extension should connect automatically on macOS/Linux; use the pairing token fallback if needed.');
+    } catch (error) {
+      bridgeMessage = `${t('Failed to start app server')}: ${error instanceof Error ? error.message : 'unknown'}`;
+    } finally {
+      bridgeBusy = false;
+    }
+  }
+
+  async function copyPairingToken() {
+    try {
+      bridgeBusy = true;
+      const client = await getInitializedUIClient();
+      const res = await client.serviceRequest<{ token: string | null }>('appServer.revealToken');
+      if (!res?.token) throw new Error(t('App server is not running'));
+      await navigator.clipboard.writeText(res.token);
+      bridgeTokenCopied = true;
+      setTimeout(() => (bridgeTokenCopied = false), 3000);
+    } catch (error) {
+      bridgeMessage = `${t('Failed to copy token')}: ${error instanceof Error ? error.message : 'unknown'}`;
+    } finally {
+      bridgeBusy = false;
+    }
+  }
+
   // Collapsible sections state
   let browserToolsExpanded = $state(true);
   let agentToolsExpanded = $state(true);
@@ -64,6 +140,9 @@
   onMount(async () => {
     await loadSettings();
     await loadTerminalSandboxSettings();
+    if (__BUILD_MODE__ === 'desktop') {
+      await refreshBridgeStatus();
+    }
   });
 
   async function loadSettings() {
@@ -605,6 +684,86 @@
             </div>
           </div>
         {/if}
+      </div>
+    {/if}
+
+    <!-- Browser Bridge (Desktop only): use the WorkX Chrome extension as the live-browser tool -->
+    {#if isDesktop}
+      <div class="rounded-xl border overflow-hidden mt-4 {cardClasses}">
+        <div class="w-full flex items-center gap-3 p-4
+          {isModern ? 'bg-chat-surface dark:bg-chat-surface-dark' : 'bg-term-bg'}">
+          <h3 class="m-0 text-base font-semibold {textClasses}">{$_t("Browser Bridge (Chrome Extension)")}</h3>
+          <span class="ml-auto text-sm font-normal px-2 py-0.5 rounded
+            {isModern
+              ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-chat-text-secondary/10 dark:bg-chat-text-secondary-dark/10'
+              : 'text-term-dim-green bg-term-dim-green/10'}">
+            {bridgeView?.extensionConnected ? $_t('Connected') : $_t('Not connected')}
+          </span>
+        </div>
+        <div class="p-4 border-t {isModern ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
+          <div class="mb-4 text-sm leading-relaxed {textSecondaryClasses}">
+            {$_t("Control your real Chrome browser through the WorkX extension instead of a separate automation browser. Native connection is automatic on macOS/Linux. For Windows or fallback pairing, copy the token below into Extension side panel → Settings → Extension → Desktop Bridge.")}
+          </div>
+
+          {#if bridgeView?.extensionConnected}
+            {#each bridgeView.nodes as node (node.displayName + node.version)}
+              <div class="mb-4 text-sm {textClasses}">
+                ✓ {node.displayName || 'WorkX Extension'} v{node.version} — {node.toolCount} {$_t("browser tools available")}
+              </div>
+            {/each}
+          {:else if bridgeView && !bridgeView.appServerRunning}
+            <div class="mb-4 text-sm {textSecondaryClasses}">
+              {$_t("The local app server is off. Start it to allow the extension to connect.")}
+            </div>
+          {:else}
+            <div class="mb-4 text-sm {textSecondaryClasses}">
+              {$_t("Waiting for the extension to connect. Don't have it yet?")}
+              <a
+                href="https://chromewebstore.google.com/search/WorkX"
+                target="_blank"
+                rel="noreferrer"
+                class="{isModern ? 'text-chat-primary dark:text-chat-primary-dark' : 'text-term-green'}"
+              >{$_t("Get the WorkX extension from the Chrome Web Store")}</a>
+            </div>
+          {/if}
+
+          <div class="flex flex-wrap gap-2">
+            {#if bridgeView && !bridgeView.appServerRunning}
+              <button
+                class="py-1.5 px-3 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 border
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                  {isModern
+                    ? 'font-chat border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark bg-transparent hover:bg-chat-primary/15 dark:hover:bg-chat-primary-dark/15'
+                    : 'font-terminal border-term-green text-term-green bg-transparent hover:bg-term-green/15'}"
+                onclick={enableAppServer}
+                disabled={bridgeBusy}
+              >{$_t("Start App Server")}</button>
+            {:else}
+              <button
+                class="py-1.5 px-3 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 border
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                  {isModern
+                    ? 'font-chat border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark bg-transparent hover:bg-chat-primary/15 dark:hover:bg-chat-primary-dark/15'
+                    : 'font-terminal border-term-green text-term-green bg-transparent hover:bg-term-green/15'}"
+                onclick={copyPairingToken}
+                disabled={bridgeBusy}
+              >{bridgeTokenCopied ? $_t('Copied!') : $_t('Copy Pairing Token')}</button>
+            {/if}
+            <button
+              class="py-1.5 px-3 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 border
+                disabled:opacity-50 disabled:cursor-not-allowed
+                {isModern
+                  ? 'font-chat border-chat-border dark:border-chat-border-dark text-chat-text-secondary dark:text-chat-text-secondary-dark bg-transparent hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
+                  : 'font-terminal border-term-dim-green text-term-dim-green bg-transparent hover:bg-term-dim-green/15'}"
+              onclick={refreshBridgeStatus}
+              disabled={bridgeBusy}
+            >{$_t("Refresh")}</button>
+          </div>
+
+          {#if bridgeMessage}
+            <div class="mt-3 text-sm {textSecondaryClasses}">{bridgeMessage}</div>
+          {/if}
+        </div>
       </div>
     {/if}
 

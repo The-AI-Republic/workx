@@ -66,7 +66,11 @@ export function configField(schema: z.ZodTypeAny, meta?: ConfigMeta): ConfigFiel
 }
 
 /** Shortcut for boolean tool toggle fields */
-export function toolToggle(label: string, description: string, defaultValue = true): ConfigFieldDef {
+export function toolToggle(
+  label: string,
+  description: string,
+  defaultValue = true
+): ConfigFieldDef {
   return configField(z.boolean().default(defaultValue), {
     llm_access: {
       read: true,
@@ -93,7 +97,8 @@ export const SECTIONS: Record<string, Section> = {
           read: true,
           write: true,
           label: 'Model Selection',
-          description: 'Currently active AI model in provider:modelKey format (e.g., openai:gpt-4o)',
+          description:
+            'Currently active AI model in provider:modelKey format (e.g., openai:gpt-4o)',
           category: 'model',
           alias: 'model.selection',
         },
@@ -156,8 +161,8 @@ export const SECTIONS: Record<string, Section> = {
         },
       }),
       // Plain fields — no LLM access
-      // workspaceRoot is deliberately NOT llm_access: the agent must not be
-      // able to relocate its own filesystem jail. User-set via folder picker.
+      // Default working folder for NEW sessions. Deliberately not llm_access:
+      // changing an existing session's folder is an explicit UI action.
       workspaceRoot: configField(z.string().optional()),
       autoSync: configField(z.boolean().default(true)),
       telemetryEnabled: configField(z.boolean().default(false)),
@@ -183,7 +188,11 @@ export const SECTIONS: Record<string, Section> = {
       ),
       storage_tool: toolToggle('Storage Tool', 'Enable the browser storage inspection tool'),
       tab_tool: toolToggle('Tab Tool', 'Enable the browser tab management tool'),
-      web_scraping_tool: toolToggle('Web Scraping Tool', 'Enable the web page scraping tool', false),
+      web_scraping_tool: toolToggle(
+        'Web Scraping Tool',
+        'Enable the web page scraping tool',
+        false
+      ),
       dom_tool: toolToggle('DOM Tool', 'Enable the DOM manipulation and interaction tool'),
       form_automation_tool: toolToggle(
         'Form Automation Tool',
@@ -209,6 +218,10 @@ export const SECTIONS: Record<string, Section> = {
       setting_tool: toolToggle('Setting Tool', 'Enable the LLM settings access tool'),
       execCommand: toolToggle('Command Execution', 'Enable shell command execution', false),
       webSearch: toolToggle('Web Search', 'Enable web search capabilities'),
+      dataSources: toolToggle(
+        'Data Sources',
+        'Enable read-only analysis of configured desktop data sources'
+      ),
       fileOperations: toolToggle('File Operations', 'Enable file read/write operations', false),
       mcpTools: toolToggle('MCP Tools', 'Enable Model Context Protocol tools', false),
       dynamicToolLoading: configField(z.union([z.boolean(), z.literal('auto')]).default('auto')),
@@ -290,8 +303,7 @@ export type ResolveResult = ResolvedField | DeniedField;
  */
 export function resolve(path: string, action: 'read' | 'write'): ResolveResult {
   // Try direct resolution first, then alias resolution.
-  const result =
-    resolveDirectPath(path, action) ??
+  const result = resolveDirectPath(path, action) ??
     resolveByAlias(path, action) ?? {
       denied: true as const,
       reason: `Path "${path}" is not accessible`,
@@ -300,11 +312,7 @@ export function resolve(path: string, action: 'read' | 'write'): ResolveResult {
   // Track 20: the LLM setting_tool is the third config write surface. Deny
   // writes to organization-managed (locked) paths using the resolver's
   // canonical path (covers alias resolution too).
-  if (
-    action === 'write' &&
-    !('denied' in result) &&
-    isKeyLocked('agent', result.path)
-  ) {
+  if (action === 'write' && !('denied' in result) && isKeyLocked('agent', result.path)) {
     return {
       denied: true,
       reason: `Field "${result.path}" is managed by your organization and cannot be changed.`,
@@ -360,13 +368,23 @@ export function resolveByAlias(alias: string, action: 'read' | 'write'): Resolve
       const access = fieldDef.meta?.llm_access;
       if (access?.alias === alias) {
         if (action === 'read' && !access.read) {
-          return { denied: true, reason: `Field "${alias}" (alias) is not readable` };
+          return {
+            denied: true,
+            reason: `Field "${alias}" (alias) is not readable`,
+          };
         }
         if (action === 'write' && !access.write) {
-          return { denied: true, reason: `Field "${alias}" (alias) is not writable` };
+          return {
+            denied: true,
+            reason: `Field "${alias}" (alias) is not writable`,
+          };
         }
         const canonicalPath = sectionKey ? `${sectionKey}.${fieldName}` : fieldName;
-        return { llm_access: access, schema: fieldDef.schema, path: canonicalPath };
+        return {
+          llm_access: access,
+          schema: fieldDef.schema,
+          path: canonicalPath,
+        };
       }
     }
   }

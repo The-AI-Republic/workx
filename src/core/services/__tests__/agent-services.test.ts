@@ -9,6 +9,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createAgentServices, type AgentServiceDeps } from '../agent-services';
 import type { SubmissionContext } from '@/core/channels/types';
 import type { IAuthManager } from '@/core/models/types/Auth';
+import {
+  __resetPolicyResolverForTests,
+  registerPolicySources,
+  resolveActivePolicy,
+} from '@/core/config/policy/PolicyResolver';
 
 const ctx = { channelId: 'test', channelType: 'sidepanel' } as SubmissionContext;
 
@@ -21,7 +26,7 @@ function createMockAgent(overrides: Record<string, unknown> = {}) {
       interruptTask: vi.fn().mockResolvedValue(undefined),
     }),
     getModelClientFactory: vi.fn().mockReturnValue({
-      setAuthManager: vi.fn(),
+      updateAuthContext: vi.fn(),
     }),
     refreshModelClient: vi.fn().mockResolvedValue(undefined),
     getToolRegistry: vi.fn().mockReturnValue({
@@ -60,7 +65,7 @@ function createMockDeps(overrides: Partial<AgentServiceDeps> = {}): AgentService
     },
     handleConfigUpdate: vi.fn().mockResolvedValue({ updated: true }),
     createAuthManager: vi.fn().mockReturnValue(createMockAuthManager()),
-    setAuthManager: vi.fn(),
+    updateAuthContext: vi.fn(),
     updateApprovalConfig: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -72,6 +77,7 @@ describe('createAgentServices', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    __resetPolicyResolverForTests();
     deps = createMockDeps();
     services = createAgentServices(deps);
   });
@@ -116,7 +122,7 @@ describe('createAgentServices', () => {
       expect(typeof result.timestamp).toBe('number');
     });
 
-    it('publishes access state only for the effective primary session', async () => {
+    it('does not mutate global access state from a session-bound health check', async () => {
       const setAccessFromReadyState = vi.fn();
       const primaryAgent = createMockAgent();
       const backgroundAgent = createMockAgent();
@@ -143,19 +149,24 @@ describe('createAgentServices', () => {
       expect(setAccessFromReadyState).not.toHaveBeenCalled();
 
       await services['agent.healthCheck']({ sessionId: 'primary' }, ctx);
-      expect(setAccessFromReadyState).toHaveBeenCalledOnce();
+      expect(setAccessFromReadyState).not.toHaveBeenCalled();
     });
   });
 
   describe('agent.getAccessState', () => {
-    it('returns global access state from an active session', async () => {
-      const agentSession = deps.registry.getSession('s1');
-      agentSession.agent.isReady.mockResolvedValueOnce({
-        ready: true,
-        provider: 'OpenAI',
-        model: 'gpt',
-        authMode: 'login',
+    it('returns access state from the bootstrap-owned global projection', async () => {
+      deps = createMockDeps({
+        getGlobalAccessState: vi.fn(() => ({
+          status: 'ready' as const,
+          mode: 'login' as const,
+          ready: true,
+          reason: undefined,
+          updatedAt: 1,
+          provider: 'OpenAI',
+          model: 'gpt',
+        })),
       });
+      services = createAgentServices(deps);
       const result = await services['agent.getAccessState']({}, ctx);
       expect(result).toMatchObject({
         ready: true,
@@ -208,7 +219,7 @@ describe('createAgentServices', () => {
   describe('agent.interrupt', () => {
     it('calls session.interruptTask (foreground-only, Track 04) and returns success', async () => {
       const result = await services['agent.interrupt']({ sessionId: 's1' }, ctx);
-      expect(result).toEqual({ success: true });
+      expect(result).toEqual({ success: true, status: 'interrupted' });
       const agentSession = deps.registry.getSession('s1');
       const session = agentSession.agent.getSession();
       // Track 04: agent.interrupt routes through interruptTask (foreground
@@ -226,17 +237,19 @@ describe('createAgentServices', () => {
       );
     });
 
-    it('throws when session is not found', async () => {
-      await expect(services['agent.interrupt']({ sessionId: 'nope' }, ctx)).rejects.toThrow(
-        'Session not found: nope',
-      );
+    it('is idempotent when the session is not live', async () => {
+      await expect(services['agent.interrupt']({ sessionId: 'nope' }, ctx)).resolves.toEqual({
+        success: true,
+        status: 'not-running',
+      });
     });
 
-    it('throws when session exists but agent is null', async () => {
+    it('is idempotent when the session graph is suspended', async () => {
       (deps.registry.getSession as ReturnType<typeof vi.fn>).mockReturnValueOnce({ agent: null });
-      await expect(services['agent.interrupt']({ sessionId: 's1' }, ctx)).rejects.toThrow(
-        'Session not found: s1',
-      );
+      await expect(services['agent.interrupt']({ sessionId: 's1' }, ctx)).resolves.toEqual({
+        success: true,
+        status: 'not-running',
+      });
     });
   });
 
@@ -260,7 +273,7 @@ describe('createAgentServices', () => {
       );
       expect(result).toMatchObject({ success: true, isBackendRouting: true });
       expect(deps.createAuthManager).toHaveBeenCalledWith(true, 'https://api.example.com');
-      expect(deps.setAuthManager).toHaveBeenCalled();
+      expect(deps.updateAuthContext).toHaveBeenCalled();
     });
 
     it('creates auth manager without backend routing when useOwnApiKey is true', async () => {
@@ -286,15 +299,15 @@ describe('createAgentServices', () => {
       ).rejects.toThrow('Auth initialization not supported on this platform');
     });
 
-    it('throws when setAuthManager dep is missing', async () => {
-      const noDep = createMockDeps({ setAuthManager: undefined });
+    it('throws when updateAuthContext dep is missing', async () => {
+      const noDep = createMockDeps({ updateAuthContext: undefined });
       const svc = createAgentServices(noDep);
       await expect(
         svc['agent.initAuth']({ useOwnApiKey: false }, ctx),
       ).rejects.toThrow('Auth initialization not supported on this platform');
     });
 
-    it('updates auth on all active sessions', async () => {
+    it('updates only the bootstrap-owned auth context and does not sweep agents directly', async () => {
       const agent1 = createMockAgent();
       const agent2 = createMockAgent();
       const multiDeps = createMockDeps({
@@ -313,14 +326,14 @@ describe('createAgentServices', () => {
       const svc = createAgentServices(multiDeps);
       await svc['agent.initAuth']({ useOwnApiKey: false }, ctx);
 
-      const authManager = multiDeps.createAuthManager!(true, null);
-      expect(agent1.getModelClientFactory().setAuthManager).toHaveBeenCalledWith(authManager);
-      expect(agent1.refreshModelClient).toHaveBeenCalled();
-      expect(agent2.getModelClientFactory().setAuthManager).toHaveBeenCalledWith(authManager);
-      expect(agent2.refreshModelClient).toHaveBeenCalled();
+      expect(multiDeps.updateAuthContext).toHaveBeenCalledOnce();
+      expect(agent1.getModelClientFactory().updateAuthContext).not.toHaveBeenCalled();
+      expect(agent1.refreshModelClient).not.toHaveBeenCalled();
+      expect(agent2.getModelClientFactory().updateAuthContext).not.toHaveBeenCalled();
+      expect(agent2.refreshModelClient).not.toHaveBeenCalled();
     });
 
-    it('skips terminated sessions', async () => {
+    it('does not inspect live or terminated sessions during auth updates', async () => {
       const activeAgent = createMockAgent();
       const terminatedAgent = createMockAgent();
       const multiDeps = createMockDeps({
@@ -339,8 +352,9 @@ describe('createAgentServices', () => {
       const svc = createAgentServices(multiDeps);
       await svc['agent.initAuth']({ useOwnApiKey: false }, ctx);
 
-      expect(activeAgent.refreshModelClient).toHaveBeenCalled();
+      expect(activeAgent.refreshModelClient).not.toHaveBeenCalled();
       expect(terminatedAgent.refreshModelClient).not.toHaveBeenCalled();
+      expect(multiDeps.registry.listSessions).not.toHaveBeenCalled();
     });
 
     it('skips sessions without an agent', async () => {
@@ -361,14 +375,14 @@ describe('createAgentServices', () => {
 
   describe('approval.updateConfig', () => {
     it('calls updateApprovalConfig and updates active sessions', async () => {
-      const config = { mode: 'strict', trustedDomains: ['a.com'], blockedDomains: ['b.com'] };
+      const config = { mode: 'balanced', trustedDomains: ['a.com'], blockedDomains: ['b.com'] };
       const result = await services['approval.updateConfig'](config, ctx);
       expect(result).toEqual({ success: true });
       expect(deps.updateApprovalConfig).toHaveBeenCalledWith(config);
 
       const agentSession = deps.registry.getSession('s1');
       const gate = agentSession.agent.getToolRegistry().getApprovalGate();
-      expect(gate.setMode).toHaveBeenCalledWith('strict');
+      expect(gate.setMode).toHaveBeenCalledWith('balanced');
       expect(gate.setTrustedDomains).toHaveBeenCalledWith(['a.com']);
       expect(gate.setBlockedDomains).toHaveBeenCalledWith(['b.com']);
     });
@@ -376,17 +390,17 @@ describe('createAgentServices', () => {
     it('works when updateApprovalConfig dep is not provided', async () => {
       const noDep = createMockDeps({ updateApprovalConfig: undefined });
       const svc = createAgentServices(noDep);
-      const result = await svc['approval.updateConfig']({ mode: 'auto' }, ctx);
+      const result = await svc['approval.updateConfig']({ mode: 'yolo' }, ctx);
       expect(result).toEqual({ success: true });
     });
 
     it('only sets fields that are present in the config', async () => {
-      const result = await services['approval.updateConfig']({ mode: 'permissive' }, ctx);
+      const result = await services['approval.updateConfig']({ mode: 'high_speed' }, ctx);
       expect(result).toEqual({ success: true });
 
       const agentSession = deps.registry.getSession('s1');
       const gate = agentSession.agent.getToolRegistry().getApprovalGate();
-      expect(gate.setMode).toHaveBeenCalledWith('permissive');
+      expect(gate.setMode).toHaveBeenCalledWith('high_speed');
       expect(gate.setTrustedDomains).not.toHaveBeenCalled();
       expect(gate.setBlockedDomains).not.toHaveBeenCalled();
     });
@@ -408,10 +422,10 @@ describe('createAgentServices', () => {
         },
       });
       const svc = createAgentServices(multiDeps);
-      await svc['approval.updateConfig']({ mode: 'strict' }, ctx);
+      await svc['approval.updateConfig']({ mode: 'balanced' }, ctx);
 
       const gate1 = activeAgent.getToolRegistry().getApprovalGate();
-      expect(gate1.setMode).toHaveBeenCalledWith('strict');
+      expect(gate1.setMode).toHaveBeenCalledWith('balanced');
       expect(terminatedAgent.getToolRegistry().getApprovalGate().setMode).not.toHaveBeenCalled();
     });
 
@@ -423,7 +437,7 @@ describe('createAgentServices', () => {
         },
       });
       const svc = createAgentServices(multiDeps);
-      const result = await svc['approval.updateConfig']({ mode: 'strict' }, ctx);
+      const result = await svc['approval.updateConfig']({ mode: 'balanced' }, ctx);
       expect(result).toEqual({ success: true });
     });
 
@@ -441,7 +455,7 @@ describe('createAgentServices', () => {
       });
       const svc = createAgentServices(multiDeps);
       // Should not throw when gate is null
-      const result = await svc['approval.updateConfig']({ mode: 'strict' }, ctx);
+      const result = await svc['approval.updateConfig']({ mode: 'balanced' }, ctx);
       expect(result).toEqual({ success: true });
     });
 
@@ -463,16 +477,54 @@ describe('createAgentServices', () => {
       });
       const svc = createAgentServices(multiDeps);
       await svc['approval.updateConfig'](
-        { mode: 'strict', trustedDomains: ['x.com'] },
+        { mode: 'balanced', trustedDomains: ['x.com'] },
         ctx,
       );
 
       const gate1 = agent1.getToolRegistry().getApprovalGate();
       const gate2 = agent2.getToolRegistry().getApprovalGate();
-      expect(gate1.setMode).toHaveBeenCalledWith('strict');
+      expect(gate1.setMode).toHaveBeenCalledWith('balanced');
       expect(gate1.setTrustedDomains).toHaveBeenCalledWith(['x.com']);
-      expect(gate2.setMode).toHaveBeenCalledWith('strict');
+      expect(gate2.setMode).toHaveBeenCalledWith('balanced');
       expect(gate2.setTrustedDomains).toHaveBeenCalledWith(['x.com']);
+    });
+
+    it('rejects malformed or unknown approval settings', async () => {
+      await expect(
+        services['approval.updateConfig']({ mode: 'strict' }, ctx),
+      ).rejects.toThrow('Invalid approval mode');
+      await expect(
+        services['approval.updateConfig']({ mode: 'balanced', surprise: true }, ctx),
+      ).rejects.toThrow('Unknown approval config field');
+      expect(deps.updateApprovalConfig).not.toHaveBeenCalled();
+    });
+
+    it('does not persist or apply managed approval fields', async () => {
+      registerPolicySources([{
+        origin: 'file',
+        load: async () => ({
+          values: { 'agent.approval.mode': 'high_speed' },
+          lockedKeys: ['agent.approval.mode'],
+          origin: 'file',
+        }),
+      }]);
+      await resolveActivePolicy();
+
+      const result = await services['approval.updateConfig'](
+        { mode: 'yolo', trustedDomains: ['allowed.example'] },
+        ctx,
+      );
+
+      expect(result).toEqual({
+        success: true,
+        ignoredLockedKeys: ['approval.mode'],
+      });
+      expect(deps.updateApprovalConfig).toHaveBeenCalledWith({
+        trustedDomains: ['allowed.example'],
+      });
+      const gate = deps.registry.getSession('s1').agent.getToolRegistry().getApprovalGate();
+      expect(gate.setMode).not.toHaveBeenCalled();
+      expect(gate.setTrustedDomains).toHaveBeenCalledWith(['allowed.example']);
     });
   });
 });

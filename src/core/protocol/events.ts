@@ -22,6 +22,9 @@ export interface Event {
   id: string;
   /** Event message */
   msg: EventMsg;
+  /** Added by the per-hydration event gate. */
+  runtimeEpoch?: string;
+  eventSeq?: number;
 }
 
 /**
@@ -38,8 +41,14 @@ export type EventMsg =
   | { type: 'AgentReasoning'; data: AgentReasoningEvent }
   | { type: 'AgentReasoningDelta'; data: AgentReasoningDeltaEvent }
   | { type: 'AgentReasoningRawContent'; data: AgentReasoningRawContentEvent }
-  | { type: 'AgentReasoningRawContentDelta'; data: AgentReasoningRawContentDeltaEvent }
-  | { type: 'AgentReasoningSectionBreak'; data: AgentReasoningSectionBreakEvent }
+  | {
+      type: 'AgentReasoningRawContentDelta';
+      data: AgentReasoningRawContentDeltaEvent;
+    }
+  | {
+      type: 'AgentReasoningSectionBreak';
+      data: AgentReasoningSectionBreakEvent;
+    }
   | { type: 'SessionConfigured'; data: SessionConfiguredEvent }
   | { type: 'McpToolCallBegin'; data: McpToolCallBeginEvent }
   | { type: 'McpToolCallEnd'; data: McpToolCallEndEvent }
@@ -114,6 +123,10 @@ export type EventMsg =
   // Service routing events
   | { type: 'ServiceResponse'; data: ServiceResponseEvent }
   | { type: 'StateUpdate'; data: StateUpdateEvent }
+  | { type: 'session_runtime_state'; data: SessionRuntimeEventData }
+  | { type: 'session_submission_state'; data: SessionSubmissionStateEventData }
+  | { type: 'session_index_changed'; data: SessionIndexChangedEventData }
+  | { type: 'browser_attention_required'; data: BrowserAttentionRequiredEventData }
   // Per-session agent persona mode
   | { type: 'ModeChanged'; data: ModeChangedEvent }
   // Hook system events
@@ -138,9 +151,11 @@ export type EventMsg =
   // Track 04: typed-task layer events (background sub-agents only in v1)
   | { type: 'BackgroundTaskStarted'; data: BackgroundTaskStartedEvent }
   | { type: 'BackgroundTaskOutputDelta'; data: BackgroundTaskOutputDeltaEvent }
-  | { type: 'BackgroundTaskStateChanged'; data: BackgroundTaskStateChangedEvent }
-  | { type: 'BackgroundTaskTerminated'; data: BackgroundTaskTerminatedEvent }
-;
+  | {
+      type: 'BackgroundTaskStateChanged';
+      data: BackgroundTaskStateChangedEvent;
+    }
+  | { type: 'BackgroundTaskTerminated'; data: BackgroundTaskTerminatedEvent };
 
 // ─── Track 04 event payloads ──────────────────────────────────────────────
 
@@ -167,6 +182,10 @@ export interface BackgroundTaskStateChangedEvent {
   taskId: string;
   prevStatus: 'pending' | 'running' | 'completed' | 'failed' | 'killed';
   status: 'pending' | 'running' | 'completed' | 'failed' | 'killed';
+  /** Failure reason when status === 'failed' (e.g. a gateway/model error). */
+  error?: string;
+  errorCode?: string;
+  retryable?: boolean;
 }
 
 export interface BackgroundTaskTerminatedEvent {
@@ -175,6 +194,8 @@ export interface BackgroundTaskTerminatedEvent {
   endTime: number;
   durationMs: number;
   summary?: string;
+  /** Failure reason when status === 'failed' (e.g. a gateway/model error). */
+  error?: string;
 }
 
 // Individual event payload types
@@ -428,12 +449,16 @@ export interface ExecCommandEndEvent {
 
 export interface ExecApprovalRequestEvent {
   id: string;
+  submission_id?: string;
+  turn_id?: string;
   command: string;
   explanation?: string;
 }
 
 export interface ApplyPatchApprovalRequestEvent {
   id: string;
+  submission_id?: string;
+  turn_id?: string;
   path: string;
   patch: string;
   num_files?: number;
@@ -508,9 +533,9 @@ export interface CustomPrompt {
  * Step status for plan items
  */
 export enum StepStatus {
-  Pending = "Pending",
-  InProgress = "InProgress",
-  Completed = "Completed",
+  Pending = 'Pending',
+  InProgress = 'InProgress',
+  Completed = 'Completed',
 }
 
 /**
@@ -557,7 +582,7 @@ export interface TurnAbortedEvent {
   message?: string;
 }
 
-export type TurnAbortReason = 'user_interrupt' | 'automatic_abort' | 'error' | 'user_request';
+export type TurnAbortReason = 'user_interrupt' | 'automatic_abort' | 'error' | 'user_request' | 'worker_restart';
 
 export interface ConversationPathResponseEvent {
   path: string;
@@ -624,6 +649,8 @@ export interface ApprovalAutoApprovedEvent {
  */
 export interface ApprovalRequestedEvent {
   id: string;
+  submission_id?: string;
+  turn_id?: string;
   tool_name: string;
   risk_score: number;
   risk_level: string;
@@ -917,6 +944,47 @@ export interface ServiceResponseEvent {
   data?: unknown;
   /** Error message (on failure) */
   error?: string;
+  /** Stable machine-readable error code when the service provides one. */
+  errorCode?: string;
+  retryable?: boolean;
+}
+
+export interface SessionRuntimeEventData {
+  sessionId: string;
+  state: import('../registry/types').SessionRuntimeState;
+  prevState: import('../registry/types').SessionRuntimeState;
+  awaitingInputCount: number;
+  awaitingInputKinds: Array<'approval' | 'foreground'>;
+  durability: 'ok' | 'degraded';
+  durabilityReason?: 'terminal-marker-write';
+  lastFailure?: import('../registry/types').SessionRuntimeView['lastFailure'];
+  ts: number;
+  reason?: 'opened' | 'evicted' | 'hydration-failed' | 'shutdown' | 'deleted';
+}
+
+export interface SessionSubmissionStateEventData {
+  sessionId: string;
+  clientMessageId: string;
+  state: 'accepted' | 'failed';
+  submissionId?: string;
+  reason?: 'hydration-failed' | 'deleted' | 'shutdown'
+    | 'capacity-canceled' | 'submit-failed';
+  ts: number;
+}
+
+export interface SessionIndexChangedEventData {
+  sessionId: string;
+  change: 'upsert' | 'soft-deleted' | 'restored' | 'purged';
+  entry?: import('../thread/ThreadIndexStore').ThreadIndexEntry;
+  ts: number;
+}
+
+export interface BrowserAttentionRequiredEventData {
+  requestId: string;
+  sessionId: string;
+  tabId: number;
+  reason: 'login' | 'permission' | 'user-gesture';
+  expiresAt: number;
 }
 
 export interface GenericStateUpdateEvent {

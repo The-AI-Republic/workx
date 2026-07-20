@@ -27,6 +27,12 @@ declare const __FEATURE_X402__: boolean;
 declare const __FEATURE_VOICE__: boolean;
 
 /**
+ * App version, injected by Vite `define` from vite.version.mjs (which reads the
+ * canonical value from package.json). App code reads it via src/config/version.ts.
+ */
+declare const __APP_VERSION__: string;
+
+/**
  * Augment the global scope
  */
 declare global {
@@ -36,6 +42,7 @@ declare global {
   const __FEATURE_REMOTE_BRIDGE__: boolean;
   const __FEATURE_X402__: boolean;
   const __FEATURE_VOICE__: boolean;
+  const __APP_VERSION__: string;
 }
 
 export {};

@@ -21,6 +21,7 @@ import {
   buildRuntimeConfig,
   extractStoredConfig
 } from './defaults';
+import { fetchRemoteCatalog } from './remoteCatalog';
 import { validateConfig, validateModelConfig, validateProviderConfig, detectProviderFromKey } from './validators';
 import {
   applyPolicy,
@@ -46,6 +47,7 @@ export class AgentConfig implements IConfigService {
   private currentConfig: IAgentConfig;
   private eventHandlers: Map<string, Set<(e: IConfigChangeEvent) => void>>;
   private initialized: boolean = false;
+  private currentGeneration = 0;
 
   private constructor() {
     this.storage = new ConfigStorage();
@@ -87,6 +89,11 @@ export class AgentConfig implements IConfigService {
     try {
       const storedConfig = await this.storage.get();
       console.log('[AgentConfig] initialize - storedConfig from storage:', storedConfig?.selectedModelKey);
+
+      // Private builds: load the model catalog from the backend and cache it so
+      // getDefaultProviders() (used by buildRuntimeConfig below) full-replaces the
+      // bundled default.json. No-op + fallback to default when unconfigured/failed.
+      await fetchRemoteCatalog();
 
       // Build full runtime config by merging stored data with default.json providers/models
       this.currentConfig = buildRuntimeConfig(storedConfig);
@@ -297,6 +304,42 @@ export class AgentConfig implements IConfigService {
 
     await this.storage.set(extractStoredConfig(this.currentConfig));
     this.emitChangeEvent('model', oldModelKey, compositeKey);
+  }
+
+  /**
+   * Set the efficient model (internal app-logistics tasks: title generation,
+   * tool-use summaries, prompt suggestions). Pass null to clear the selection
+   * and fall back to "same as task model".
+   *
+   * Provider policy is NOT enforced here — the config layer doesn't know the
+   * routing mode. In gateway routing (logged in, not using own API key) any
+   * backend-supported model is allowed; in own-API-key mode the efficient
+   * model must share the task model's provider, enforced by the settings UI
+   * (dropdown contents) and at call time by
+   * ModelClientFactory.createEfficientClient (fallback to the task model).
+   * @param compositeKey - Model key "providerId:modelKey", or null to clear
+   */
+  async setEfficientModel(compositeKey: string | null): Promise<void> {
+    this.ensureInitialized();
+    assertWritable('agent', 'efficientModelKey');
+
+    const oldKey = this.currentConfig.efficientModelKey;
+
+    if (compositeKey === null || compositeKey === '') {
+      delete this.currentConfig.efficientModelKey;
+    } else {
+      if (!compositeKey.includes(':')) {
+        throw new Error(`Invalid model key format: ${compositeKey}. Expected "providerId:modelKey".`);
+      }
+      const modelData = this.getModelByKey(compositeKey);
+      if (!modelData) {
+        throw new Error(`Model not found: ${compositeKey}`);
+      }
+      this.currentConfig.efficientModelKey = compositeKey;
+    }
+
+    await this.storage.set(extractStoredConfig(this.currentConfig));
+    this.emitChangeEvent('efficientModel', oldKey, compositeKey ?? undefined);
   }
 
   /**
@@ -1000,11 +1043,16 @@ export class AgentConfig implements IConfigService {
     this.eventHandlers.get(event)?.delete(handler);
   }
 
+  generation(): number {
+    return this.currentGeneration;
+  }
+
   private emitChangeEvent(
     section: IConfigChangeEvent['section'],
     oldValue: any,
     newValue: any
   ): void {
+    this.currentGeneration += 1;
     const handlers = this.eventHandlers.get('config-changed');
     if (handlers) {
       const event: IConfigChangeEvent = {
@@ -1012,7 +1060,8 @@ export class AgentConfig implements IConfigService {
         section,
         oldValue,
         newValue,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        generation: this.currentGeneration,
       };
       handlers.forEach(handler => handler(event));
     }

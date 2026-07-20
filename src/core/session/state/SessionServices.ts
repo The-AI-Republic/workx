@@ -43,11 +43,14 @@ export interface DOMService {
  * Tab management service interface (browser-specific)
  */
 export interface TabManager {
-  getCurrentTab(): Promise<chrome.tabs.Tab | null>;
-  openTab(url: string): Promise<chrome.tabs.Tab>;
+  getCurrentTab(): Promise<import('../../platform/IPlatformAdapter').BrowserTabDescriptor | null>;
+  openTab(url: string): Promise<import('../../platform/IPlatformAdapter').BrowserTabDescriptor>;
   closeTab(tabId: number): Promise<void>;
-  updateTab(tabId: number, updateProperties: chrome.tabs.UpdateProperties): Promise<chrome.tabs.Tab>;
-  listTabs(): Promise<chrome.tabs.Tab[]>;
+  updateTab(
+    tabId: number,
+    updateProperties: { url?: string; active?: boolean },
+  ): Promise<import('../../platform/IPlatformAdapter').BrowserTabDescriptor>;
+  listTabs(): Promise<import('../../platform/IPlatformAdapter').BrowserTabDescriptor[]>;
 }
 
 /**
@@ -88,6 +91,28 @@ export interface SessionServices {
    * extension bundle.
    */
   serverRootDir?: string;
+
+  /** Optional platform-provided fallback for a new session. */
+  defaultWorkingDirectory?: string;
+
+  /** Internal lifecycle edge notification. Never sent over the wire. */
+  onBackgroundWorkChanged?: (sessionId: string) => void | Promise<void>;
+
+  /** Publish an empty draft after its first user message is durably recorded. */
+  onUserMessagePersisted?: (sessionId: string) => void | Promise<void>;
+
+  /**
+   * Serialize a generated-title commit with the durable thread index. A false
+   * result means a user rename won and the generated title must be discarded.
+   */
+  commitGeneratedTitle?: (sessionId: string, title: string) => Promise<boolean>;
+
+  /** Report a durable terminal-marker failure without changing the task result. */
+  onDurabilityChanged?: (
+    sessionId: string,
+    durability: 'ok' | 'degraded',
+    reason?: 'terminal-marker-write',
+  ) => void | Promise<void>;
 }
 
 /**
@@ -157,5 +182,10 @@ export async function createSessionServices(
     showRawAgentReasoning: config.showRawAgentReasoning ?? false,
     sessionCache: config.sessionCache,
     serverRootDir: config.serverRootDir,
+    defaultWorkingDirectory: config.defaultWorkingDirectory,
+    onBackgroundWorkChanged: config.onBackgroundWorkChanged,
+    onUserMessagePersisted: config.onUserMessagePersisted,
+    commitGeneratedTitle: config.commitGeneratedTitle,
+    onDurabilityChanged: config.onDurabilityChanged,
   };
 }

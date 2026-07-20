@@ -16,6 +16,7 @@ import {
   type RolloutMetadataRecord,
 } from './types';
 import { RolloutWriter } from './RolloutWriter';
+import { APP_VERSION } from '@/config/version';
 import { filterPersistedItems } from './policy';
 import { listConversations as listConversationsImpl } from './listing';
 import { cleanupExpired as cleanupExpiredImpl } from './cleanup';
@@ -149,7 +150,7 @@ export class RolloutRecorder {
         id: sessionId,
         timestamp: getCurrentTimestamp(),
         originator: 'chrome-extension',
-        cliVersion: '1.0.0', // TODO: Load from package.json or config
+        cliVersion: APP_VERSION,
         instructions,
         title: generatePlaceholderTitle(), // Placeholder title: "YYYY-MM-DD_HH-mm_chat"
       },
@@ -434,6 +435,13 @@ export class RolloutRecorder {
    */
   static async cleanupExpired(): Promise<number> {
     return cleanupExpiredImpl();
+  }
+
+  /** Delete one complete rollout. Used only after the thread tombstone is due. */
+  static async deleteSession(sessionId: ConversationId): Promise<void> {
+    const provider = await RolloutRecorder.getProvider();
+    await provider.deleteItemsByRolloutIds([sessionId]);
+    await provider.deleteMetadata(sessionId);
   }
 
   /**

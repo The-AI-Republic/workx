@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
+// @ts-ignore - plain .mjs data module, no types (dependency-free by design)
+import { versionDefine } from './vite.version.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -8,6 +10,7 @@ export default defineConfig({
   envDir: resolve(__dirname, 'src/desktop'),
   define: {
     __BUILD_MODE__: JSON.stringify('server'),
+    ...versionDefine(),
   },
   build: {
     ssr: resolve(__dirname, 'src/desktop-runtime/index.ts'),
@@ -33,7 +36,16 @@ export default defineConfig({
     // …). The default Vite SSR behavior — externalize everything in
     // package.json `dependencies` — would leave zod/MCP SDK/OpenAI SDK/etc.
     // as bare imports that the packaged sidecar cannot resolve.
-    external: ['better-sqlite3', 'fsevents', 'sqlite-vec'],
+    // `ws` MUST stay external: bundling it makes rollup stub its optional
+    // `require('bufferutil')` to an empty object instead of letting it throw,
+    // so `ws` never falls back to its JS mask/unmask and `bufferUtil.unmask`
+    // is undefined — every masked (client→server) frame then crashes the
+    // receive path (TypeError: bufferUtil.unmask is not a function), silently
+    // killing every app-server WebSocket connection. Left external, the real
+    // runtime `require('bufferutil')` throws, `ws` uses its JS fallback, and
+    // inbound frames unmask correctly. It's copied into the sidecar
+    // node_modules by scripts/build-desktop-runtime-sidecar.mjs.
+    external: ['better-sqlite3', 'fsevents', 'sqlite-vec', 'ws'],
     noExternal: true,
   },
   resolve: {

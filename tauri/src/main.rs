@@ -127,6 +127,16 @@ mod tests {
 }
 
 fn main() {
+    // WebKitGTK's DMABUF renderer (default since 2.42) paints a black/blank
+    // window on the NVIDIA proprietary driver and is slow to first paint on
+    // several Linux GPU/driver combinations. Disabling it restores correct and
+    // faster rendering. Must run before the webview initializes; only set when
+    // the user hasn't already chosen a value.
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     // Accept both the legacy `applepi://` scheme (kept for backward
     // compatibility) and the new `workx://` scheme. `applepi` is being
     // gradually retired; new links should use `workx`.
@@ -141,6 +151,7 @@ fn main() {
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--autostarted"])))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
         // Single instance plugin handles deep links on Windows/Linux
         // When a second instance is launched with a deep link URL,
         // it forwards the URL to the existing instance

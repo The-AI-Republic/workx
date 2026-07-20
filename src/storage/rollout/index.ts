@@ -43,6 +43,7 @@ export type {
   // IndexedDB schema
   RolloutMetadataRecord,
   RolloutItemRecord,
+  RolloutItemRange,
 
   // Configuration
   RolloutStorageConfig,
@@ -113,3 +114,9 @@ export {
 
 export type { RolloutStorageProvider, StorageStats } from './provider';
 export { createRolloutStorageProvider } from './provider';
+export {
+  loadHistoryPage,
+  projectHistoryRecords,
+  stableHistoryItemId,
+} from './history';
+export type { HistoryItem, HistoryPage, HistoryTurn, HistoryTurnStatus } from './history';

@@ -359,6 +359,42 @@ describe('MCPManager', () => {
         /not found/i
       );
     });
+
+    it('makes concurrent callers await the same connection attempt', async () => {
+      const manager = await MCPManager.getInstance();
+      const config = await manager.addServer({
+        name: 'gateway',
+        url: 'https://gateway.example.com/mcp',
+        transport: 'sse',
+      });
+      let finishConnect!: () => void;
+      const deferredConnect = vi.fn(
+        () => new Promise<void>((resolve) => { finishConnect = resolve; }),
+      );
+      vi.spyOn(manager as any, 'createAdapter').mockResolvedValue({
+        connect: deferredConnect,
+        disconnect: vi.fn(),
+        getServerInfo: () => ({ name: 'gateway', version: '1.0' }),
+        getCapabilities: () => ({ tools: {} }),
+        getTools: () => [],
+        getResources: () => [],
+        getProtocolVersion: () => '2025-01-01',
+      });
+
+      const first = manager.connect(config.id);
+      await vi.waitFor(() => expect(deferredConnect).toHaveBeenCalledTimes(1));
+      const second = manager.connect(config.id);
+      let secondSettled = false;
+      void second.then(() => { secondSettled = true; });
+      await Promise.resolve();
+
+      expect(secondSettled).toBe(false);
+      expect(deferredConnect).toHaveBeenCalledTimes(1);
+
+      finishConnect();
+      await Promise.all([first, second]);
+      expect(manager.getConnection(config.id)?.status).toBe('connected');
+    });
   });
 
   describe('disconnect', () => {

@@ -30,6 +30,9 @@ export function isPersistedRolloutItem(item: RolloutItem): boolean {
       return true; // Always persist — required for byte-identical resume (track 09)
     case 'plan_artifact':
       return true; // Always persist — durability + Track 15 rewind anchor (track 14)
+    case 'turn_start':
+    case 'turn_completion':
+      return true; // Lifecycle markers and legacy completion records are durable.
     default:
       return false;
   }

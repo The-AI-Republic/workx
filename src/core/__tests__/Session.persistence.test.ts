@@ -165,4 +165,34 @@ describe('Session — track 09 persistence interactions', () => {
       '<persisted-output>seeded</persisted-output>',
     );
   });
+
+  it('normalizes legacy JSON-wrapped user inputs when rebuilding model context', () => {
+    const session = new Session(undefined, false);
+    const wrapped = (text: string): ResponseItem => ({
+      type: 'message',
+      role: 'user',
+      content: [{
+        type: 'input_text',
+        text: JSON.stringify({ type: 'text', text }),
+      }],
+    });
+
+    (session as any).reconstructHistoryFromRollout([
+      { type: 'response_item', payload: wrapped('direct legacy input') },
+    ] satisfies RolloutItem[]);
+    expect(session.getConversationHistory().items).toMatchObject([{
+      content: [{ type: 'input_text', text: 'direct legacy input' }],
+    }]);
+
+    (session as any).reconstructHistoryFromRollout([{
+      type: 'compacted',
+      payload: {
+        message: 'legacy checkpoint',
+        replacementHistory: [wrapped('compacted legacy input')],
+      },
+    }] satisfies RolloutItem[]);
+    expect(session.getConversationHistory().items).toMatchObject([{
+      content: [{ type: 'input_text', text: 'compacted legacy input' }],
+    }]);
+  });
 });
