@@ -287,18 +287,18 @@
               >
             {/if}
             <button
-              class="px-1 border-none bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100"
+              class="px-1 border-none bg-transparent text-inherit text-[1.5em] leading-none cursor-pointer opacity-70 hover:opacity-100"
               title={item.pinned ? $_t('Unpin') : $_t('Pin')}
               onclick={() => void togglePin(item.sessionId, !item.pinned)}
               >{item.pinned ? '★' : '☆'}</button
             >
             <button
-              class="px-1 border-none bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100"
+              class="px-1 border-none bg-transparent text-inherit text-[1.5em] leading-none cursor-pointer opacity-70 hover:opacity-100"
               title={$_t('Rename')}
               onclick={() => void rename(item.sessionId, item.title)}>✎</button
             >
             <button
-              class="px-1 border-none bg-transparent text-inherit cursor-pointer opacity-70 hover:opacity-100"
+              class="px-1 border-none bg-transparent text-inherit text-[1.5em] leading-none cursor-pointer opacity-70 hover:opacity-100"
               title={$_t('Delete')}
               onclick={() => void remove(item.sessionId, item.title)}>×</button
             >

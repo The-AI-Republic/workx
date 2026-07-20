@@ -152,9 +152,11 @@ describe('ChatHistorySection paging', () => {
     expect(screen.queryByRole('button', { name: 'New Chat' })).toBeNull();
     // Row controls still exist (rendered in the hover overlay), so pin/rename/
     // delete remain reachable. They expose their label via `title`.
-    expect(screen.getByTitle('Pin')).toBeTruthy();
-    expect(screen.getByTitle('Rename')).toBeTruthy();
-    expect(screen.getByTitle('Delete')).toBeTruthy();
+    for (const title of ['Pin', 'Rename', 'Delete']) {
+      const control = screen.getByTitle(title);
+      expect(control.classList.contains('text-[1.5em]')).toBe(true);
+      expect(control.classList.contains('leading-none')).toBe(true);
+    }
   });
 
   it('lets a newer search replace an in-flight result and ignores the stale response', async () => {
