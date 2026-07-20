@@ -60,12 +60,20 @@
       <label class="mt-2 block">
         <span class="sr-only">Previewed file change</span>
         <select
-          class="w-full truncate rounded border bg-transparent px-2 py-1.5 text-sm {theme === 'terminal' ? 'border-term-dim-green' : 'border-gray-300 dark:border-gray-600'}"
+          class="preview-operation-select w-full truncate rounded border px-2 py-1.5 text-sm outline-none
+            {theme === 'terminal'
+              ? 'preview-operation-select-terminal font-terminal bg-term-bg text-term-green border-term-dim-green focus:border-term-bright-green'
+              : 'preview-operation-select-modern font-chat bg-chat-input dark:bg-chat-input-dark text-chat-text dark:text-chat-text-dark border-chat-input-border dark:border-chat-input-border-dark focus:border-chat-input-focus dark:focus:border-chat-input-focus-dark'}"
           value={selectedItem?.id ?? ''}
           onchange={(event) => onSelectItem(event.currentTarget.value)}
         >
           {#each state.items as item (item.id)}
-            <option value={item.id}>{item.operation === 'created' ? 'Created' : 'Modified'} · {item.resource.path} · {operationTime(item.createdAt)}</option>
+            <option
+              class={theme === 'terminal'
+                ? 'bg-term-bg text-term-green'
+                : 'bg-chat-input text-chat-text dark:bg-chat-input-dark dark:text-chat-text-dark'}
+              value={item.id}
+            >{item.operation === 'created' ? 'Created' : 'Modified'} · {item.resource.path} · {operationTime(item.createdAt)}</option>
           {/each}
         </select>
       </label>
@@ -109,3 +117,19 @@
     <div class="flex flex-1 items-center justify-center p-6 text-center text-sm opacity-65">Local file changes will appear here.</div>
   {/if}
 </section>
+
+<style>
+  /* WebKitGTK otherwise paints the native select menu using the OS default,
+     which can disagree with WorkX's independently selected UI theme. */
+  .preview-operation-select-terminal {
+    color-scheme: dark;
+  }
+
+  .preview-operation-select-modern {
+    color-scheme: light;
+  }
+
+  :global(.dark) .preview-operation-select-modern {
+    color-scheme: dark;
+  }
+</style>

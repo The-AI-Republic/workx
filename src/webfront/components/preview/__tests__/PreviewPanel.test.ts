@@ -36,13 +36,17 @@ describe('PreviewPanel', () => {
     };
     render(PreviewPanel, { props: { state, onClose, onSelectItem, onSelectView } });
 
+    const operationSelect = screen.getByRole('combobox', { name: 'Previewed file change' });
+    expect(operationSelect.className).toContain('preview-operation-select-modern');
+    expect(operationSelect.className).toContain('bg-chat-input');
+    expect(operationSelect.className).toContain('dark:bg-chat-input-dark');
     expect(screen.getByRole('tab', { name: 'Diff' }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tab', { name: 'Rendered' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Source' })).toBeTruthy();
     await fireEvent.click(screen.getByRole('tab', { name: 'Source' }));
     expect(onSelectView).toHaveBeenCalledWith('source');
 
-    await fireEvent.change(screen.getByRole('combobox', { name: 'Previewed file change' }), {
+    await fireEvent.change(operationSelect, {
       target: { value: 'two' },
     });
     expect(onSelectItem).toHaveBeenCalledWith('two');
@@ -76,6 +80,10 @@ describe('PreviewPanel', () => {
     });
 
     expect(container.querySelector('section')?.className).toContain('bg-black');
+    const operationSelect = screen.getByRole('combobox', { name: 'Previewed file change' });
+    expect(operationSelect.className).toContain('preview-operation-select-terminal');
+    expect(operationSelect.className).toContain('bg-term-bg');
+    expect(operationSelect.className).toContain('text-term-green');
     expect(screen.getByText(/generated patch exceeded/)).toBeTruthy();
     expect(container.querySelector('[data-preview-close]')).toBeTruthy();
   });
