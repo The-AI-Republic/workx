@@ -9,10 +9,20 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 
 const MANIFEST_URL_ENV: &str = "WORKX_VOICE_STT_MANIFEST_URL";
+const MANIFEST_SHA256_ENV: &str = "WORKX_VOICE_STT_MANIFEST_SHA256";
+const BUILT_MANIFEST_URL: Option<&str> = option_env!("WORKX_VOICE_STT_MANIFEST_URL");
+const BUILT_MANIFEST_SHA256: Option<&str> = option_env!("WORKX_VOICE_STT_MANIFEST_SHA256");
 const COMPONENT_DIR: &str = "voice-stt";
 const INSTALL_FILE: &str = "install.json";
+const SUPPORTED_PROTOCOL_VERSION: u32 = 1;
 const MAX_AUDIO_BYTES: usize = 50 * 1024 * 1024;
 const TRANSCRIBE_TIMEOUT_MS: u64 = 120_000;
+
+#[derive(Debug, Clone)]
+struct ManifestConfig {
+    url: String,
+    sha256: Option<String>,
+}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -58,6 +68,8 @@ struct VoiceInstallMetadata {
     runtime_name: String,
     model_name: String,
     args: Option<Vec<String>>,
+    #[serde(default)]
+    manifest_sha256: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -83,15 +95,69 @@ fn current_target() -> String {
     format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH)
 }
 
-fn manifest_url() -> Option<String> {
-    std::env::var(MANIFEST_URL_ENV)
+fn non_empty(value: Result<String, std::env::VarError>) -> Option<String> {
+    value
         .ok()
-        .map(|value| value.trim().to_string())
+        .map(|value| value.trim().to_owned())
         .filter(|value| !value.is_empty())
 }
 
 fn is_allowed_download_url(url: &str) -> bool {
-    url.starts_with("https://") || url.starts_with("http://localhost")
+    let Ok(parsed) = reqwest::Url::parse(url) else {
+        return false;
+    };
+    if parsed.scheme() == "https" {
+        return true;
+    }
+    parsed.scheme() == "http"
+        && matches!(parsed.host_str(), Some("localhost" | "127.0.0.1" | "::1"))
+}
+
+fn is_local_download_url(url: &str) -> bool {
+    let Ok(parsed) = reqwest::Url::parse(url) else {
+        return false;
+    };
+    matches!(parsed.host_str(), Some("localhost" | "127.0.0.1" | "::1"))
+}
+
+fn manifest_config() -> Result<Option<ManifestConfig>, String> {
+    let runtime_url = non_empty(std::env::var(MANIFEST_URL_ENV));
+    let runtime_sha256 = non_empty(std::env::var(MANIFEST_SHA256_ENV));
+    let url = runtime_url.or_else(|| BUILT_MANIFEST_URL.map(str::to_owned));
+    let Some(url) = url else {
+        return Ok(None);
+    };
+    let sha256 = runtime_sha256.or_else(|| BUILT_MANIFEST_SHA256.map(str::to_owned));
+    validate_manifest_config(url, sha256).map(Some)
+}
+
+fn validate_manifest_config(url: String, sha256: Option<String>) -> Result<ManifestConfig, String> {
+    if !is_allowed_download_url(&url) {
+        return Err(
+            "Voice STT manifest URL must use HTTPS (or loopback HTTP for development).".to_string(),
+        );
+    }
+    if sha256.is_none() && !is_local_download_url(&url) {
+        return Err(format!(
+            "Voice STT manifest is not pinned. Set {} when building the desktop app.",
+            MANIFEST_SHA256_ENV
+        ));
+    }
+    Ok(ManifestConfig { url, sha256 })
+}
+
+fn safe_component_path(root: &Path, name: &str, label: &str) -> Result<PathBuf, String> {
+    if name.is_empty()
+        || name == "."
+        || name == ".."
+        || name.contains('/')
+        || name.contains('\\')
+        || name.contains(':')
+        || Path::new(name).is_absolute()
+    {
+        return Err(format!("Voice STT {} must be a single file name.", label));
+    }
+    Ok(root.join(name))
 }
 
 fn component_root(app: &AppHandle) -> Result<PathBuf, String> {
@@ -121,16 +187,47 @@ fn installed_paths(
     app: &AppHandle,
     metadata: &VoiceInstallMetadata,
 ) -> Result<(PathBuf, PathBuf), String> {
+    let config = manifest_config()?
+        .ok_or_else(|| "Voice STT is not configured for this desktop build.".to_string())?;
+    if let Some(expected) = config.sha256.as_deref() {
+        let installed = metadata.manifest_sha256.as_deref().unwrap_or_default();
+        if !installed.eq_ignore_ascii_case(expected) {
+            return Err(
+                "Voice STT install predates or does not match this build's pinned manifest; reinstall it."
+                    .to_string(),
+            );
+        }
+    }
+    if metadata.target != current_target() {
+        return Err(format!(
+            "Voice STT component target {} does not match this app target {}.",
+            metadata.target,
+            current_target()
+        ));
+    }
+    if metadata.protocol_version != SUPPORTED_PROTOCOL_VERSION {
+        return Err(format!(
+            "Voice STT protocol {} is unsupported (expected {}).",
+            metadata.protocol_version, SUPPORTED_PROTOCOL_VERSION
+        ));
+    }
     let root = component_root(app)?;
     Ok((
-        root.join(&metadata.runtime_name),
-        root.join(&metadata.model_name),
+        safe_component_path(&root, &metadata.runtime_name, "runtime name")?,
+        safe_component_path(&root, &metadata.model_name, "model name")?,
     ))
 }
 
 fn build_status(app: &AppHandle) -> VoiceSttStatus {
     let target = current_target();
-    let configured = manifest_url().is_some();
+    let config = manifest_config();
+    let configured = matches!(config, Ok(Some(_)));
+    let manifest_url = config
+        .as_ref()
+        .ok()
+        .and_then(|value| value.as_ref())
+        .map(|value| value.url.clone());
+    let configuration_error = config.err();
     match read_install_metadata(app) {
         Ok(Some(metadata)) => match installed_paths(app, &metadata) {
             Ok((runtime_path, model_path)) => {
@@ -143,9 +240,11 @@ fn build_status(app: &AppHandle) -> VoiceSttStatus {
                     protocol_version: Some(metadata.protocol_version),
                     runtime_path: Some(runtime_path.to_string_lossy().to_string()),
                     model_path: Some(model_path.to_string_lossy().to_string()),
-                    manifest_url: manifest_url(),
-                    error: if installed {
+                    manifest_url,
+                    error: if installed && configuration_error.is_none() {
                         None
+                    } else if let Some(error) = configuration_error {
+                        Some(error)
                     } else {
                         Some(
                             "Voice STT metadata exists, but runtime or model file is missing."
@@ -162,8 +261,8 @@ fn build_status(app: &AppHandle) -> VoiceSttStatus {
                 protocol_version: Some(metadata.protocol_version),
                 runtime_path: None,
                 model_path: None,
-                manifest_url: manifest_url(),
-                error: Some(e),
+                manifest_url,
+                error: Some(configuration_error.unwrap_or(e)),
             },
         },
         Ok(None) => VoiceSttStatus {
@@ -174,8 +273,8 @@ fn build_status(app: &AppHandle) -> VoiceSttStatus {
             protocol_version: None,
             runtime_path: None,
             model_path: None,
-            manifest_url: manifest_url(),
-            error: None,
+            manifest_url,
+            error: configuration_error,
         },
         Err(e) => VoiceSttStatus {
             configured,
@@ -185,23 +284,10 @@ fn build_status(app: &AppHandle) -> VoiceSttStatus {
             protocol_version: None,
             runtime_path: None,
             model_path: None,
-            manifest_url: manifest_url(),
-            error: Some(e),
+            manifest_url,
+            error: Some(configuration_error.unwrap_or(e)),
         },
     }
-}
-
-async fn fetch_text(url: &str) -> Result<String, String> {
-    reqwest::Client::new()
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to download voice STT manifest: {}", e))?
-        .error_for_status()
-        .map_err(|e| format!("Voice STT manifest request failed: {}", e))?
-        .text()
-        .await
-        .map_err(|e| format!("Failed to read voice STT manifest: {}", e))
 }
 
 async fn fetch_bytes(url: &str) -> Result<Vec<u8>, String> {
@@ -275,19 +361,24 @@ pub fn voice_stt_status(app: AppHandle) -> VoiceSttStatus {
 
 #[tauri::command]
 pub async fn install_voice_stt_component(app: AppHandle) -> Result<VoiceSttStatus, String> {
-    let url = manifest_url().ok_or_else(|| {
+    let config = manifest_config()?.ok_or_else(|| {
         format!(
-            "Voice STT is not configured. Set {} to a WorkX voice STT manifest URL.",
-            MANIFEST_URL_ENV
+            "Voice STT is not configured. Set {} and {} when building the desktop app.",
+            MANIFEST_URL_ENV, MANIFEST_SHA256_ENV
         )
     })?;
-    if !is_allowed_download_url(&url) {
-        return Err("Voice STT manifest URL must use HTTPS.".to_string());
+    let manifest_bytes = fetch_bytes(&config.url).await?;
+    if let Some(expected) = config.sha256.as_deref() {
+        verify_sha256(&manifest_bytes, expected, "manifest")?;
     }
-
-    let manifest_text = fetch_text(&url).await?;
-    let manifest: VoiceManifest = serde_json::from_str(&manifest_text)
+    let manifest: VoiceManifest = serde_json::from_slice(&manifest_bytes)
         .map_err(|e| format!("Failed to parse voice STT manifest: {}", e))?;
+    if manifest.protocol_version != SUPPORTED_PROTOCOL_VERSION {
+        return Err(format!(
+            "Voice STT manifest protocol {} is unsupported (expected {}).",
+            manifest.protocol_version, SUPPORTED_PROTOCOL_VERSION
+        ));
+    }
     let asset = pick_asset(&manifest)?;
     if !is_allowed_download_url(&asset.runtime_url) || !is_allowed_download_url(&asset.model_url) {
         return Err("Voice STT asset URLs must use HTTPS.".to_string());
@@ -299,13 +390,13 @@ pub async fn install_voice_stt_component(app: AppHandle) -> Result<VoiceSttStatu
 
     let runtime_bytes = fetch_bytes(&asset.runtime_url).await?;
     verify_sha256(&runtime_bytes, &asset.runtime_sha256, "runtime")?;
-    let runtime_path = root.join(&asset.executable_name);
+    let runtime_path = safe_component_path(&root, &asset.executable_name, "executable name")?;
     write_verified_file(&runtime_path, &runtime_bytes)?;
     mark_executable(&runtime_path)?;
 
     let model_bytes = fetch_bytes(&asset.model_url).await?;
     verify_sha256(&model_bytes, &asset.model_sha256, "model")?;
-    let model_path = root.join(&asset.model_file_name);
+    let model_path = safe_component_path(&root, &asset.model_file_name, "model file name")?;
     write_verified_file(&model_path, &model_bytes)?;
 
     let metadata = VoiceInstallMetadata {
@@ -315,6 +406,7 @@ pub async fn install_voice_stt_component(app: AppHandle) -> Result<VoiceSttStatu
         runtime_name: asset.executable_name,
         model_name: asset.model_file_name,
         args: asset.args,
+        manifest_sha256: config.sha256,
     };
     let metadata_json = serde_json::to_string_pretty(&metadata)
         .map_err(|e| format!("Failed to serialize voice STT metadata: {}", e))?;
@@ -414,7 +506,11 @@ fn run_transcription_sidecar(
                 return Err("Voice transcription timed out.".to_string());
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(20)),
-            Err(e) => return Err(format!("Failed waiting on voice STT runtime: {}", e)),
+            Err(e) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("Failed waiting on voice STT runtime: {}", e));
+            }
         }
     };
 
@@ -486,17 +582,16 @@ pub async fn transcribe_voice_audio(
     ));
     fs::write(&audio_path, audio).map_err(|e| format!("Failed to write recorded audio: {}", e))?;
 
-    let result = tokio::task::spawn_blocking({
+    let task_result = tokio::task::spawn_blocking({
         let runtime_path = runtime_path.clone();
         let model_path = model_path.clone();
         let audio_path = audio_path.clone();
         move || run_transcription_sidecar(runtime_path, model_path, audio_path, metadata)
     })
-    .await
-    .map_err(|e| format!("voice STT task join error: {}", e))?;
+    .await;
 
     let _ = fs::remove_file(&audio_path);
-    result
+    task_result.map_err(|e| format!("voice STT task join error: {}", e))?
 }
 
 #[cfg(test)]
@@ -523,6 +618,7 @@ mod tests {
                 "--model={model}".to_string(),
                 "--audio={input}".to_string(),
             ]),
+            manifest_sha256: None,
         };
         let args = command_args(&metadata, Path::new("/m.bin"), Path::new("/a.webm"));
         assert_eq!(args, vec!["--model=/m.bin", "--audio=/a.webm"]);
@@ -532,7 +628,41 @@ mod tests {
     fn download_url_policy_allows_https_and_localhost_only() {
         assert!(is_allowed_download_url("https://cdn.example.com/model.bin"));
         assert!(is_allowed_download_url("http://localhost:5173/model.bin"));
+        assert!(is_allowed_download_url("http://127.0.0.1:5173/model.bin"));
         assert!(!is_allowed_download_url("http://example.com/model.bin"));
+        assert!(!is_allowed_download_url(
+            "http://localhost.evil.example/model.bin"
+        ));
         assert!(!is_allowed_download_url("file:///tmp/model.bin"));
+    }
+
+    #[test]
+    fn component_paths_reject_traversal_and_nested_names() {
+        let root = Path::new("/tmp/voice");
+        assert_eq!(
+            safe_component_path(root, "workx-stt", "runtime").unwrap(),
+            root.join("workx-stt")
+        );
+        assert!(safe_component_path(root, "../workx-stt", "runtime").is_err());
+        assert!(safe_component_path(root, "nested/workx-stt", "runtime").is_err());
+        assert!(safe_component_path(root, "nested\\workx-stt.exe", "runtime").is_err());
+        assert!(safe_component_path(root, "C:workx-stt.exe", "runtime").is_err());
+    }
+
+    #[test]
+    fn remote_manifest_requires_a_pinned_hash() {
+        assert!(
+            validate_manifest_config("https://cdn.example.com/stable.json".to_string(), None,)
+                .is_err()
+        );
+        assert!(validate_manifest_config(
+            "https://cdn.example.com/stable.json".to_string(),
+            Some("abc123".to_string()),
+        )
+        .is_ok());
+        assert!(
+            validate_manifest_config("http://localhost:5173/stable.json".to_string(), None,)
+                .is_ok()
+        );
     }
 }

@@ -64,6 +64,7 @@
 
   let isFocused = $state(false);
   let voiceSupported = $state(false);
+  let isStartingVoice = $state(false);
   let isRecordingVoice = $state(false);
   let isTranscribingVoice = $state(false);
   let voiceError: string | null = $state(null);
@@ -72,8 +73,11 @@
   let voiceSource: MediaStreamAudioSourceNode | null = null;
   let voiceProcessor: ScriptProcessorNode | null = null;
   let voicePcmChunks: Float32Array[] = [];
+  let voiceSampleCount = 0;
+  let voiceStopQueued = false;
   let voiceSampleRate = 16000;
   let voiceDisposed = false;
+  const MAX_VOICE_RECORDING_SECONDS = 300;
 
   // Track 13: screenshots captured from the web clipboard, sent alongside
   // the prompt as `image` InputItems (the core funnel disk-backs them).
@@ -202,9 +206,11 @@
   let voiceTooltipContent = $derived(
     isTranscribingVoice
       ? $_t('Transcribing voice')
-      : isRecordingVoice
-        ? $_t('Stop recording')
-        : $_t('Voice input')
+      : isStartingVoice
+        ? $_t('Starting voice input')
+        : isRecordingVoice
+          ? $_t('Stop recording')
+          : $_t('Voice input')
   );
 
   function handleModelChanged(data: { modelId: string; modelName: string }) {
@@ -298,10 +304,16 @@
   }
 
   async function startVoiceRecording(): Promise<void> {
-    if (!voiceSupported || isRecordingVoice || isTranscribingVoice) return;
+    if (!voiceSupported || isStartingVoice || isRecordingVoice || isTranscribingVoice) return;
+    isStartingVoice = true;
     voiceError = null;
     try {
-      voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (voiceDisposed) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      voiceStream = stream;
       const AudioContextCtor = window.AudioContext
         || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AudioContextCtor) {
@@ -310,27 +322,50 @@
       voiceAudioContext = new AudioContextCtor();
       voiceSampleRate = voiceAudioContext.sampleRate;
       voicePcmChunks = [];
-      voiceSource = voiceAudioContext.createMediaStreamSource(voiceStream);
+      voiceSampleCount = 0;
+      voiceStopQueued = false;
+      voiceSource = voiceAudioContext.createMediaStreamSource(stream);
       voiceProcessor = voiceAudioContext.createScriptProcessor(4096, 1, 1);
       voiceProcessor.onaudioprocess = (event) => {
         if (!isRecordingVoice) return;
         const input = event.inputBuffer.getChannelData(0);
-        voicePcmChunks = [...voicePcmChunks, new Float32Array(input)];
+        const maxSamples = voiceSampleRate * MAX_VOICE_RECORDING_SECONDS;
+        const remaining = Math.max(0, maxSamples - voiceSampleCount);
+        if (remaining > 0) {
+          const captured = new Float32Array(input.subarray(0, remaining));
+          voicePcmChunks.push(captured);
+          voiceSampleCount += captured.length;
+        }
         const output = event.outputBuffer.getChannelData(0);
         output.fill(0);
+        if (voiceSampleCount >= maxSamples && !voiceStopQueued) {
+          voiceStopQueued = true;
+          queueMicrotask(() => {
+            if (!voiceDisposed && isRecordingVoice) stopVoiceRecording();
+          });
+        }
       };
       voiceSource.connect(voiceProcessor);
       voiceProcessor.connect(voiceAudioContext.destination);
       if (voiceAudioContext.state === 'suspended') {
         await voiceAudioContext.resume();
       }
+      if (voiceDisposed) {
+        stopVoiceAudioGraph();
+        stopVoiceTracks();
+        return;
+      }
       isRecordingVoice = true;
     } catch (err) {
       stopVoiceAudioGraph();
       stopVoiceTracks();
-      isRecordingVoice = false;
-      isTranscribingVoice = false;
-      voiceError = err instanceof Error ? err.message : String(err);
+      if (!voiceDisposed) {
+        isRecordingVoice = false;
+        isTranscribingVoice = false;
+        voiceError = err instanceof Error ? err.message : String(err);
+      }
+    } finally {
+      if (!voiceDisposed) isStartingVoice = false;
     }
   }
 
@@ -340,6 +375,8 @@
     const chunks = voicePcmChunks;
     const sampleRate = voiceSampleRate;
     voicePcmChunks = [];
+    voiceSampleCount = 0;
+    voiceStopQueued = false;
     stopVoiceAudioGraph();
     stopVoiceTracks();
 
@@ -370,6 +407,7 @@
   }
 
   function handleVoiceButtonClick(): void {
+    if (isStartingVoice) return;
     if (isRecordingVoice) {
       stopVoiceRecording();
       return;
@@ -831,7 +869,7 @@
                     : ' bg-term-red/10 border-term-red text-term-red')
                   : ''}"
               onclick={handleVoiceButtonClick}
-              disabled={isTranscribingVoice}
+              disabled={isStartingVoice || isTranscribingVoice}
               aria-label={isRecordingVoice ? $_t('Stop recording') : $_t('Voice input')}
             >
               {#if isTranscribingVoice}

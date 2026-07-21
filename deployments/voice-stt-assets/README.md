@@ -31,11 +31,23 @@ s3://workx-voice-stt-assets/
 ```
 
 Run `./provision.sh` with AWS credentials that can create and configure S3
-buckets. The current desktop app can then set:
+buckets. Production desktop builds must embed both the manifest URL and the
+SHA-256 of the exact manifest bytes:
 
-```text
-WORKX_VOICE_STT_MANIFEST_URL=https://workx-voice-stt-assets.s3.us-west-2.amazonaws.com/stable.json
+```bash
+manifest_url=https://workx-voice-stt-assets.s3.us-west-2.amazonaws.com/stable.json
+manifest_file=$(mktemp)
+curl --fail --silent --show-error "$manifest_url" --output "$manifest_file"
+export WORKX_VOICE_STT_MANIFEST_URL="$manifest_url"
+export WORKX_VOICE_STT_MANIFEST_SHA256="$(sha256sum "$manifest_file" | cut -d' ' -f1)"
+npm run tauri:build
 ```
+
+The Rust desktop binary captures these variables at compile time. At runtime it
+verifies the manifest hash before trusting the runtime/model hashes contained
+inside it. A release must therefore be rebuilt when `stable.json` changes.
+Loopback development manifests may omit the checksum; non-loopback manifests
+fail closed without one.
 
 The initial published manifest contains the Linux x86_64 asset only. Add
 macOS and Windows entries after publishing matching platform runtimes.
