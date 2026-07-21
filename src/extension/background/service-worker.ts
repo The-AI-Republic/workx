@@ -29,7 +29,6 @@ import { resolveRuntimeUrls } from '../../config/runtimeUrls';
 import {
   getSessionAccessToken,
   refreshSessionAccessToken,
-  peekSessionAccessToken,
 } from '../auth/extensionSessionToken';
 // Track 22: MCP/A2A are gated behind compile-time feature flags. Manager
 // classes and tool-adapter helpers load via dynamic import() inside the
@@ -478,40 +477,25 @@ async function doInitialize(): Promise<void> {
 /**
  * Build an AuthManager for the extension service worker.
  *
- * In account-credits mode (`shouldUseBackend`), route account LLM through the AI Hub
- * gateway ONLY when routing mode is 'gateway', a gateway URL is configured, AND a
- * session token is actually obtainable — reading the session JWT from the auth cookie
- * via chrome.cookies (SW-safe) as a per-request bearer token. Routing config comes
- * from resolveRuntimeUrls() (the single source of truth also used by memory routing),
- * not a parallel constants copy, so chat and memory can't diverge.
- *
- * Otherwise (own-key mode, gateway unconfigured, or no session token) we fall back to
- * the prior behavior exactly: a plain AuthManager with no token getter/refresher, so
- * legacy /api/llm requests authenticate via cookies with the dummy 'backend-routed'
- * bearer — never sending a real session JWT to the legacy endpoint.
+ * Gateway URL selection is independent of account-credits mode: private builds use
+ * the login JWT, while OSS own-key builds use the saved OpenHub API key. The shared
+ * credential provider decides whether gateway routing is actually available.
  */
 async function buildExtensionAuthManager(
   shouldUseBackend: boolean,
   backendBaseUrl: string | null
 ): Promise<AuthManager> {
-  if (shouldUseBackend) {
-    const urls = resolveRuntimeUrls();
-    if (urls.llmRoutingMode === 'gateway' && urls.gatewayLlmApiUrl) {
-      // Gate on token PRESENCE (cheap cookie read, no network refresh at init time) so
-      // createGatewayRoutedClient never throws for a logged-out user; without one, fall
-      // through to the legacy cookie path. An expired-but-present cookie still selects the
-      // gateway — the per-request getter refreshes it lazily.
-      const token = await peekSessionAccessToken();
-      if (token) {
-        return new AuthManager(shouldUseBackend, backendBaseUrl, getSessionAccessToken, {
-          gatewayLlmBaseUrl: urls.gatewayLlmApiUrl,
-          refreshAccessToken: refreshSessionAccessToken,
-        });
-      }
+  const urls = resolveRuntimeUrls();
+  return new AuthManager(
+    shouldUseBackend,
+    backendBaseUrl,
+    shouldUseBackend ? getSessionAccessToken : undefined,
+    {
+      gatewayLlmBaseUrl:
+        urls.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null,
+      refreshAccessToken: refreshSessionAccessToken,
     }
-  }
-  // Own-key mode OR legacy fallback: preserve prior cookie-only behavior.
-  return new AuthManager(shouldUseBackend, backendBaseUrl);
+  );
 }
 
 /**
@@ -760,6 +744,10 @@ async function registerServiceHandlers(): Promise<void> {
         }),
     });
     appsAccess = appsRuntime.access;
+    authContext.setGatewayCredentialProvider({
+      getCredential: appsRuntime.getGatewayCredential,
+      handleUnauthorized: appsRuntime.handleGatewayUnauthorized,
+    });
     mcpManager?.setGatewayCredentialProvider(
       appsRuntime.getMcpCredential,
       appsRuntime.handleMcpUnauthorized

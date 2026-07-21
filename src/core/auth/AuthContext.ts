@@ -1,5 +1,15 @@
 import type { IAuthManager } from '../models/types/Auth';
 
+export interface GatewayCredential {
+  method: 'api-key' | 'session-jwt';
+  token: string;
+}
+
+export interface GatewayCredentialProvider {
+  getCredential(): Promise<GatewayCredential | null>;
+  handleUnauthorized(failedToken: string | null): Promise<string | null>;
+}
+
 export type AuthChangeReason =
   | 'login'
   | 'logout'
@@ -15,16 +25,19 @@ export interface AuthChangedEvent {
 
 export interface AuthContext {
   current(): IAuthManager | null;
+  gatewayCredentials(): GatewayCredentialProvider | null;
   generation(): number;
   subscribe(listener: (event: AuthChangedEvent) => void): () => void;
 }
 
 export interface MutableAuthContext extends AuthContext {
   update(next: IAuthManager | null, reason: AuthChangeReason): void;
+  setGatewayCredentialProvider(provider: GatewayCredentialProvider | null): void;
 }
 
 export class MutableAuthContextImpl implements MutableAuthContext {
   private value: IAuthManager | null;
+  private gatewayCredentialProvider: GatewayCredentialProvider | null = null;
   private currentGeneration = 0;
   private readonly listeners = new Set<(event: AuthChangedEvent) => void>();
 
@@ -34,6 +47,14 @@ export class MutableAuthContextImpl implements MutableAuthContext {
 
   current(): IAuthManager | null {
     return this.value;
+  }
+
+  gatewayCredentials(): GatewayCredentialProvider | null {
+    return this.gatewayCredentialProvider;
+  }
+
+  setGatewayCredentialProvider(provider: GatewayCredentialProvider | null): void {
+    this.gatewayCredentialProvider = provider;
   }
 
   generation(): number {

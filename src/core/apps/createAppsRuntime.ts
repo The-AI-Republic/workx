@@ -22,6 +22,8 @@ export function createAppsRuntime(options: CreateAppsRuntimeOptions): {
   provider: OpenHubCredentialProvider;
   client?: OpenHubAppsClient;
   access: AppsAccessController;
+  getGatewayCredential: () => ReturnType<OpenHubCredentialProvider['getCredential']>;
+  handleGatewayUnauthorized: (failedToken: string | null) => Promise<string | null>;
   getMcpCredential: () => Promise<string | null>;
   handleMcpUnauthorized: (failedToken: string | null) => Promise<string | null>;
 } {
@@ -55,7 +57,8 @@ export function createAppsRuntime(options: CreateAppsRuntimeOptions): {
     if (access.getState().credentialStatus !== 'ready') return null;
     return (await provider.getCredential())?.token ?? null;
   };
-  const handleMcpUnauthorized = async (failedToken: string | null): Promise<string | null> => {
+  const getGatewayCredential = () => provider.getCredential();
+  const handleGatewayUnauthorized = async (failedToken: string | null): Promise<string | null> => {
     const current = await provider.getCredential();
     if (!current) return null;
     if (failedToken && current.token !== failedToken) return current.token;
@@ -64,6 +67,15 @@ export function createAppsRuntime(options: CreateAppsRuntimeOptions): {
     void access.refresh();
     return null;
   };
+  const handleMcpUnauthorized = handleGatewayUnauthorized;
 
-  return { provider, client, access, getMcpCredential, handleMcpUnauthorized };
+  return {
+    provider,
+    client,
+    access,
+    getGatewayCredential,
+    handleGatewayUnauthorized,
+    getMcpCredential,
+    handleMcpUnauthorized,
+  };
 }

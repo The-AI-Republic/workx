@@ -101,7 +101,9 @@ export class AuthManager implements IAuthManager {
     this._backendBaseUrl = shouldUseBackend ? backendBaseUrl : null;
     this._tokenGetter = tokenGetter ?? null;
     this._tokenRefresher = options?.refreshAccessToken ?? null;
-    this._gatewayLlmBaseUrl = shouldUseBackend ? options?.gatewayLlmBaseUrl ?? null : null;
+    // OSS own-key mode can also route through OpenHub. The shared credential
+    // provider decides whether the gateway is selected for a request.
+    this._gatewayLlmBaseUrl = options?.gatewayLlmBaseUrl ?? null;
     this._chatGPTOAuthActive = false;
     this._chatGPTTokenGetter = null;
   }

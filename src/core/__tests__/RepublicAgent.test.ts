@@ -240,6 +240,8 @@ describe('RepublicAgent', () => {
       }),
       clearCache: vi.fn(),
       isBackendRouting: vi.fn().mockReturnValue(false),
+      isGatewayRoutingAvailable: vi.fn().mockResolvedValue(false),
+      getGatewayCredential: vi.fn().mockResolvedValue(null),
     };
 
     mockUserNotifierInstance = {
@@ -826,6 +828,20 @@ describe('RepublicAgent', () => {
       expect(result.authMode).toBe('login');
       expect(result.provider).toBe('OpenAI');
       expect(result.model).toBe('GPT-5');
+    });
+
+    it('should return ready=true with authMode=api_key for an OpenHub credential', async () => {
+      mockModelClientFactoryInstance.isGatewayRoutingAvailable.mockResolvedValue(true);
+      mockModelClientFactoryInstance.getGatewayCredential.mockResolvedValue({
+        method: 'api-key', token: 'air_openhub',
+      });
+      (config.getProviderApiKey as Mock).mockResolvedValue(null);
+
+      const result = await agent.isReady();
+
+      expect(result.ready).toBe(true);
+      expect(result.authMode).toBe('api_key');
+      expect(config.getProviderApiKey).not.toHaveBeenCalled();
     });
 
     it('should return ready=false when no API key is configured and not backend routing', async () => {

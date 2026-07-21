@@ -22,4 +22,17 @@ describe('MutableAuthContext', () => {
     context.update(first, 'login');
     expect(listener).toHaveBeenCalledTimes(2);
   });
+
+  it('holds gateway credentials independently of the login manager', async () => {
+    const context = createMutableAuthContext(null);
+    context.setGatewayCredentialProvider({
+      getCredential: vi.fn(async () => ({ method: 'api-key' as const, token: 'air_shared' })),
+      handleUnauthorized: vi.fn(async () => null),
+    });
+
+    await expect(context.gatewayCredentials()?.getCredential()).resolves.toEqual({
+      method: 'api-key', token: 'air_shared',
+    });
+    expect(context.current()).toBeNull();
+  });
 });

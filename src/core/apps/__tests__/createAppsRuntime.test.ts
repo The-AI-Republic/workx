@@ -66,6 +66,10 @@ describe('createAppsRuntime', () => {
       hasCredential: true,
     });
     expect(JSON.stringify(runtime.access.getState())).not.toContain('managed-openhub-key');
+    await expect(runtime.getGatewayCredential()).resolves.toMatchObject({
+      method: 'api-key',
+      token: 'managed-openhub-key',
+    });
     await expect(runtime.getMcpCredential()).resolves.toBe('managed-openhub-key');
   });
 

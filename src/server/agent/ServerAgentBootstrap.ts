@@ -1093,6 +1093,10 @@ export class ServerAgentBootstrap {
           }),
       });
       this.appsAccess = appsRuntime.access;
+      this.authContext.setGatewayCredentialProvider({
+        getCredential: appsRuntime.getGatewayCredential,
+        handleUnauthorized: appsRuntime.handleGatewayUnauthorized,
+      });
       runtimeMcpManager?.setGatewayCredentialProvider(
         appsRuntime.getMcpCredential,
         appsRuntime.handleMcpUnauthorized
@@ -2033,7 +2037,7 @@ export class ServerAgentBootstrap {
       tokenGetter,
       {
         gatewayLlmBaseUrl:
-          shouldUseBackend && this.runtimeState.getUrls().llmRoutingMode === 'gateway'
+          this.runtimeState.getUrls().llmRoutingMode === 'gateway'
             ? this.runtimeState.getUrls().gatewayLlmApiUrl
             : null,
         refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
