@@ -282,7 +282,12 @@
   });
 </script>
 
-<div class="h-full overflow-y-auto {modern ? 'bg-chat-bg dark:bg-chat-bg-dark' : 'bg-term-bg'}">
+<div
+  data-testid="apps-page"
+  class="h-full overflow-y-auto {currentTheme} {modern
+    ? 'font-chat bg-chat-bg text-chat-text dark:bg-chat-bg-dark dark:text-chat-text-dark'
+    : 'font-terminal bg-term-bg text-term-green'}"
+>
   <div
     class="px-4 py-3 flex gap-2 items-center {modern
       ? 'border-b border-chat-border dark:border-chat-border-dark'
@@ -318,25 +323,33 @@
       <p class="text-sm opacity-70">{$_t('The app catalog is not configured for this build.')}</p>
     {:else if !ready}
       <div
+        data-testid="apps-access-card"
         class="rounded-lg border p-4 {modern
-          ? 'border-chat-border dark:border-chat-border-dark'
-          : 'border-term-dim-green'}"
+          ? 'border-chat-border bg-chat-surface text-chat-text dark:border-chat-border-dark dark:bg-chat-surface-dark dark:text-chat-text-dark'
+          : 'border-term-dim-green bg-[#0a0a0a] text-term-green'}"
       >
         <h2 class="m-0 text-base font-semibold">
           {policy ? $_t(policy.setupCopy.title) : $_t('Apps unavailable')}
         </h2>
-        <p class="text-sm opacity-70">
+        <p
+          class="text-sm {modern
+            ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+            : 'text-term-dim-green'}"
+        >
           {policy ? $_t(policy.setupCopy.description) : ($appsStore.error ?? access?.reason)}
         </p>
         {#if access?.credentialStatus === 'unverified' || access?.capabilityStatus === 'incompatible'}
-          <button class="text-sm underline" onclick={() => refreshAppsStore()}
-            >{$_t('Retry')}</button
+          <button
+            class="text-sm underline {modern
+              ? 'text-chat-primary hover:opacity-80 dark:text-chat-primary-dark'
+              : 'text-term-bright-green hover:text-term-green'}"
+            onclick={() => refreshAppsStore()}>{$_t('Retry')}</button
           >
         {:else}
           <button
             class="text-sm px-3 py-1.5 rounded {modern
-              ? 'bg-chat-primary dark:bg-chat-primary-dark text-white'
-              : 'border border-term-dim-green'}"
+              ? 'border border-chat-primary bg-chat-primary text-white hover:opacity-90 dark:border-chat-primary-dark dark:bg-chat-primary-dark'
+              : 'border border-term-green bg-term-green text-black hover:bg-term-bright-green'}"
             onclick={openSetup}
           >
             {policy ? $_t(policy.setupCopy.action) : $_t('Configure')}
