@@ -1,16 +1,13 @@
 # Runtime-Owned OpenHub Apps
 
-Status: reviewed; implementation-ready with the backend prerequisite below
+Status: reviewed; implementation-ready with unified gateway authentication
 
 ## Review Outcome
 
 The design is approved for implementation in the migration order in this
-document. There are no remaining client-architecture decisions to make. The
-only external prerequisite is deployment of the authenticated, scope-aware
-OpenHub credential-introspection endpoint and strict bearer handling across the
-Apps routes, as defined below. WorkX implementation may proceed behind its
-runtime state gate, but OSS key persistence must fail closed until a target
-OpenHub deployment supports that contract.
+document. OpenHub gateway is the only user-credential boundary for WorkX. The
+same credential is used for LLM routing, MCP app execution, and the Apps HTTP
+control plane; Hub must not introduce a parallel user-token verifier.
 
 ## Summary
 
@@ -26,20 +23,21 @@ differ only in the credential policy selected at build time:
 
 | Distribution | Allowed credential | Apps becomes available when |
 |---|---|---|
-| OSS WorkX | User-supplied OpenHub/Apps API key | The key has been validated and stored |
+| OSS WorkX | User-supplied OpenHub API key | The key has been validated and stored |
 | Private WorkX | AI Republic session JWT | The user has a valid login session |
 
-An OpenHub/Apps API key is a dedicated credential. It is not an OpenAI,
-Anthropic, Google, or other model-provider API key, and it is not used for
-bring-your-own-model billing.
+An OpenHub API key is one credential for every enabled OpenHub gateway surface:
+LLM routing, MCP, and Apps. It is not an OpenAI, Anthropic, Google, or other
+model-provider BYOK credential. Private WorkX uses the same OIDC access token
+created by its existing login flow for every gateway surface.
 
 ## Goals
 
 - Route catalog, installation, activation, connection, and credential requests
   through a WorkX runtime service.
 - Keep OpenHub API keys and session JWTs out of the Webfront.
-- Use one runtime credential source for both the Apps control plane and the
-  built-in OpenHub MCP connection.
+- Use one runtime credential source for OpenHub LLM routing, the Apps control
+  plane, and the built-in OpenHub MCP connection.
 - Make OSS WorkX API-key-only by default.
 - Let private WorkX replace one narrow policy module to become login-only.
 - Keep product-neutral runtime, UI, state, and transport code in public WorkX.
@@ -53,9 +51,8 @@ bring-your-own-model billing.
 - Providing a generic runtime HTTP proxy.
 - Allowing the Webfront to choose a backend base URL, authentication header, or
   arbitrary request path.
-- Replacing backend authorization. Private OpenHub deployments must enforce
-  session-only access server-side; the private overlay is a product policy, not
-  a security boundary against modified clients.
+- Replacing backend authorization. Gateway remains authoritative for scopes,
+  account state, and app allowlists regardless of the WorkX product policy.
 
 ## Trust Boundary
 
@@ -64,9 +61,12 @@ Webfront UI
     | typed ServiceRequest (no stored credential)
     v
 WorkX runtime service
-    | fixed URL + runtime-owned credential + bounded HTTP request
+    | fixed gateway URL + one runtime-owned credential + bounded HTTP request
     v
-OpenHub catalog / control plane / MCP
+OpenHub gateway (/v1, /mcp, /api/v1/apps)
+    | verified GatewayPrincipal; internal service-authenticated identity
+    v
+OpenHub Hub control-plane services (no user bearer re-verification)
     | normalized response or classified error
     v
 WorkX runtime service
@@ -232,7 +232,7 @@ environment disagree.
 
 ### OSS OpenHub API key
 
-Store the dedicated OpenHub key in the runtime credential store using a name
+Store the single OpenHub gateway key in the runtime credential store using a name
 that cannot collide with model-provider credentials:
 
 ```text
@@ -305,10 +305,12 @@ access flow.
 An API key left in the credential store by another build is ignored when the
 policy selects `session-jwt`.
 
-### Shared provider
+### Shared OpenHub credential source
 
-Both the Apps HTTP client and built-in OpenHub MCP connection consume one
-runtime abstraction:
+LLM routing, the Apps HTTP client, and the built-in OpenHub MCP connection
+consume the same effective OpenHub credential. Private WorkX reads the existing
+`auth/access_token` for all three; OSS reads the stored/managed OpenHub API key.
+Apps and MCP use this runtime abstraction directly:
 
 ```ts
 export interface OpenHubCredentialProvider {
@@ -327,8 +329,10 @@ export interface OpenHubCredentialProvider {
 }
 ```
 
-This prevents the catalog from reporting Apps as enabled while MCP tools use a
-different or missing credential.
+This prevents the catalog from reporting Apps as enabled while MCP or LLM
+routing uses a different or missing credential. Model-provider BYOK keys stay
+outside this provider because they authenticate directly to third parties, not
+to OpenHub.
 
 `handleUnauthorized` never refreshes an API key; it marks that exact effective
 stored or managed key invalid if it is still current. Session refresh is
@@ -340,12 +344,13 @@ The OpenHub contract uses `Authorization: Bearer <credential>` for both API
 keys and session JWTs. That is an internal client detail and never appears in
 the Webfront contract.
 
-## Required OpenHub Authentication Contract
+## Required OpenHub Gateway Contract
 
-Implementation depends on an authenticated, scope-aware OpenHub validation
-operation. Anonymous catalog endpoints are not valid key checks: the current
-marketplace, installations, and app-auth-status endpoints may return public or
-anonymous data even when an invalid bearer value is supplied.
+Gateway already owns the canonical `GatewayPrincipal` resolver for both
+`air_...` OpenHub API keys and Home Page OIDC access tokens. The Apps HTTP
+facade must use that exact resolver and the coarse `apps` scope, just as `/v1`
+uses `chat`/`models` and `/mcp` uses `apps`. Hub must not validate the WorkX
+bearer a second time.
 
 The backend contract for WorkX is:
 
@@ -360,10 +365,10 @@ Successful response:
 ```json
 {
   "contractVersion": 1,
-  "capabilities": ["strict-bearer-v1"],
+  "capabilities": ["single-gateway-credential-v1"],
   "subjectId": "opaque-subject-id",
   "credentialType": "api-key",
-  "scopes": ["apps:read", "apps:write", "mcp:connect"],
+  "scopes": ["chat", "models", "apps"],
   "allowedAppIds": null
 }
 ```
@@ -372,34 +377,32 @@ Contract requirements:
 
 - `200` means the credential is valid and identifies its effective scopes.
 - WorkX accepts only `contractVersion: 1` with the exact
-  `strict-bearer-v1` capability marker. A missing/unknown version or marker is
-  `APPS_BACKEND_INCOMPATIBLE`, even if the endpoint returns `200`.
+  `single-gateway-credential-v1` capability marker. A missing/unknown version
+  or marker is `APPS_BACKEND_INCOMPATIBLE`, even if the endpoint returns `200`.
 - `401` means missing, expired, revoked, or invalid credential.
-- `403` means the credential is valid but lacks a required Apps/MCP scope.
+- `403` means the credential is valid but lacks the gateway `apps` scope or is
+  outside an API key's app allowlist.
 - The response never returns the credential or a reusable derivative.
-- API-key validation requires `apps:read`, `apps:write`, and `mcp:connect` for
-  full WorkX Apps enablement.
-- Session validation requires the equivalent Apps/MCP grants in the JWT.
+- Both API-key and OIDC validation require the existing gateway `apps` scope.
 - `allowedAppIds` is retained in runtime state for authorization diagnostics,
   but the backend remains authoritative on every operation.
 
-All routes in the fixed Apps operation map also use strict bearer semantics:
+All routes in the fixed Apps operation map terminate user authentication at
+gateway:
 
 - WorkX always sends `Authorization`; it never intentionally invokes an
   anonymous variant.
-- When an Apps route receives an `Authorization` header, OpenHub must validate
-  it. Invalid, expired, or revoked credentials return `401`, and insufficient
-  Apps/app scope returns `403`; the route must not ignore a bad bearer and fall
-  back to public/anonymous behavior.
-- OpenHub may continue serving a public marketplace to callers that omit
-  `Authorization`. That behavior is outside the WorkX client path.
-- Mutation and app-auth routes enforce the same effective subject and app
-  grants reported by introspection. The backend remains authoritative if grants
-  change after WorkX validation.
-
-Without strict bearer handling, WorkX cannot reliably distinguish a revoked
-credential from an anonymous `200` response. The introspection endpoint and
-strict route behavior therefore ship as one backend compatibility contract.
+- Gateway validates the bearer once into `GatewayPrincipal`, enforces `apps`
+  and `allowedAppIds`, and never forwards the user bearer to Hub.
+- Gateway forwards only the canonical user identity over the existing
+  `CONNECTOR_RUNTIME_INTERNAL_TOKEN` service-authenticated channel.
+- Hub continues to own catalog/install/connection/OAuth business logic and its
+  browser pages, but trusts only a valid gateway-forwarded internal identity
+  for WorkX calls.
+- The Hub catalog page URL and gateway Apps API URL are separate configuration
+  values. The runtime API defaults from `WORKX_GATEWAY_BASE_URL`; it never
+  derives the authenticated API host from the Hub browser-page URL when a
+  gateway base is present.
 
 The runtime normalizes a successful response to the following redacted shape.
 `subjectId` is retained only inside the runtime provider when needed and is
@@ -414,11 +417,11 @@ export interface AppsCredentialValidationResult {
 }
 ```
 
-This endpoint and strict bearer behavior must exist in the target OpenHub
-deployment before OSS key-save support can ship. If the final backend path or
-scope names differ, update the runtime client constant and this document
-together; do not substitute a public marketplace request or `/v1/models` as
-validation. Model access does not prove Apps/MCP authorization.
+This gateway endpoint must exist in the target OpenHub deployment before OSS
+key-save support can ship. If the final backend path or scope names differ,
+update the runtime client constant and this document together; do not substitute
+a public Hub marketplace request. A key may carry multiple gateway scopes, and
+this endpoint confirms that the same credential includes `apps`.
 
 The runtime validates a candidate key through this endpoint before persisting
 it. Normal authenticated control-plane calls also classify `401` and `403`
@@ -600,9 +603,9 @@ does not receive the catalog API base or MCP URL.
 
 ### Fixed upstream operation map
 
-`catalogApiBaseUrl` ends at `/api/v1/apps`. The client implements only these
-relative operations; it does not expose a generic request helper through the
-service layer:
+`catalogApiBaseUrl` is the gateway URL ending at `/api/v1/apps`. The client
+implements only these relative operations; it does not expose a generic request
+helper through the service layer:
 
 | Runtime operation | Method and relative path |
 |---|---|
@@ -774,8 +777,8 @@ and explicit tests exist.
 
 ## OpenHub MCP Integration
 
-The built-in OpenHub MCP connection must use the same
-`OpenHubCredentialProvider` as the Apps services.
+The built-in OpenHub MCP connection and gateway LLM routing must use the same
+effective credential source as the Apps services.
 
 - OSS startup with no key leaves the built-in OpenHub MCP disconnected.
 - Saving a valid key connects/reconnects it immediately.
@@ -838,9 +841,10 @@ instrumentation that could log field values.
 
 ## Migration Plan
 
-0. Land and deploy the authenticated OpenHub credential-introspection and strict
-   bearer contracts described above. Add contract test fixtures to WorkX; do
-   not enable OSS key persistence before a target backend satisfies both.
+0. Land and deploy the gateway Apps HTTP facade using the existing
+   `GatewayPrincipal` resolver and its internal service-authenticated Hub hop.
+   Add contract fixtures to WorkX; do not enable OSS key persistence before a
+   target gateway exposes `single-gateway-credential-v1`.
 1. Harden generic `credentials.*` with reserved namespaces and an explicit
    model-provider credential validator. Move the extension side panel to the
    restricted runtime relay, leaving `ChromeCredentialStore` in the background
@@ -857,7 +861,7 @@ instrumentation that could log field values.
    in the desktop sidecar and extension background runtime.
 7. Wire the credential provider into built-in OpenHub MCP lifecycle handling
    and remove secret-bearing built-in MCP configuration.
-8. Add shared Settings UI for the dedicated OpenHub key.
+8. Add shared Settings UI for the single OpenHub key.
 9. Convert Apps navigation and page data operations to the state/service client
    with a stale-response guard.
 10. Add runtime-owned icon loading and remove remote icon URLs from UI data.
@@ -942,7 +946,8 @@ Desktop, extension, Svelte, or private-product module.
   or oversized authorization URLs.
 - Credential-bearing backend error bodies cannot be reflected to the UI or
   logs.
-- MCP connects/disconnects with Apps credential state.
+- LLM, MCP, and Apps resolve the same OpenHub credential; MCP
+  connects/disconnects with that credential state.
 - Product policy overrides conflicting MCP auth-mode and environment-key
   configuration.
 - Managed OSS keys are non-readable, can be overridden by a stored user key,

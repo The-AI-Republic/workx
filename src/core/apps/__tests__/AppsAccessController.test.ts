@@ -26,7 +26,7 @@ const policy: AppsAccessPolicy = {
 const validation = {
   valid: true as const,
   credentialType: 'api-key' as const,
-  grantedScopes: ['apps:read', 'apps:write', 'mcp:connect'],
+  grantedScopes: ['chat', 'models', 'apps'],
   allowedAppIds: null,
 };
 

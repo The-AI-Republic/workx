@@ -70,7 +70,7 @@ describe('RuntimeStateController', () => {
         gatewayLlmApiUrl: null,
         gatewayMcpUrl: 'https://gateway.example/mcp',
         gatewayCatalogUrl: null,
-        gatewayCatalogApiBaseUrl: 'https://hub.example/api/v1/apps',
+        gatewayCatalogApiBaseUrl: 'https://gateway.example/api/v1/apps',
         gatewayMcpName: 'gateway',
         gatewayMcpAuthMode: 'api-key',
         gatewayMcpApiKey: 'must-never-cross-ui',

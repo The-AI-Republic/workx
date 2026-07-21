@@ -19,7 +19,7 @@ function urls(overrides: Partial<RuntimeUrlConfig> = {}): RuntimeUrlConfig {
     gatewayLlmApiUrl: null,
     gatewayMcpUrl: 'https://gateway.example/mcp',
     gatewayCatalogUrl: 'https://hub.example/apps',
-    gatewayCatalogApiBaseUrl: 'https://hub.example/api/v1/apps',
+    gatewayCatalogApiBaseUrl: 'https://gateway.example/api/v1/apps',
     gatewayMcpName: 'gateway',
     gatewayMcpAuthMode: 'none',
     gatewayMcpApiKey: 'managed-openhub-key',
@@ -37,9 +37,9 @@ function credentialContract() {
   return new Response(
     JSON.stringify({
       contractVersion: 1,
-      capabilities: ['strict-bearer-v1'],
+      capabilities: ['single-gateway-credential-v1'],
       credentialType: 'api-key',
-      scopes: ['apps:read', 'apps:write', 'mcp:connect'],
+      scopes: ['chat', 'models', 'apps'],
       allowedAppIds: null,
     }),
     { headers: { 'content-type': 'application/json' } }

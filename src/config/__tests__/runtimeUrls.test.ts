@@ -149,6 +149,7 @@ describe('resolveRuntimeUrls', () => {
       gatewayLlmApiUrl: 'https://gateway.example.com/api/v1',
       gatewayMcpUrl: 'https://gateway.example.com/api/mcp',
       gatewayCatalogUrl: 'https://gateway.example.com/apps',
+      gatewayCatalogApiBaseUrl: 'https://gateway.example.com/api/v1/apps',
       gatewayMcpName: 'gateway',
       gatewayMcpAuthMode: 'none',
       llmRoutingMode: 'gateway',
@@ -160,6 +161,16 @@ describe('resolveRuntimeUrls', () => {
         llmRoutingMode: 'default',
       },
     });
+  });
+
+  it('keeps the Hub browser page separate from the authenticated gateway Apps API', () => {
+    process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
+    process.env.WORKX_GATEWAY_CATALOG_URL = 'https://hub.example.com/apps';
+
+    const urls = resolveRuntimeUrls();
+
+    expect(urls.gatewayCatalogUrl).toBe('https://hub.example.com/apps');
+    expect(urls.gatewayCatalogApiBaseUrl).toBe('https://gateway.example.com/api/v1/apps');
   });
 
   it('honors explicit gateway overlay settings', () => {

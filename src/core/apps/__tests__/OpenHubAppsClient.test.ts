@@ -37,10 +37,10 @@ function json(body: unknown, status = 200, headers: Record<string, string> = {})
 function validCredential(method: 'api-key' | 'session-jwt' = 'api-key') {
   return {
     contractVersion: 1,
-    capabilities: ['strict-bearer-v1'],
+    capabilities: ['single-gateway-credential-v1'],
     subjectId: 'subject',
     credentialType: method,
-    scopes: ['apps:read', 'apps:write', 'mcp:connect'],
+    scopes: ['chat', 'models', 'apps'],
     allowedAppIds: null,
   };
 }
@@ -50,14 +50,14 @@ async function apiClient(fetchMock: ReturnType<typeof vi.fn>) {
   await store.set('openhub', 'api_key', 'oh-secret');
   const provider = new OpenHubCredentialProvider({ policy: apiPolicy, credentialStore: store });
   return new OpenHubAppsClient({
-    catalogApiBaseUrl: 'https://hub.example/api/v1/apps',
+    catalogApiBaseUrl: 'https://gateway.example/api/v1/apps',
     credentials: provider,
     fetch: fetchMock as typeof fetch,
   });
 }
 
 describe('OpenHubAppsClient', () => {
-  it('requires the strict backend contract and all Apps/MCP scopes', async () => {
+  it('requires the unified gateway contract and Apps scope', async () => {
     const compatible = await apiClient(vi.fn(async () => json(validCredential())));
     await expect(
       compatible.validateCredential({ method: 'api-key', token: 'candidate' })
@@ -71,7 +71,7 @@ describe('OpenHubAppsClient', () => {
     ).rejects.toMatchObject({ errorCode: 'APPS_BACKEND_INCOMPATIBLE' });
 
     const forbidden = await apiClient(
-      vi.fn(async () => json({ ...validCredential(), scopes: ['apps:read'] }))
+      vi.fn(async () => json({ ...validCredential(), scopes: ['chat', 'models'] }))
     );
     await expect(
       forbidden.validateCredential({ method: 'api-key', token: 'candidate' })
@@ -135,7 +135,7 @@ describe('OpenHubAppsClient', () => {
       return seen.length === 1 ? json({}, 401) : json({ items: [] });
     });
     const client = new OpenHubAppsClient({
-      catalogApiBaseUrl: 'https://hub.example/api/v1/apps',
+      catalogApiBaseUrl: 'https://gateway.example/api/v1/apps',
       credentials: provider,
       fetch: fetchMock as typeof fetch,
     });

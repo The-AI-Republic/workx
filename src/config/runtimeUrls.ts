@@ -126,9 +126,9 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
   ) ?? null;
   const gatewayLlmApiUrl = gatewayLlmFromEnv ?? (gatewayBaseUrl ? joinUrl(gatewayBaseUrl, 'v1') : null);
   const gatewayMcpUrl = gatewayMcpFromEnv ?? (gatewayBaseUrl ? joinUrl(gatewayBaseUrl, 'mcp') : null);
-  // Native Apps catalog API root (Hub `GET /api/v1/apps/...`). Prefer an explicit
-  // override, else reuse the catalog UI URL's origin (the catalog page and its
-  // JSON API are served by the same Hub host), else derive from the gateway base.
+  // Authenticated Apps API root on the OpenHub gateway. The catalog URL remains
+  // a browser-facing Hub page and must not determine the runtime API host when
+  // a gateway base is configured.
   const gatewayCatalogApiFromEnv = firstNonEmpty(
     env.WORKX_GATEWAY_CATALOG_API_URL,
     env.VITE_GATEWAY_CATALOG_API_URL,
@@ -136,8 +136,10 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
   );
   const gatewayCatalogApiBaseUrl =
     gatewayCatalogApiFromEnv ??
-    (gatewayCatalogUrl ? joinUrl(originOf(gatewayCatalogUrl) ?? gatewayCatalogUrl, 'api/v1/apps') : null) ??
-    (gatewayBaseUrl ? joinUrl(gatewayBaseUrl, 'api/v1/apps') : null);
+    (gatewayBaseUrl
+      ? joinUrl(originOf(gatewayBaseUrl) ?? gatewayBaseUrl, 'api/v1/apps')
+      : null) ??
+    (gatewayCatalogUrl ? joinUrl(originOf(gatewayCatalogUrl) ?? gatewayCatalogUrl, 'api/v1/apps') : null);
   const gatewayMcpNameFromEnv = firstNonEmpty(
     env.WORKX_GATEWAY_MCP_NAME,
     env.VITE_GATEWAY_MCP_NAME,

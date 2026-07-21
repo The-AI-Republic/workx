@@ -17,7 +17,7 @@ import type { OpenHubCredentialProvider } from './OpenHubCredentialProvider';
 
 const JSON_LIMIT = 2 * 1024 * 1024;
 const ICON_LIMIT = 256 * 1024;
-const REQUIRED_SCOPES = ['apps:read', 'apps:write', 'mcp:connect'] as const;
+const REQUIRED_SCOPE = 'apps';
 const APP_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 
 export interface OpenHubAppsClientObserver {
@@ -189,10 +189,10 @@ export class OpenHubAppsClient {
     const capabilities = Array.isArray(raw?.capabilities)
       ? raw.capabilities.filter((v): v is string => typeof v === 'string')
       : [];
-    if (raw?.contractVersion !== 1 || !capabilities.includes('strict-bearer-v1')) {
+    if (raw?.contractVersion !== 1 || !capabilities.includes('single-gateway-credential-v1')) {
       throw new AppsServiceError(
         'APPS_BACKEND_INCOMPATIBLE',
-        'This OpenHub deployment does not support strict WorkX Apps authentication.',
+        'This OpenHub deployment does not support unified gateway authentication.',
         false,
         response.status
       );
@@ -209,10 +209,10 @@ export class OpenHubAppsClient {
     const scopes = Array.isArray(raw?.scopes)
       ? raw.scopes.filter((v): v is string => typeof v === 'string')
       : [];
-    if (REQUIRED_SCOPES.some((scope) => !scopes.includes(scope))) {
+    if (!scopes.includes(REQUIRED_SCOPE)) {
       throw new AppsServiceError(
         'APPS_FORBIDDEN',
-        'This credential is missing required Apps or MCP permissions.',
+        'This OpenHub credential is missing Apps permission.',
         false,
         403
       );

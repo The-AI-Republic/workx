@@ -37,7 +37,7 @@ export const appsAccessPolicy: AppsAccessPolicy = {
   apiKeyManagementUrl: resolveKeyManagementUrl(),
   setupCopy: {
     title: 'Connect Apps',
-    description: 'Add an OpenHub API key to install and connect apps.',
+    description: 'Add your OpenHub API key to use OpenHub models and apps.',
     action: 'Add API key',
   },
 };
