@@ -20,11 +20,11 @@ installChromePolyfill();
 import './desktop.css';
 import '../../webfront/styles.css';
 import { mount } from 'svelte';
-import App from '../../webfront/App.svelte';
 import { initializeDesktop } from '../main';
 import { getInitializedUIClient } from '@/core/messaging';
 import { initLocale } from '../../webfront/lib/i18n';
 import { AgentConfig } from '@/config/AgentConfig';
+import { setModelCatalogLoader, type ModelCatalog } from '@/config/modelCatalog';
 import { initializeConfigStorage, setCredentialStore } from '@/core/storage';
 import { RuntimeRelayCredentialStore } from '@/webfront/credentials/RuntimeRelayCredentialStore';
 import { markDesktopWelcomeCompleted, shouldShowDesktopWelcome } from './desktopWelcome';
@@ -67,7 +67,10 @@ async function init() {
   // 1a. Start the sidecar runtime relay. The relay transport asks Rust to
   // supervise the Node runtime and routes all agent/channel traffic through it.
   try {
-    await getInitializedUIClient();
+    const client = await getInitializedUIClient();
+    setModelCatalogLoader(() =>
+      client.serviceRequest<ModelCatalog>('models.getCatalog')
+    );
     console.log('[Desktop] Sidecar runtime relay initialized');
   } catch (error) {
     console.error('[Desktop] Failed to initialize sidecar runtime relay:', error);
@@ -131,6 +134,9 @@ async function init() {
   }
 
   // 5. Mount the main app
+  // Import after platform adapters are installed. Some app modules initialize
+  // AgentConfig as soon as their module graph is evaluated.
+  const { default: App } = await import('../../webfront/App.svelte');
   const app = mount(App, {
     target: document.getElementById('app')!,
     props: {

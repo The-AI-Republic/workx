@@ -18,7 +18,7 @@ import { DEFAULT_APPROVAL_CONFIG } from '../core/approval/types';
 import { DEFAULT_MODE } from '../prompts/PromptComposer';
 import defaultProviders from '../core/models/providers/default.json';
 import { applyPolicy, getActivePolicySync } from '../core/config/policy';
-import { getRemoteProviders } from './remoteCatalog';
+import { getModelCatalogOverride } from './modelCatalog';
 
 export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   autoSync: true,
@@ -380,15 +380,13 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
  * Loaded from JSON configuration file
  */
 export function getDefaultProviders(): Record<string, IProviderConfig> {
-  // Private builds may override the bundled catalog with one fetched from the
-  // backend at startup (see remoteCatalog + AgentConfig.initialize). Remote
-  // provider/model data replaces the bundled catalog, while WorkX-owned OpenHub
-  // routes remain sourced from matching default.json model entries so deployments
-  // cannot silently re-enable smart routing by omitting them from the remote payload.
-  const remote = getRemoteProviders();
-  if (remote) {
+  // Product adapters may replace provider/model metadata. WorkX-owned OpenHub
+  // routes remain sourced from matching default.json model entries so an
+  // external catalog cannot silently re-enable smart routing by omitting them.
+  const override = getModelCatalogOverride();
+  if (override) {
     const bundled = defaultProviders as Record<string, IProviderConfig>;
-    return Object.fromEntries(Object.entries(remote).map(([providerKey, provider]) => {
+    return Object.fromEntries(Object.entries(override).map(([providerKey, provider]) => {
       const bundledProvider = bundled[providerKey] ?? bundled[provider.id];
       return [
         providerKey,
@@ -496,8 +494,8 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
     );
     selectedModelKey = defaults.selectedModelKey;
   }
-  // The hardcoded default can itself be absent from a backend-replaced catalog
-  // (full-replace via remoteCatalog). Guard so we never hand downstream a key
+  // The hardcoded default can itself be absent from an adapter-provided catalog.
+  // Guard so we never hand downstream a key
   // that isn't in the catalog: use the first available provider model instead.
   if (selectedModelKey && !modelKeyExists(selectedModelKey)) {
     let fallback = '';
