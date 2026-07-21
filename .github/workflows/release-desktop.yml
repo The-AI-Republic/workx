@@ -130,7 +130,6 @@ jobs:
           VITE_AUTH_COOKIE_DOMAIN=${{ vars.VITE_AUTH_COOKIE_DOMAIN || '.airepublic.com' }}
           VITE_AUTH_BASE_URL=${{ vars.VITE_AUTH_BASE_URL || 'https://airepublic.com' }}
           VITE_BACKEND_API_BASE_URL=${{ vars.VITE_BACKEND_API_BASE_URL || 'https://api.airepublic.com' }}
-          VITE_MODEL_CATALOG_URL=${{ vars.VITE_MODEL_CATALOG_URL || 'https://api.airepublic.com/api/v1/workx/models' }}
           VITE_AUTH_ACCESS_COOKIE_NAME=ai_access
           VITE_AUTH_REFRESH_COOKIE_NAME=ai_refresh
           VITE_AUTH_CSRF_COOKIE_NAME=ai_csrf
@@ -155,7 +154,6 @@ jobs:
           VITE_VAULT_SECRET=${{ secrets.VITE_VAULT_SECRET }}
           WORKX_AUTH_BASE_URL=${{ vars.VITE_AUTH_BASE_URL || 'https://airepublic.com' }}
           WORKX_BACKEND_API_BASE_URL=${{ vars.VITE_BACKEND_API_BASE_URL || 'https://api.airepublic.com' }}
-          WORKX_MODEL_CATALOG_URL=${{ vars.VITE_MODEL_CATALOG_URL || 'https://api.airepublic.com/api/v1/workx/models' }}
           WORKX_AUTH_DESKTOP_SESSION_PATH=/auth/desktop/session
           WORKX_AUTH_DESKTOP_REFRESH_PATH=/auth/desktop/refresh
           WORKX_AUTH_PROFILE_PATH=/api/v1/users/profile

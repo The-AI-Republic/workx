@@ -19,6 +19,7 @@
  */
 
 import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
+import type { IProviderConfig } from '@/config/types';
 
 export interface ModelsServiceDeps {
   /**
@@ -27,6 +28,8 @@ export interface ModelsServiceDeps {
    * deps object is still required so `registerAllServices` wires the factory.
    */
   enabled?: boolean;
+  /** Optional platform-owned provider/model catalog for a separate UI process. */
+  getCatalog?: () => Promise<Record<string, IProviderConfig>>;
 }
 
 export interface TestConnectionResult {
@@ -276,8 +279,13 @@ export async function testModelConnection(params: TestConnectionParams = {}): Pr
   }
 }
 
-export function createModelServices(_deps: ModelsServiceDeps): Record<string, ServiceHandler> {
-  return {
+export function createModelServices(deps: ModelsServiceDeps): Record<string, ServiceHandler> {
+  const services: Record<string, ServiceHandler> = {
     'models.testConnection': async (params): Promise<TestConnectionResult> => testModelConnection(params ?? {}),
   };
+  const { getCatalog } = deps;
+  if (getCatalog) {
+    services['models.getCatalog'] = async () => getCatalog();
+  }
+  return services;
 }
