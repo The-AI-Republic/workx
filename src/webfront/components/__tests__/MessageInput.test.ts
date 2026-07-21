@@ -238,7 +238,7 @@ describe('MessageInput Component', () => {
       expect(textarea.value).toBe('');
     });
 
-    it('does not hijack ArrowUp when the caret is not on the first line', async () => {
+    it('does not hijack ArrowUp when the caret is not at the start', async () => {
       render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
 
@@ -250,6 +250,20 @@ describe('MessageInput Component', () => {
 
       await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
       expect(textarea.value).toBe('line one\nline two');
+    });
+
+    it('does not hijack ArrowUp in the middle of a visually wrapped line', async () => {
+      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      await sendMessage(textarea, 'recorded');
+      await fireEvent.input(textarea, {
+        target: { value: 'a single line long enough to wrap in a narrow composer' },
+      });
+      textarea.selectionStart = textarea.selectionEnd = 12;
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('a single line long enough to wrap in a narrow composer');
     });
   });
 

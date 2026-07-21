@@ -114,18 +114,18 @@
     historyDraft = '';
   }
 
-  /** True when the caret sits on the first visual line of the textarea. */
-  function caretOnFirstLine(): boolean {
+  /** True when the selection starts at the beginning of the textarea. */
+  function caretAtStart(): boolean {
     const el = textareaEl;
     if (!el) return true;
-    return value.slice(0, el.selectionStart ?? 0).indexOf('\n') === -1;
+    return (el.selectionStart ?? 0) === 0;
   }
 
-  /** True when the caret sits on the last visual line of the textarea. */
-  function caretOnLastLine(): boolean {
+  /** True when the selection ends at the end of the textarea. */
+  function caretAtEnd(): boolean {
     const el = textareaEl;
     if (!el) return true;
-    return value.slice(el.selectionEnd ?? value.length).indexOf('\n') === -1;
+    return (el.selectionEnd ?? value.length) === value.length;
   }
 
   /** Place the caret at the very end once Svelte has flushed the new value. */
@@ -138,13 +138,13 @@
   }
 
   /**
-   * Up: recall an older sent message. Only fires when the caret is on the first
-   * line (so normal multi-line cursor movement is preserved) and there is
-   * history to walk. Returns true when the key was consumed.
+   * Up: recall an older sent message. Only fires at the start of the field so
+   * normal cursor movement is preserved for both explicit and visually wrapped
+   * lines. Returns true when the key was consumed.
    */
   function recallPreviousMessage(): boolean {
     if (isCommandMode || messageHistory.length === 0) return false;
-    if (!caretOnFirstLine()) return false;
+    if (!caretAtStart()) return false;
     if (historyIndex === -1) historyDraft = value;
     if (historyIndex < messageHistory.length - 1) {
       historyIndex += 1;
@@ -157,12 +157,12 @@
 
   /**
    * Down: walk back toward newer messages and finally restore the live draft.
-   * Only fires while recalling and when the caret is on the last line. Returns
-   * true when the key was consumed.
+   * Only fires while recalling and at the end of the field. Returns true when
+   * the key was consumed.
    */
   function recallNextMessage(): boolean {
     if (isCommandMode || historyIndex === -1) return false;
-    if (!caretOnLastLine()) return false;
+    if (!caretAtEnd()) return false;
     if (historyIndex === 0) {
       historyIndex = -1;
       value = historyDraft;
