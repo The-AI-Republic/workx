@@ -31,6 +31,15 @@ LLM routing, MCP, and Apps. It is not an OpenAI, Anthropic, Google, or other
 model-provider BYOK credential. Private WorkX uses the same OIDC access token
 created by its existing login flow for every gateway surface.
 
+The same rule applies to third-party AI agents, not only WorkX. OpenHub mints
+one `air_...` API key whose default scopes are `chat`, `models`, and `apps`.
+That key authenticates LLM reasoning and model discovery under `/v1`, app tool
+discovery and execution under `/mcp`, and the Apps control plane under
+`/api/v1/apps`. Scope selection and model/provider/app allowlists may narrow a
+key for least privilege, but they are restrictions on one credential—not
+separate LLM and Apps credential types. OpenHub must never require a user to
+mint a second Apps key alongside an LLM key.
+
 ## Goals
 
 - Route catalog, installation, activation, connection, and credential requests
