@@ -279,12 +279,13 @@ export async function testModelConnection(params: TestConnectionParams = {}): Pr
   }
 }
 
-export function createModelServices(_deps: ModelsServiceDeps): Record<string, ServiceHandler> {
+export function createModelServices(deps: ModelsServiceDeps): Record<string, ServiceHandler> {
   const services: Record<string, ServiceHandler> = {
     'models.testConnection': async (params): Promise<TestConnectionResult> => testModelConnection(params ?? {}),
   };
-  if (_deps.getCatalog) {
-    services['models.getCatalog'] = async () => _deps.getCatalog!();
+  const { getCatalog } = deps;
+  if (getCatalog) {
+    services['models.getCatalog'] = async () => getCatalog();
   }
   return services;
 }
