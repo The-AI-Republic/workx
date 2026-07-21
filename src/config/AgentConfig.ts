@@ -105,9 +105,18 @@ export class AgentConfig implements IConfigService {
       const storedConfig = await this.storage.get();
       console.log('[AgentConfig] initialize - storedConfig from storage:', storedConfig?.selectedModelKey);
 
-      // Give an optional product adapter a chance to initialize its catalog
-      // before defaults are materialized. The OSS adapter is a no-op.
-      await initializeModelCatalog();
+      try {
+        // Give an optional product adapter a chance to initialize its catalog
+        // before defaults are materialized. The OSS adapter is a no-op.
+        await initializeModelCatalog();
+      } catch (catalogError) {
+        // Catalog integration is optional. A faulty product adapter must not
+        // trigger the whole-config recovery path and overwrite stored choices.
+        console.warn(
+          '[AgentConfig] Failed to initialize model catalog; using bundled defaults:',
+          catalogError,
+        );
+      }
 
       // Build full runtime config by merging stored data with default.json providers/models
       this.currentConfig = buildRuntimeConfig(storedConfig);
