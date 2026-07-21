@@ -362,6 +362,7 @@ fn main() {
             Ok(())
         })
         .manage(runtime_supervisor::RuntimeSupervisorState::default())
+        .manage(voice_commands::VoiceSttState::default())
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_platform_info,

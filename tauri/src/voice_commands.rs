@@ -6,7 +6,9 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, State};
+use tokio::io::AsyncWriteExt;
+use tokio::sync::Mutex;
 
 const MANIFEST_URL_ENV: &str = "WORKX_VOICE_STT_MANIFEST_URL";
 const MANIFEST_SHA256_ENV: &str = "WORKX_VOICE_STT_MANIFEST_SHA256";
@@ -16,7 +18,17 @@ const COMPONENT_DIR: &str = "voice-stt";
 const INSTALL_FILE: &str = "install.json";
 const SUPPORTED_PROTOCOL_VERSION: u32 = 1;
 const MAX_AUDIO_BYTES: usize = 50 * 1024 * 1024;
+const MAX_MANIFEST_BYTES: usize = 1024 * 1024;
+const MAX_RUNTIME_BYTES: usize = 512 * 1024 * 1024;
+const MAX_MODEL_BYTES: usize = 1024 * 1024 * 1024;
+const MANIFEST_DOWNLOAD_TIMEOUT_SECS: u64 = 30;
+const ASSET_DOWNLOAD_TIMEOUT_SECS: u64 = 600;
 const TRANSCRIBE_TIMEOUT_MS: u64 = 120_000;
+
+#[derive(Default)]
+pub struct VoiceSttState {
+    operation: Mutex<()>,
+}
 
 #[derive(Debug, Clone)]
 struct ManifestConfig {
@@ -28,6 +40,7 @@ struct ManifestConfig {
 #[serde(rename_all = "camelCase")]
 pub struct VoiceSttStatus {
     pub configured: bool,
+    pub available: bool,
     pub installed: bool,
     pub target: String,
     pub component_version: Option<String>,
@@ -102,6 +115,17 @@ fn non_empty(value: Result<String, std::env::VarError>) -> Option<String> {
         .filter(|value| !value.is_empty())
 }
 
+fn non_empty_built(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_owned)
+}
+
+fn is_valid_sha256(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
 fn is_allowed_download_url(url: &str) -> bool {
     let Ok(parsed) = reqwest::Url::parse(url) else {
         return false;
@@ -123,11 +147,11 @@ fn is_local_download_url(url: &str) -> bool {
 fn manifest_config() -> Result<Option<ManifestConfig>, String> {
     let runtime_url = non_empty(std::env::var(MANIFEST_URL_ENV));
     let runtime_sha256 = non_empty(std::env::var(MANIFEST_SHA256_ENV));
-    let url = runtime_url.or_else(|| BUILT_MANIFEST_URL.map(str::to_owned));
+    let url = runtime_url.or_else(|| non_empty_built(BUILT_MANIFEST_URL));
     let Some(url) = url else {
         return Ok(None);
     };
-    let sha256 = runtime_sha256.or_else(|| BUILT_MANIFEST_SHA256.map(str::to_owned));
+    let sha256 = runtime_sha256.or_else(|| non_empty_built(BUILT_MANIFEST_SHA256));
     validate_manifest_config(url, sha256).map(Some)
 }
 
@@ -142,6 +166,14 @@ fn validate_manifest_config(url: String, sha256: Option<String>) -> Result<Manif
             "Voice STT manifest is not pinned. Set {} when building the desktop app.",
             MANIFEST_SHA256_ENV
         ));
+    }
+    if let Some(value) = sha256.as_deref() {
+        if !is_valid_sha256(value) {
+            return Err(format!(
+                "{} must be exactly 64 hexadecimal characters.",
+                MANIFEST_SHA256_ENV
+            ));
+        }
     }
     Ok(ManifestConfig { url, sha256 })
 }
@@ -234,6 +266,7 @@ fn build_status(app: &AppHandle) -> VoiceSttStatus {
                 let installed = runtime_path.exists() && model_path.exists();
                 VoiceSttStatus {
                     configured,
+                    available: installed,
                     installed,
                     target,
                     component_version: Some(metadata.component_version),
@@ -255,6 +288,7 @@ fn build_status(app: &AppHandle) -> VoiceSttStatus {
             }
             Err(e) => VoiceSttStatus {
                 configured,
+                available: false,
                 installed: false,
                 target,
                 component_version: Some(metadata.component_version),
@@ -267,6 +301,7 @@ fn build_status(app: &AppHandle) -> VoiceSttStatus {
         },
         Ok(None) => VoiceSttStatus {
             configured,
+            available: false,
             installed: false,
             target,
             component_version: None,
@@ -278,6 +313,7 @@ fn build_status(app: &AppHandle) -> VoiceSttStatus {
         },
         Err(e) => VoiceSttStatus {
             configured,
+            available: false,
             installed: false,
             target,
             component_version: None,
@@ -290,18 +326,69 @@ fn build_status(app: &AppHandle) -> VoiceSttStatus {
     }
 }
 
-async fn fetch_bytes(url: &str) -> Result<Vec<u8>, String> {
-    reqwest::Client::new()
+async fn fetch_response(
+    url: &str,
+    label: &str,
+    timeout: Duration,
+) -> Result<reqwest::Response, String> {
+    reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(15))
+        .timeout(timeout)
+        .build()
+        .map_err(|e| format!("Failed to create voice STT download client: {}", e))?
         .get(url)
         .send()
         .await
-        .map_err(|e| format!("Failed to download voice STT asset: {}", e))?
+        .map_err(|e| format!("Failed to download voice STT {}: {}", label, e))?
         .error_for_status()
-        .map_err(|e| format!("Voice STT asset request failed: {}", e))?
-        .bytes()
+        .map_err(|e| format!("Voice STT {} request failed: {}", label, e))
+}
+
+fn ensure_content_length(
+    response: &reqwest::Response,
+    max_bytes: usize,
+    label: &str,
+) -> Result<(), String> {
+    if response
+        .content_length()
+        .is_some_and(|length| length > max_bytes as u64)
+    {
+        return Err(format!(
+            "Voice STT {} exceeds the {} byte download limit.",
+            label, max_bytes
+        ));
+    }
+    Ok(())
+}
+
+async fn fetch_bytes(url: &str, max_bytes: usize, label: &str) -> Result<Vec<u8>, String> {
+    let mut response = fetch_response(
+        url,
+        label,
+        Duration::from_secs(MANIFEST_DOWNLOAD_TIMEOUT_SECS),
+    )
+    .await?;
+    ensure_content_length(&response, max_bytes, label)?;
+    let mut bytes = Vec::with_capacity(
+        response
+            .content_length()
+            .unwrap_or_default()
+            .min(max_bytes as u64) as usize,
+    );
+    while let Some(chunk) = response
+        .chunk()
         .await
-        .map(|bytes| bytes.to_vec())
-        .map_err(|e| format!("Failed to read voice STT asset: {}", e))
+        .map_err(|e| format!("Failed to read voice STT {}: {}", label, e))?
+    {
+        if chunk.len() > max_bytes.saturating_sub(bytes.len()) {
+            return Err(format!(
+                "Voice STT {} exceeds the {} byte download limit.",
+                label, max_bytes
+            ));
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(bytes)
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
@@ -321,11 +408,110 @@ fn verify_sha256(bytes: &[u8], expected: &str, label: &str) -> Result<(), String
     }
 }
 
-fn write_verified_file(path: &Path, bytes: &[u8]) -> Result<(), String> {
-    let tmp = path.with_extension("download");
-    fs::write(&tmp, bytes)
-        .map_err(|e| format!("Failed to write temporary voice STT asset: {}", e))?;
-    fs::rename(&tmp, path).map_err(|e| format!("Failed to install voice STT asset: {}", e))
+fn temporary_download_path(path: &Path) -> PathBuf {
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("asset");
+    path.with_file_name(format!(".{}.download-{}", file_name, uuid::Uuid::new_v4()))
+}
+
+async fn replace_file(source: &Path, destination: &Path, label: &str) -> Result<(), String> {
+    #[cfg(windows)]
+    if destination.exists() {
+        tokio::fs::remove_file(destination)
+            .await
+            .map_err(|e| format!("Failed to replace voice STT {}: {}", label, e))?;
+    }
+    tokio::fs::rename(source, destination)
+        .await
+        .map_err(|e| format!("Failed to install voice STT {}: {}", label, e))
+}
+
+async fn download_verified_file(
+    url: &str,
+    expected_sha256: &str,
+    path: &Path,
+    max_bytes: usize,
+    label: &str,
+) -> Result<(), String> {
+    let tmp = temporary_download_path(path);
+    let result = async {
+        let mut response =
+            fetch_response(url, label, Duration::from_secs(ASSET_DOWNLOAD_TIMEOUT_SECS)).await?;
+        ensure_content_length(&response, max_bytes, label)?;
+        let mut file = tokio::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&tmp)
+            .await
+            .map_err(|e| format!("Failed to create temporary voice STT {}: {}", label, e))?;
+        let mut hasher = Sha256::new();
+        let mut total = 0usize;
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|e| format!("Failed to read voice STT {}: {}", label, e))?
+        {
+            if chunk.len() > max_bytes.saturating_sub(total) {
+                return Err(format!(
+                    "Voice STT {} exceeds the {} byte download limit.",
+                    label, max_bytes
+                ));
+            }
+            total += chunk.len();
+            hasher.update(&chunk);
+            file.write_all(&chunk)
+                .await
+                .map_err(|e| format!("Failed to write voice STT {}: {}", label, e))?;
+        }
+        file.flush()
+            .await
+            .map_err(|e| format!("Failed to flush voice STT {}: {}", label, e))?;
+        let actual: String = hasher
+            .finalize()
+            .iter()
+            .map(|byte| format!("{:02x}", byte))
+            .collect();
+        if !actual.eq_ignore_ascii_case(expected_sha256) {
+            return Err(format!(
+                "{} SHA-256 mismatch. expected {}, got {}",
+                label, expected_sha256, actual
+            ));
+        }
+        drop(file);
+        replace_file(&tmp, path, label).await
+    }
+    .await;
+    if result.is_err() {
+        let _ = tokio::fs::remove_file(&tmp).await;
+    }
+    result
+}
+
+async fn write_atomic(path: &Path, bytes: &[u8], label: &str) -> Result<(), String> {
+    let tmp = temporary_download_path(path);
+    let result = async {
+        let mut file = tokio::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&tmp)
+            .await
+            .map_err(|e| format!("Failed to create temporary voice STT {}: {}", label, e))?;
+        file.write_all(bytes)
+            .await
+            .map_err(|e| format!("Failed to write voice STT {}: {}", label, e))?;
+        file.flush()
+            .await
+            .map_err(|e| format!("Failed to flush voice STT {}: {}", label, e))?;
+        drop(file);
+        replace_file(&tmp, path, label).await
+    }
+    .await;
+    if result.is_err() {
+        let _ = tokio::fs::remove_file(&tmp).await;
+    }
+    result
 }
 
 #[cfg(unix)]
@@ -354,25 +540,43 @@ fn pick_asset(manifest: &VoiceManifest) -> Result<VoiceAsset, String> {
         .ok_or_else(|| format!("No voice STT asset is available for target {}", target))
 }
 
-#[tauri::command]
-pub fn voice_stt_status(app: AppHandle) -> VoiceSttStatus {
-    build_status(&app)
+fn validate_asset(asset: &VoiceAsset) -> Result<(), String> {
+    if !is_allowed_download_url(&asset.runtime_url) || !is_allowed_download_url(&asset.model_url) {
+        return Err(
+            "Voice STT asset URLs must use HTTPS (or loopback HTTP for development).".to_string(),
+        );
+    }
+    if !is_valid_sha256(&asset.runtime_sha256) || !is_valid_sha256(&asset.model_sha256) {
+        return Err("Voice STT asset hashes must be 64 hexadecimal characters.".to_string());
+    }
+    safe_component_path(Path::new("."), &asset.executable_name, "executable name")?;
+    safe_component_path(Path::new("."), &asset.model_file_name, "model file name")?;
+    if asset
+        .executable_name
+        .eq_ignore_ascii_case(&asset.model_file_name)
+    {
+        return Err("Voice STT runtime and model must use different file names.".to_string());
+    }
+    if asset.executable_name.eq_ignore_ascii_case(INSTALL_FILE)
+        || asset.model_file_name.eq_ignore_ascii_case(INSTALL_FILE)
+    {
+        return Err("Voice STT assets cannot overwrite install metadata.".to_string());
+    }
+    Ok(())
 }
 
-#[tauri::command]
-pub async fn install_voice_stt_component(app: AppHandle) -> Result<VoiceSttStatus, String> {
-    let config = manifest_config()?.ok_or_else(|| {
-        format!(
-            "Voice STT is not configured. Set {} and {} when building the desktop app.",
-            MANIFEST_URL_ENV, MANIFEST_SHA256_ENV
-        )
-    })?;
-    let manifest_bytes = fetch_bytes(&config.url).await?;
+async fn fetch_manifest_asset(
+    config: &ManifestConfig,
+) -> Result<(VoiceManifest, VoiceAsset), String> {
+    let manifest_bytes = fetch_bytes(&config.url, MAX_MANIFEST_BYTES, "manifest").await?;
     if let Some(expected) = config.sha256.as_deref() {
         verify_sha256(&manifest_bytes, expected, "manifest")?;
     }
     let manifest: VoiceManifest = serde_json::from_slice(&manifest_bytes)
         .map_err(|e| format!("Failed to parse voice STT manifest: {}", e))?;
+    if manifest.component_version.trim().is_empty() {
+        return Err("Voice STT manifest component version is empty.".to_string());
+    }
     if manifest.protocol_version != SUPPORTED_PROTOCOL_VERSION {
         return Err(format!(
             "Voice STT manifest protocol {} is unsupported (expected {}).",
@@ -380,24 +584,73 @@ pub async fn install_voice_stt_component(app: AppHandle) -> Result<VoiceSttStatu
         ));
     }
     let asset = pick_asset(&manifest)?;
-    if !is_allowed_download_url(&asset.runtime_url) || !is_allowed_download_url(&asset.model_url) {
-        return Err("Voice STT asset URLs must use HTTPS.".to_string());
+    validate_asset(&asset)?;
+    Ok((manifest, asset))
+}
+
+#[tauri::command]
+pub async fn voice_stt_status(app: AppHandle) -> VoiceSttStatus {
+    let mut status = build_status(&app);
+    if status.installed {
+        return status;
     }
+    let Ok(Some(config)) = manifest_config() else {
+        return status;
+    };
+    match fetch_manifest_asset(&config).await {
+        Ok(_) => {
+            status.available = true;
+            status.error = None;
+        }
+        Err(error) => {
+            status.error = Some(error);
+        }
+    }
+    status
+}
+
+#[tauri::command]
+pub async fn install_voice_stt_component(
+    app: AppHandle,
+    state: State<'_, VoiceSttState>,
+) -> Result<VoiceSttStatus, String> {
+    let _operation = state.operation.lock().await;
+    let status = build_status(&app);
+    if status.installed {
+        return Ok(status);
+    }
+    let config = manifest_config()?.ok_or_else(|| {
+        format!(
+            "Voice STT is not configured. Set {} and {} when building the desktop app.",
+            MANIFEST_URL_ENV, MANIFEST_SHA256_ENV
+        )
+    })?;
+    let (manifest, asset) = fetch_manifest_asset(&config).await?;
 
     let root = component_root(&app)?;
     fs::create_dir_all(&root)
         .map_err(|e| format!("Failed to create voice STT component directory: {}", e))?;
 
-    let runtime_bytes = fetch_bytes(&asset.runtime_url).await?;
-    verify_sha256(&runtime_bytes, &asset.runtime_sha256, "runtime")?;
     let runtime_path = safe_component_path(&root, &asset.executable_name, "executable name")?;
-    write_verified_file(&runtime_path, &runtime_bytes)?;
+    download_verified_file(
+        &asset.runtime_url,
+        &asset.runtime_sha256,
+        &runtime_path,
+        MAX_RUNTIME_BYTES,
+        "runtime",
+    )
+    .await?;
     mark_executable(&runtime_path)?;
 
-    let model_bytes = fetch_bytes(&asset.model_url).await?;
-    verify_sha256(&model_bytes, &asset.model_sha256, "model")?;
     let model_path = safe_component_path(&root, &asset.model_file_name, "model file name")?;
-    write_verified_file(&model_path, &model_bytes)?;
+    download_verified_file(
+        &asset.model_url,
+        &asset.model_sha256,
+        &model_path,
+        MAX_MODEL_BYTES,
+        "model",
+    )
+    .await?;
 
     let metadata = VoiceInstallMetadata {
         component_version: manifest.component_version,
@@ -410,8 +663,12 @@ pub async fn install_voice_stt_component(app: AppHandle) -> Result<VoiceSttStatu
     };
     let metadata_json = serde_json::to_string_pretty(&metadata)
         .map_err(|e| format!("Failed to serialize voice STT metadata: {}", e))?;
-    fs::write(install_path(&app)?, metadata_json)
-        .map_err(|e| format!("Failed to write voice STT metadata: {}", e))?;
+    write_atomic(
+        &install_path(&app)?,
+        metadata_json.as_bytes(),
+        "install metadata",
+    )
+    .await?;
 
     Ok(build_status(&app))
 }
@@ -427,6 +684,10 @@ fn audio_extension(mime_type: Option<&str>) -> &'static str {
     } else {
         "webm"
     }
+}
+
+fn max_base64_len(decoded_bytes: usize) -> usize {
+    decoded_bytes.saturating_add(2) / 3 * 4
 }
 
 fn command_args(
@@ -551,9 +812,17 @@ fn run_transcription_sidecar(
 #[tauri::command]
 pub async fn transcribe_voice_audio(
     app: AppHandle,
+    state: State<'_, VoiceSttState>,
     audio_base64: String,
     mime_type: Option<String>,
 ) -> Result<VoiceTranscriptionResult, String> {
+    if audio_base64.len() > max_base64_len(MAX_AUDIO_BYTES) {
+        return Err("Recorded audio is too large to transcribe locally.".to_string());
+    }
+    let _operation = state
+        .operation
+        .try_lock()
+        .map_err(|_| "Another voice STT operation is already in progress.".to_string())?;
     let metadata = read_install_metadata(&app)?
         .ok_or_else(|| "Voice STT component is not installed.".to_string())?;
     let (runtime_path, model_path) = installed_paths(&app, &metadata)?;
@@ -657,12 +926,56 @@ mod tests {
         );
         assert!(validate_manifest_config(
             "https://cdn.example.com/stable.json".to_string(),
-            Some("abc123".to_string()),
+            Some("a".repeat(64)),
         )
         .is_ok());
+        assert!(validate_manifest_config(
+            "https://cdn.example.com/stable.json".to_string(),
+            Some("abc123".to_string()),
+        )
+        .is_err());
         assert!(
             validate_manifest_config("http://localhost:5173/stable.json".to_string(), None,)
                 .is_ok()
         );
+    }
+
+    #[test]
+    fn asset_validation_rejects_invalid_hashes_and_names() {
+        let valid = VoiceAsset {
+            target: current_target(),
+            runtime_url: "https://cdn.example.com/runtime".to_string(),
+            runtime_sha256: "a".repeat(64),
+            model_url: "https://cdn.example.com/model".to_string(),
+            model_sha256: "b".repeat(64),
+            executable_name: "workx-stt".to_string(),
+            model_file_name: "model.bin".to_string(),
+            args: None,
+        };
+        assert!(validate_asset(&valid).is_ok());
+
+        let mut invalid_hash = valid.clone();
+        invalid_hash.runtime_sha256 = "not-a-hash".to_string();
+        assert!(validate_asset(&invalid_hash).is_err());
+
+        let mut invalid_name = valid;
+        invalid_name.executable_name = "../workx-stt".to_string();
+        assert!(validate_asset(&invalid_name).is_err());
+
+        invalid_name.executable_name = "model.bin".to_string();
+        assert!(validate_asset(&invalid_name).is_err());
+
+        invalid_name.executable_name = INSTALL_FILE.to_string();
+        assert!(validate_asset(&invalid_name).is_err());
+    }
+
+    #[test]
+    fn base64_limit_covers_the_maximum_decoded_audio_size() {
+        assert_eq!(max_base64_len(0), 0);
+        assert_eq!(max_base64_len(1), 4);
+        assert_eq!(max_base64_len(2), 4);
+        assert_eq!(max_base64_len(3), 4);
+        assert_eq!(max_base64_len(4), 8);
+        assert!(max_base64_len(MAX_AUDIO_BYTES) > MAX_AUDIO_BYTES);
     }
 }

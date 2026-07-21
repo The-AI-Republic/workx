@@ -20,6 +20,7 @@
   import { registerShortcut, registerShortcutContext } from '../shortcuts/useShortcut';
   import {
     canUseBrowserVoiceCapture,
+    getVoiceSttStatus,
     transcribeAudioBlob,
   } from '../lib/voice/stt';
 
@@ -78,6 +79,8 @@
   let voiceSampleRate = 16000;
   let voiceDisposed = false;
   const MAX_VOICE_RECORDING_SECONDS = 300;
+  const MAX_VOICE_AUDIO_BYTES = 50 * 1024 * 1024;
+  const MAX_VOICE_PCM_SAMPLES = Math.floor((MAX_VOICE_AUDIO_BYTES - 44) / 2);
 
   // Track 13: screenshots captured from the web clipboard, sent alongside
   // the prompt as `image` InputItems (the core funnel disk-backs them).
@@ -250,7 +253,7 @@
   function stopVoiceAudioGraph(): void {
     voiceProcessor?.disconnect();
     voiceSource?.disconnect();
-    void voiceAudioContext?.close();
+    void voiceAudioContext?.close().catch(() => {});
     voiceProcessor = null;
     voiceSource = null;
     voiceAudioContext = null;
@@ -303,6 +306,16 @@
     handleInput();
   }
 
+  async function initializeVoiceSupport(): Promise<void> {
+    if (!canUseBrowserVoiceCapture()) return;
+    try {
+      const status = await getVoiceSttStatus();
+      if (!voiceDisposed) voiceSupported = status.available;
+    } catch {
+      if (!voiceDisposed) voiceSupported = false;
+    }
+  }
+
   async function startVoiceRecording(): Promise<void> {
     if (!voiceSupported || isStartingVoice || isRecordingVoice || isTranscribingVoice) return;
     isStartingVoice = true;
@@ -329,7 +342,10 @@
       voiceProcessor.onaudioprocess = (event) => {
         if (!isRecordingVoice) return;
         const input = event.inputBuffer.getChannelData(0);
-        const maxSamples = voiceSampleRate * MAX_VOICE_RECORDING_SECONDS;
+        const maxSamples = Math.min(
+          voiceSampleRate * MAX_VOICE_RECORDING_SECONDS,
+          MAX_VOICE_PCM_SAMPLES,
+        );
         const remaining = Math.max(0, maxSamples - voiceSampleCount);
         if (remaining > 0) {
           const captured = new Float32Array(input.subarray(0, remaining));
@@ -681,7 +697,7 @@
   });
 
   onMount(() => {
-    voiceSupported = canUseBrowserVoiceCapture();
+    void initializeVoiceSupport();
     const unregisterChatContext = registerShortcutContext('Chat', { active: () => isFocused });
     const unregisterSlashContext = registerShortcutContext('SlashCommand', {
       active: () => isFocused && isCommandMode && showDropdown,

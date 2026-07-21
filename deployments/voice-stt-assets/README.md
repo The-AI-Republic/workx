@@ -49,5 +49,10 @@ inside it. A release must therefore be rebuilt when `stable.json` changes.
 Loopback development manifests may omit the checksum; non-loopback manifests
 fail closed without one.
 
+The desktop release workflow contains a pin for the currently published
+manifest and accepts repository-variable overrides with the same names. Update
+that pin (or the variables) whenever `stable.json` changes; otherwise the app
+will keep voice input unavailable rather than trust changed manifest bytes.
+
 The initial published manifest contains the Linux x86_64 asset only. Add
 macOS and Windows entries after publishing matching platform runtimes.

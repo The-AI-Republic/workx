@@ -2,6 +2,7 @@ import type { InvokeArgs } from '@tauri-apps/api/core';
 
 export interface VoiceSttStatus {
   configured: boolean;
+  available: boolean;
   installed: boolean;
   target: string;
   componentVersion?: string;
@@ -47,6 +48,9 @@ export async function ensureVoiceSttInstalled(): Promise<VoiceSttStatus> {
   }
   if (!status.configured) {
     throw new Error('Voice STT is not configured for this build.');
+  }
+  if (!status.available) {
+    throw new Error(status.error || `Voice STT is not available for ${status.target}.`);
   }
   return invokeTauri<VoiceSttStatus>('install_voice_stt_component');
 }
