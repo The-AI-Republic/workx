@@ -164,6 +164,7 @@ export class ServerAgentBootstrap {
   private currentAuthManager: IAuthManager | null = null;
   private readonly authContext = createMutableAuthContext(null);
   private runtimeState: RuntimeStateController | null = null;
+  private appsAccess: import('@/core/apps/AppsAccessController').AppsAccessController | null = null;
   private dataSourceRuntimeHandle: import('@/core/data-sources').DataSourceRuntimeHandle | null =
     null;
   private componentRuntimeHandle: import('@/core/components').ComponentRuntimeHandle | null = null;
@@ -237,7 +238,7 @@ export class ServerAgentBootstrap {
    * session (so external connections can't hijack the UI's primary-session
    * pointer) and outside the user concurrency budget (the app-server transport
    * bounds connection count itself).
-  */
+   */
   async createSession(): Promise<string> {
     if (!this.registry) throw new Error('SessionManager not initialized');
     const session = await this.registry.createSession({ type: 'api', internal: true });
@@ -413,7 +414,7 @@ export class ServerAgentBootstrap {
         rollouts: await (await RolloutRecorder.getProvider()).getAllMetadata(),
         defaultMode: normalizeAgentMode(
           agentType,
-          agentConfig.getConfig().preferences?.defaultMode,
+          agentConfig.getConfig().preferences?.defaultMode
         ),
       });
       if (profile === 'desktop-runtime' && this.dataSourceRuntimeHandle?.getRuntime()) {
@@ -452,7 +453,7 @@ export class ServerAgentBootstrap {
             rollouts: await (await RolloutRecorder.getProvider()).getAllMetadata(),
             defaultMode: normalizeAgentMode(
               agentType,
-              agentConfig.getConfig().preferences?.defaultMode,
+              agentConfig.getConfig().preferences?.defaultMode
             ),
           });
         },
@@ -461,224 +462,239 @@ export class ServerAgentBootstrap {
         loadRolloutRevision,
         refreshRolloutSnapshot,
         agentAssembler: new ServerAgentAssembler({
-          createPlatformAdapter: async (sessionId) => profile === 'desktop-runtime'
-            ? new (await import('@/desktop-runtime/platform/DesktopRuntimePlatformAdapter')).DesktopRuntimePlatformAdapter(
-                sessionId,
-                this.dataSourceRuntimeHandle?.getRuntime() ?? undefined,
-                this.componentRuntimeHandle?.getManager() ?? undefined,
-              )
-            : new (await import('../platform/ServerPlatformAdapter')).ServerPlatformAdapter(),
+          createPlatformAdapter: async (sessionId) =>
+            profile === 'desktop-runtime'
+              ? new (
+                  await import('@/desktop-runtime/platform/DesktopRuntimePlatformAdapter')
+                ).DesktopRuntimePlatformAdapter(
+                  sessionId,
+                  this.dataSourceRuntimeHandle?.getRuntime() ?? undefined,
+                  this.componentRuntimeHandle?.getManager() ?? undefined
+                )
+              : new (await import('../platform/ServerPlatformAdapter')).ServerPlatformAdapter(),
           agentType,
           promptStaticContext: this.promptStaticContext,
           wireAgent: async (agent, input) => {
-          const cfg = input.config;
-          let subAgentRunner: import('@/tools/AgentTool/SubAgentRunner').SubAgentRunner | null = null;
-          const cleanupSteps: import('@/core/assembly/AgentAssembler').CleanupStep[] = [];
+            const cfg = input.config;
+            let subAgentRunner: import('@/tools/AgentTool/SubAgentRunner').SubAgentRunner | null =
+              null;
+            const cleanupSteps: import('@/core/assembly/AgentAssembler').CleanupStep[] = [];
 
-          if (profile === 'desktop-runtime') {
-            // Approval gate — desktop parity with the extension wiring in
-            // SessionManager. The webview already renders ApprovalRequested
-            // through the shared EventProcessor and returns ExecApproval ops
-            // over the stdio channel; constructing the gate here is what
-            // starts that round-trip. Deliberately NOT wrapped in try/catch:
-            // if the gate cannot be built, agent creation must fail loudly
-            // rather than run desktop tools ungated.
-            const { configureDesktopApprovalGate } = await import('@/desktop-runtime/approvalGate');
-            await configureDesktopApprovalGate(agent, cfg.getConfig().approval);
+            if (profile === 'desktop-runtime') {
+              // Approval gate — desktop parity with the extension wiring in
+              // SessionManager. The webview already renders ApprovalRequested
+              // through the shared EventProcessor and returns ExecApproval ops
+              // over the stdio channel; constructing the gate here is what
+              // starts that round-trip. Deliberately NOT wrapped in try/catch:
+              // if the gate cannot be built, agent creation must fail loudly
+              // rather than run desktop tools ungated.
+              const { configureDesktopApprovalGate } =
+                await import('@/desktop-runtime/approvalGate');
+              await configureDesktopApprovalGate(agent, cfg.getConfig().approval);
 
-            // The registry does not publish this agent until agentFactory
-            // returns, so register already-connected gateway tools directly
-            // on it as part of construction.
-            await this.ensureDesktopRuntimeHubMcpConnected(agent);
+              // The registry does not publish this agent until agentFactory
+              // returns, so register already-connected gateway tools directly
+              // on it as part of construction.
+              await this.ensureDesktopRuntimeHubMcpConnected(agent);
 
-            // Browser bridge: mirror the connected extension node's tool
-            // catalog onto this new session (sessions created before the
-            // node connected are handled by the manager's nodes-changed sync).
-            try {
-              const { getBrowserBridgeHandle } = await import('@/tools/browserBridgeHandle');
-              const bridge = getBrowserBridgeHandle();
-              if (bridge?.hasActiveNode()) {
-                await bridge.applyToRegistry(agent.getSession().sessionId, agent.getToolRegistry());
-              }
-            } catch (err) {
-              console.warn(
-                '[ServerAgentBootstrap] browser bridge tool registration failed (non-fatal):',
-                err
-              );
-            }
-          }
-
-          if (profile === 'server') {
-            // Register server-mode tools on each new agent. Pass `dataDir` so
-            // the track-09 read_persisted_result tool can be rooted at the
-            // same directory that FileToolResultStore writes into.
-            try {
-              const toolRegistry = agent.getToolRegistry();
-              await registerServerTools(toolRegistry as any, dataDir);
-              console.log('[ServerAgentBootstrap] Server tools registered on new session agent');
-            } catch (err) {
-              const errMsg = err instanceof Error ? err.message : String(err);
-              console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
-              agent.getEngine()?.pushEvent({
-                id: crypto.randomUUID(),
-                msg: {
-                  type: 'BackgroundEvent',
-                  data: {
-                    message: `Server tool registration failed: ${errMsg}`,
-                    level: 'error',
-                  },
-                },
-              });
-            }
-          }
-
-          await this.registerSkillsToolOnAgent(agent);
-
-          // Register sub-agent tool
-          const engine = agent.getEngine();
-          if (engine) {
-            try {
-              const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
-              subAgentRunner = await registerSubAgentTool(engine);
-              if (this.skillRegistry) {
-                const runner = subAgentRunner;
-                this.skillRegistry.setValidationContextProvider(() => ({
-                  knownAgents: runner.getTypes().map((t) => t.id),
-                }));
-              }
-              console.log('[ServerAgentBootstrap] sub_agent tool registered');
-
-              // Track 10: bind this session's hook + sub-agent registries to
-              // currently-enabled plugins. Skills + MCP are global (handled
-              // by the global PluginRegistry's slot loaders); hooks + agents
-              // are per-session and bound here.
-              if (this.pluginRegistry) {
-                try {
-                  const { PluginSessionBinder } =
-                    await import('@/core/plugins/PluginSessionBinder');
-                  const { nodeReadFile, nodeListDirs } =
-                    await import('@/server/storage/nodePluginFs');
-                  const binder = new PluginSessionBinder({
-                    hookRegistry: agent.getHookRegistry(),
-                    subAgentRunner,
-                    readFile: nodeReadFile,
-                    listDirs: nodeListDirs,
-                  });
-                  const enabled = this.pluginRegistry
-                    .getPlugins()
-                    .filter((p) => p.state.status === 'enabled');
-                  await binder.applyEnabledPlugins(enabled);
-                  // Register so a later /plugin disable prunes this session
-                  // immediately (claudy gh-36995). Teardown on session end is
-                  // a documented follow-up; a stale binder for an ended
-                  // session is a harmless no-op on prune.
-                  const unregister = this.pluginRegistry.registerSessionBinder(binder);
-                  cleanupSteps.push({
-                    id: 'plugin-binder',
-                    run: async () => {
-                      unregister();
-                      await binder.dispose();
-                    },
-                  });
-                } catch (bindErr) {
-                  console.warn(
-                    '[ServerAgentBootstrap] plugin session bind failed (non-fatal):',
-                    bindErr
+              // Browser bridge: mirror the connected extension node's tool
+              // catalog onto this new session (sessions created before the
+              // node connected are handled by the manager's nodes-changed sync).
+              try {
+                const { getBrowserBridgeHandle } = await import('@/tools/browserBridgeHandle');
+                const bridge = getBrowserBridgeHandle();
+                if (bridge?.hasActiveNode()) {
+                  await bridge.applyToRegistry(
+                    agent.getSession().sessionId,
+                    agent.getToolRegistry()
                   );
                 }
+              } catch (err) {
+                console.warn(
+                  '[ServerAgentBootstrap] browser bridge tool registration failed (non-fatal):',
+                  err
+                );
               }
+            }
+
+            if (profile === 'server') {
+              // Register server-mode tools on each new agent. Pass `dataDir` so
+              // the track-09 read_persisted_result tool can be rooted at the
+              // same directory that FileToolResultStore writes into.
+              try {
+                const toolRegistry = agent.getToolRegistry();
+                await registerServerTools(toolRegistry as any, dataDir);
+                console.log('[ServerAgentBootstrap] Server tools registered on new session agent');
+              } catch (err) {
+                const errMsg = err instanceof Error ? err.message : String(err);
+                console.warn('[ServerAgentBootstrap] Tool registration failed (non-fatal):', err);
+                agent.getEngine()?.pushEvent({
+                  id: crypto.randomUUID(),
+                  msg: {
+                    type: 'BackgroundEvent',
+                    data: {
+                      message: `Server tool registration failed: ${errMsg}`,
+                      level: 'error',
+                    },
+                  },
+                });
+              }
+            }
+
+            await this.registerSkillsToolOnAgent(agent);
+
+            // Register sub-agent tool
+            const engine = agent.getEngine();
+            if (engine) {
+              try {
+                const { registerSubAgentTool } = await import('@/tools/AgentTool/register');
+                subAgentRunner = await registerSubAgentTool(engine);
+                if (this.skillRegistry) {
+                  const runner = subAgentRunner;
+                  this.skillRegistry.setValidationContextProvider(() => ({
+                    knownAgents: runner.getTypes().map((t) => t.id),
+                  }));
+                }
+                console.log('[ServerAgentBootstrap] sub_agent tool registered');
+
+                // Track 10: bind this session's hook + sub-agent registries to
+                // currently-enabled plugins. Skills + MCP are global (handled
+                // by the global PluginRegistry's slot loaders); hooks + agents
+                // are per-session and bound here.
+                if (this.pluginRegistry) {
+                  try {
+                    const { PluginSessionBinder } =
+                      await import('@/core/plugins/PluginSessionBinder');
+                    const { nodeReadFile, nodeListDirs } =
+                      await import('@/server/storage/nodePluginFs');
+                    const binder = new PluginSessionBinder({
+                      hookRegistry: agent.getHookRegistry(),
+                      subAgentRunner,
+                      readFile: nodeReadFile,
+                      listDirs: nodeListDirs,
+                    });
+                    const enabled = this.pluginRegistry
+                      .getPlugins()
+                      .filter((p) => p.state.status === 'enabled');
+                    await binder.applyEnabledPlugins(enabled);
+                    // Register so a later /plugin disable prunes this session
+                    // immediately (claudy gh-36995). Teardown on session end is
+                    // a documented follow-up; a stale binder for an ended
+                    // session is a harmless no-op on prune.
+                    const unregister = this.pluginRegistry.registerSessionBinder(binder);
+                    cleanupSteps.push({
+                      id: 'plugin-binder',
+                      run: async () => {
+                        unregister();
+                        await binder.dispose();
+                      },
+                    });
+                  } catch (bindErr) {
+                    console.warn(
+                      '[ServerAgentBootstrap] plugin session bind failed (non-fatal):',
+                      bindErr
+                    );
+                  }
+                }
+              } catch (err) {
+                const errMsg = err instanceof Error ? err.message : String(err);
+                console.warn(
+                  '[ServerAgentBootstrap] sub_agent tool registration failed (non-fatal):',
+                  err
+                );
+                engine.pushEvent({
+                  id: crypto.randomUUID(),
+                  msg: {
+                    type: 'BackgroundEvent',
+                    data: {
+                      message: `Sub-agent tool registration failed: ${errMsg}`,
+                      level: 'error',
+                    },
+                  },
+                });
+              }
+            }
+
+            // Track 23: x402 capability — headless server FAILS CLOSED.
+            // ApprovalGate is NOT constructed on the server (verified), so
+            // safety is an EXPLICIT default-deny allowlist policy from
+            // server.x402 — never an approval timeout. No policy / not
+            // allowlisted / over cap ⇒ deny + audit. Real signing is Phase-4
+            // gated (coinbase/x402 SDK).
+            try {
+              const toolRegistry = agent.getToolRegistry();
+              const {
+                createPaymentCapability,
+                CoinbaseX402Signer,
+                PaymentKeyStore,
+                evaluateServerPolicy,
+              } = await import('@/core/payments/x402');
+              const { getServerConfig } = await import('../config/server-config');
+              const { emitLog } = await import('../handlers/logs');
+
+              const keyStore = new PaymentKeyStore();
+              const signer = new CoinbaseX402Signer(
+                () => keyStore.getPrivateKey(),
+                async () => {
+                  throw new Error('x402 address derivation is Phase-4 gated (coinbase/x402 SDK)');
+                }
+              );
+
+              const x402 = () => getServerConfig().server.x402;
+
+              toolRegistry.setPaymentCapability(
+                createPaymentCapability({
+                  platform: 'server',
+                  isEnabled: async () => x402().enabled === true,
+                  getCaps: async () => {
+                    const cfg = x402();
+                    return {
+                      network: cfg.network,
+                      // Per-request cap is owned by the allowlist policy below
+                      // (per payee domain); the generic limit is not the gate.
+                      maxPaymentPerRequestUSD: Number.POSITIVE_INFINITY,
+                      maxSessionSpendUSD: cfg.maxSessionSpendUSD,
+                    };
+                  },
+                  signer,
+                  // Explicit default-deny allowlist (Track 20 stand-in) — pure,
+                  // unit-tested evaluateServerPolicy. sessionSpentUSD is the
+                  // per-day approximation pending Phase 4.
+                  serverPolicy: (amountUSD, resourceUrl, sessionSpentUSD) => {
+                    const cfg = x402();
+                    return evaluateServerPolicy(
+                      {
+                        allowlist: cfg.allowlist,
+                        maxPerDayUSD: cfg.maxPerDayUSD,
+                      },
+                      amountUSD,
+                      resourceUrl,
+                      sessionSpentUSD
+                    );
+                  },
+                  audit: (level, message, data) => emitLog(level, `[x402] ${message}`, data),
+                })
+              );
+              console.log('[ServerAgentBootstrap] x402 capability wired (default-deny)');
             } catch (err) {
-              const errMsg = err instanceof Error ? err.message : String(err);
               console.warn(
-                '[ServerAgentBootstrap] sub_agent tool registration failed (non-fatal):',
+                '[ServerAgentBootstrap] x402 capability wiring failed (non-fatal):',
                 err
               );
-              engine.pushEvent({
-                id: crypto.randomUUID(),
-                msg: {
-                  type: 'BackgroundEvent',
-                  data: {
-                    message: `Sub-agent tool registration failed: ${errMsg}`,
-                    level: 'error',
-                  },
-                },
-              });
             }
-          }
 
-          // Track 23: x402 capability — headless server FAILS CLOSED.
-          // ApprovalGate is NOT constructed on the server (verified), so
-          // safety is an EXPLICIT default-deny allowlist policy from
-          // server.x402 — never an approval timeout. No policy / not
-          // allowlisted / over cap ⇒ deny + audit. Real signing is Phase-4
-          // gated (coinbase/x402 SDK).
-          try {
-            const toolRegistry = agent.getToolRegistry();
-            const {
-              createPaymentCapability,
-              CoinbaseX402Signer,
-              PaymentKeyStore,
-              evaluateServerPolicy,
-            } = await import('@/core/payments/x402');
-            const { getServerConfig } = await import('../config/server-config');
-            const { emitLog } = await import('../handlers/logs');
-
-            const keyStore = new PaymentKeyStore();
-            const signer = new CoinbaseX402Signer(
-              () => keyStore.getPrivateKey(),
-              async () => {
-                throw new Error('x402 address derivation is Phase-4 gated (coinbase/x402 SDK)');
-              }
-            );
-
-            const x402 = () => getServerConfig().server.x402;
-
-            toolRegistry.setPaymentCapability(
-              createPaymentCapability({
-                platform: 'server',
-                isEnabled: async () => x402().enabled === true,
-                getCaps: async () => {
-                  const cfg = x402();
-                  return {
-                    network: cfg.network,
-                    // Per-request cap is owned by the allowlist policy below
-                    // (per payee domain); the generic limit is not the gate.
-                    maxPaymentPerRequestUSD: Number.POSITIVE_INFINITY,
-                    maxSessionSpendUSD: cfg.maxSessionSpendUSD,
-                  };
-                },
-                signer,
-                // Explicit default-deny allowlist (Track 20 stand-in) — pure,
-                // unit-tested evaluateServerPolicy. sessionSpentUSD is the
-                // per-day approximation pending Phase 4.
-                serverPolicy: (amountUSD, resourceUrl, sessionSpentUSD) => {
-                  const cfg = x402();
-                  return evaluateServerPolicy(
-                    {
-                      allowlist: cfg.allowlist,
-                      maxPerDayUSD: cfg.maxPerDayUSD,
-                    },
-                    amountUSD,
-                    resourceUrl,
-                    sessionSpentUSD
-                  );
-                },
-                audit: (level, message, data) => emitLog(level, `[x402] ${message}`, data),
-              })
-            );
-            console.log('[ServerAgentBootstrap] x402 capability wired (default-deny)');
-          } catch (err) {
-            console.warn('[ServerAgentBootstrap] x402 capability wiring failed (non-fatal):', err);
-          }
-
-          return { subAgentRunner, cleanupSteps };
+            return { subAgentRunner, cleanupSteps };
           },
         }),
-        assemblyServicesFactory: async () => createSessionServices({
-          serverRootDir,
-          commitGeneratedTitle: (sessionId, title) =>
-            this.registry?.commitGeneratedTitle(sessionId, title) ?? Promise.resolve(false),
-        }, false),
+        assemblyServicesFactory: async () =>
+          createSessionServices(
+            {
+              serverRootDir,
+              commitGeneratedTitle: (sessionId, title) =>
+                this.registry?.commitGeneratedTitle(sessionId, title) ?? Promise.resolve(false),
+            },
+            false
+          ),
         eventDispatcherFactory: (sessionId) => (event) => {
           // Route to the channel that owns this session (UI vs app-server
           // isolation). Falls back to the primary channel for sessions with no
@@ -686,14 +702,19 @@ export class ServerAgentBootstrap {
           const targetChannelId =
             this.sessionOwners.get(sessionId) ?? this.primaryChannelId ?? this.channel?.channelId;
           const delivery = targetChannelId
-            ? channelManager.dispatchEvent({
-              msg: event.msg,
-              sessionId,
-              runtimeEpoch: event.runtimeEpoch,
-              eventSeq: event.eventSeq,
-            }, targetChannelId).catch((error) => {
-              console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
-            })
+            ? channelManager
+                .dispatchEvent(
+                  {
+                    msg: event.msg,
+                    sessionId,
+                    runtimeEpoch: event.runtimeEpoch,
+                    eventSeq: event.eventSeq,
+                  },
+                  targetChannelId
+                )
+                .catch((error) => {
+                  console.error('[ServerAgentBootstrap] Failed to dispatch event:', error);
+                })
             : Promise.resolve();
 
           // FR-6: forward to the A2A bridge when a delegated turn is in flight.
@@ -737,9 +758,10 @@ export class ServerAgentBootstrap {
       await this.registry.recoverInterruptedTurns();
 
       // 6. Create initial primary session
-      const initialSession = profile === 'desktop-runtime'
-        ? { sessionId: await this.registry.resolveSurfaceLessTarget() }
-        : await this.registry.createSession({ type: 'primary' });
+      const initialSession =
+        profile === 'desktop-runtime'
+          ? { sessionId: await this.registry.resolveSurfaceLessTarget() }
+          : await this.registry.createSession({ type: 'primary' });
       this.defaultSessionId = initialSession.sessionId;
       console.log(`[ServerAgentBootstrap] Initial session opened: ${initialSession.sessionId}`);
 
@@ -819,10 +841,11 @@ export class ServerAgentBootstrap {
       // 9c. Track 15: periodic rollout TTL cleanup. Without this the server
       // never prunes expired/forked rollouts (every rewind makes a new one).
       const ROLLOUT_TTL_SWEEP_MS = 2 * 60 * 60 * 1000;
-      const sweepRollouts = () => Promise.all([
-        RolloutRecorder.cleanupExpired(),
-        this.deletionCoordinator?.purgeDue() ?? Promise.resolve(0),
-      ])
+      const sweepRollouts = () =>
+        Promise.all([
+          RolloutRecorder.cleanupExpired(),
+          this.deletionCoordinator?.purgeDue() ?? Promise.resolve(0),
+        ])
           .then(([n]) => {
             if (n > 0) console.log(`[ServerAgentBootstrap] Pruned ${n} expired rollout(s)`);
           })
@@ -990,10 +1013,9 @@ export class ServerAgentBootstrap {
     if (!this.skillRegistry) return;
     // Desktop/server prompt composition must not contact the browser. Domain
     // constraints are advertised statically and enforced when use_skill runs.
-    agent.getPromptLoader().registerExtension(
-      'skills',
-      () => this.skillRegistry!.buildSkillsSystemPrompt(),
-    );
+    agent
+      .getPromptLoader()
+      .registerExtension('skills', () => this.skillRegistry!.buildSkillsSystemPrompt());
     await registerUseSkillTool({
       toolRegistry: agent.getToolRegistry(),
       hookRegistry: agent.getHookRegistry(),
@@ -1025,9 +1047,11 @@ export class ServerAgentBootstrap {
 
     // Get MCPManager instance
     let mcpDeps: import('@/core/services').MCPServiceDeps | undefined;
+    let runtimeMcpManager: import('@/core/mcp/MCPManager').MCPManager | null = null;
     try {
       const { MCPManager } = await import('@/core/mcp/MCPManager');
       const mcpManager = await MCPManager.getInstance(platformScope);
+      runtimeMcpManager = mcpManager;
       if (profile === 'desktop-runtime') {
         mcpManager.setSessionTokenProvider(async () =>
           getCredentialStore().get('auth', 'access_token')
@@ -1039,6 +1063,38 @@ export class ServerAgentBootstrap {
       console.warn(
         '[ServerAgentBootstrap] MCPManager not available for service registration:',
         error
+      );
+    }
+
+    let appsRuntime:
+      | ReturnType<typeof import('@/core/apps/createAppsRuntime').createAppsRuntime>
+      | undefined;
+    if (profile === 'desktop-runtime' && runtimeState) {
+      const { createAppsRuntime } = await import('@/core/apps/createAppsRuntime');
+      const urls = runtimeState.getUrls();
+      appsRuntime = createAppsRuntime({
+        urls,
+        credentialStore: getCredentialStore(),
+        getSessionToken: async () => getCredentialStore().get('auth', 'access_token'),
+        refreshSessionToken: () => this.refreshDesktopRuntimeSessionTokens(),
+        reconnectMcp: async () => {
+          await this.disconnectDesktopRuntimeHubMcp();
+          await this.ensureDesktopRuntimeHubMcpConnected();
+        },
+        disconnectMcp: () => this.disconnectDesktopRuntimeHubMcp(),
+        oauthReturnUrl: null,
+        emitState: (state) =>
+          channelManager.broadcastEvent({
+            msg: {
+              type: 'StateUpdate',
+              data: { scope: 'apps-runtime', kind: 'apps.stateChanged', apps: state },
+            },
+          }),
+      });
+      this.appsAccess = appsRuntime.access;
+      runtimeMcpManager?.setGatewayCredentialProvider(
+        appsRuntime.getMcpCredential,
+        appsRuntime.handleMcpUnauthorized
       );
     }
 
@@ -1447,105 +1503,129 @@ export class ServerAgentBootstrap {
       plugins: pluginsDeps,
       scheduler: this.scheduler ? { scheduler: this.scheduler } : undefined,
       storage: { configStorage: getConfigStorage() },
-      session: this.registry ? {
-        registry: this.registry,
-        // Resume-from-history support (parity with the extension service
-        // worker): without this dep, `session.resume` rejects with
-        // "Session resume not supported on this platform" on desktop/server.
-        loadRolloutHistory: async (sessionId: string) => {
-          const initialHistory = await RolloutRecorder.getRolloutHistory(sessionId);
-          if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history) return null;
-          return { sessionId, rolloutItems: initialHistory.payload.history };
-        },
-      } : undefined,
-      agent: this.registry ? {
-        registry: this.registry,
-        handleConfigUpdate: () => this.handleConfigUpdate(),
-        createAuthManager: profile === 'desktop-runtime'
-          ? (shouldUseBackend, backendBaseUrl) => {
-              const tokenGetter = shouldUseBackend
-                ? async () => getCredentialStore().get('auth', 'access_token')
-                : undefined;
-              const urls = runtimeState?.getUrls();
-              const gatewayLlmBaseUrl = urls?.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null;
-              return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, {
-                gatewayLlmBaseUrl,
-                refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
-              });
-            }
-          : undefined,
-        updateAuthContext: profile === 'desktop-runtime' ? (authManager) => {
-          this.updateAuthManager(authManager);
-        } : undefined,
-        runtimeState,
-        // Desktop runtime: persist approval config from the Settings picker
-        // (approval.updateConfig service) into the runtime's config storage,
-        // parity with the extension service worker. Live-session gates are
-        // updated by the shared handler in agent-services.
-        updateApprovalConfig: profile === 'desktop-runtime'
-          ? async (config: Record<string, unknown>) => {
-              const { STORAGE_KEYS } = await import('@/config/defaults');
-              const { DEFAULT_APPROVAL_CONFIG } = await import('@/core/approval/types');
-              const storage = getConfigStorage();
-              const agentConfig =
-                (await storage.get<Record<string, any>>(STORAGE_KEYS.CONFIG)) ?? {};
-              const existing = agentConfig.approval ?? { ...DEFAULT_APPROVAL_CONFIG };
-              agentConfig.approval = { ...existing, ...config };
-              await storage.set(STORAGE_KEYS.CONFIG, agentConfig);
-            }
-          : undefined,
-      } : undefined,
+      session: this.registry
+        ? {
+            registry: this.registry,
+            // Resume-from-history support (parity with the extension service
+            // worker): without this dep, `session.resume` rejects with
+            // "Session resume not supported on this platform" on desktop/server.
+            loadRolloutHistory: async (sessionId: string) => {
+              const initialHistory = await RolloutRecorder.getRolloutHistory(sessionId);
+              if (initialHistory.type !== 'resumed' || !initialHistory.payload?.history)
+                return null;
+              return { sessionId, rolloutItems: initialHistory.payload.history };
+            },
+          }
+        : undefined,
+      agent: this.registry
+        ? {
+            registry: this.registry,
+            handleConfigUpdate: () => this.handleConfigUpdate(),
+            createAuthManager:
+              profile === 'desktop-runtime'
+                ? (shouldUseBackend, backendBaseUrl) => {
+                    const tokenGetter = shouldUseBackend
+                      ? async () => getCredentialStore().get('auth', 'access_token')
+                      : undefined;
+                    const urls = runtimeState?.getUrls();
+                    const gatewayLlmBaseUrl =
+                      urls?.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null;
+                    return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, {
+                      gatewayLlmBaseUrl,
+                      refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
+                    });
+                  }
+                : undefined,
+            updateAuthContext:
+              profile === 'desktop-runtime'
+                ? (authManager) => {
+                    this.updateAuthManager(authManager);
+                  }
+                : undefined,
+            runtimeState,
+            // Desktop runtime: persist approval config from the Settings picker
+            // (approval.updateConfig service) into the runtime's config storage,
+            // parity with the extension service worker. Live-session gates are
+            // updated by the shared handler in agent-services.
+            updateApprovalConfig:
+              profile === 'desktop-runtime'
+                ? async (config: Record<string, unknown>) => {
+                    const { STORAGE_KEYS } = await import('@/config/defaults');
+                    const { DEFAULT_APPROVAL_CONFIG } = await import('@/core/approval/types');
+                    const storage = getConfigStorage();
+                    const agentConfig =
+                      (await storage.get<Record<string, any>>(STORAGE_KEYS.CONFIG)) ?? {};
+                    const existing = agentConfig.approval ?? { ...DEFAULT_APPROVAL_CONFIG };
+                    agentConfig.approval = { ...existing, ...config };
+                    await storage.set(STORAGE_KEYS.CONFIG, agentConfig);
+                  }
+                : undefined,
+          }
+        : undefined,
       // Track 43: runtime-owned auth services (auth.completeLogin / getState /
       // logout + ChatGPT OAuth). Desktop runtime only — server mode handles
       // auth differently.
-      auth: profile === 'desktop-runtime' && this.registry ? {
-        registry: this.registry,
-        createAuthManager: (shouldUseBackend, backendBaseUrl) => {
-          const tokenGetter = shouldUseBackend
-            ? async () => getCredentialStore().get('auth', 'access_token')
-            : undefined;
-          const urls = runtimeState?.getUrls();
-          const gatewayLlmBaseUrl = urls?.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null;
-          return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, {
-            gatewayLlmBaseUrl,
-            refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
-          });
-        },
-        updateAuthContext: (authManager) => {
-          this.updateAuthManager(authManager);
-        },
-        getCredentialStore: () => getCredentialStore(),
-        runtimeState,
-        refreshAccessState: () => this.refreshDesktopRuntimeAccessState(),
-        afterLogin: () => this.ensureDesktopRuntimeHubMcpConnected(),
-        afterLogout: () => this.disconnectDesktopRuntimeHubMcp(),
-        // The runtime owns the access token after cutover; the UI must not
-        // receive it. The runtime performs the profile fetch itself and
-        // returns only the redacted profile shape the UI needs.
-        fetchUserProfile: async (accessToken: string) => {
-          try {
-            const { fetchUserProfileServerSide } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
-            return await fetchUserProfileServerSide(accessToken);
-          } catch (err) {
-            console.warn('[ServerAgentBootstrap] runtime profile fetch failed:', err);
-            return null;
-          }
-        },
-        refreshAuthTokens: async (refreshToken: string) => {
-          try {
-            const { refreshDesktopAuthTokens } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
-            return await refreshDesktopAuthTokens(refreshToken, await this.readPersistedOidcConfig());
-          } catch (err) {
-            console.warn('[ServerAgentBootstrap] runtime token refresh failed:', err);
-            return null;
-          }
-        },
-        // ChatGPT OAuth: runtime owns the 127.0.0.1:1455 callback server
-        // (was Rust `start_oauth_callback_server`, now deleted) and the token
-        // storage (was WebView `ChatGPTOAuthDesktopStorage` → keytar).
-        chatgptFlow,
-        getChatGPTStorage: chatgptStorage ? () => chatgptStorage! : undefined,
-      } : undefined,
+      auth:
+        profile === 'desktop-runtime' && this.registry
+          ? {
+              registry: this.registry,
+              createAuthManager: (shouldUseBackend, backendBaseUrl) => {
+                const tokenGetter = shouldUseBackend
+                  ? async () => getCredentialStore().get('auth', 'access_token')
+                  : undefined;
+                const urls = runtimeState?.getUrls();
+                const gatewayLlmBaseUrl =
+                  urls?.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null;
+                return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, {
+                  gatewayLlmBaseUrl,
+                  refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
+                });
+              },
+              updateAuthContext: (authManager) => {
+                this.updateAuthManager(authManager);
+              },
+              getCredentialStore: () => getCredentialStore(),
+              runtimeState,
+              refreshAccessState: () => this.refreshDesktopRuntimeAccessState(),
+              afterLogin: async () => {
+                await this.appsAccess?.refresh();
+              },
+              afterLogout: async () => {
+                await this.appsAccess?.sessionEnded();
+              },
+              // The runtime owns the access token after cutover; the UI must not
+              // receive it. The runtime performs the profile fetch itself and
+              // returns only the redacted profile shape the UI needs.
+              fetchUserProfile: async (accessToken: string) => {
+                try {
+                  const { fetchUserProfileServerSide } =
+                    await import('@/desktop-runtime/auth/runtimeProfileFetch');
+                  return await fetchUserProfileServerSide(accessToken);
+                } catch (err) {
+                  console.warn('[ServerAgentBootstrap] runtime profile fetch failed:', err);
+                  return null;
+                }
+              },
+              refreshAuthTokens: async (refreshToken: string) => {
+                try {
+                  const { refreshDesktopAuthTokens } =
+                    await import('@/desktop-runtime/auth/runtimeProfileFetch');
+                  return await refreshDesktopAuthTokens(
+                    refreshToken,
+                    await this.readPersistedOidcConfig()
+                  );
+                } catch (err) {
+                  console.warn('[ServerAgentBootstrap] runtime token refresh failed:', err);
+                  return null;
+                }
+              },
+              // ChatGPT OAuth: runtime owns the 127.0.0.1:1455 callback server
+              // (was Rust `start_oauth_callback_server`, now deleted) and the token
+              // storage (was WebView `ChatGPTOAuthDesktopStorage` → keytar).
+              chatgptFlow,
+              getChatGPTStorage: chatgptStorage ? () => chatgptStorage! : undefined,
+            }
+          : undefined,
       diagnostics: {
         buildCtx: () => this.buildDiagnosticContext(),
         heapdump: async () => {
@@ -1562,6 +1642,14 @@ export class ServerAgentBootstrap {
       // webview, which cannot reach it directly. Without this, webview-side
       // BYOK API key saves are silently dropped.
       credentials: {},
+      apps: appsRuntime
+        ? {
+            access: appsRuntime.access,
+            client: appsRuntime.client,
+            authorizeContext: (context) =>
+              context.channelType === 'tauri' && context.channelId === 'desktop-runtime-main',
+          }
+        : undefined,
       dataSources:
         profile === 'desktop-runtime' && this.dataSourceRuntimeHandle
           ? { handle: this.dataSourceRuntimeHandle }
@@ -1587,6 +1675,8 @@ export class ServerAgentBootstrap {
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);
+
+    await appsRuntime?.access.initialize();
 
     if (profile === 'desktop-runtime') {
       await this.hydrateDesktopRuntimeAuthState();
@@ -1623,15 +1713,12 @@ export class ServerAgentBootstrap {
     return this.runtimeState;
   }
 
-  private updateAuthManager(
-    authManager: IAuthManager | null,
-    reason?: AuthChangeReason,
-  ): void {
+  private updateAuthManager(authManager: IAuthManager | null, reason?: AuthChangeReason): void {
     const previous = this.currentAuthManager;
     this.currentAuthManager = authManager;
     this.authContext.update(
       authManager,
-      reason ?? (authManager === null ? 'logout' : previous === null ? 'login' : 'routing'),
+      reason ?? (authManager === null ? 'logout' : previous === null ? 'login' : 'routing')
     );
   }
 
@@ -1648,22 +1735,24 @@ export class ServerAgentBootstrap {
     const usesBackend = auth?.shouldUseBackend() ?? false;
     if (usesBackend) {
       const token = await auth?.getAccessToken().catch(() => null);
-      return this.runtimeState.setAccessState(token
-        ? {
-            status: 'ready',
-            mode: 'login',
-            ready: true,
-            provider,
-            model,
-          }
-        : {
-            status: 'needs_login',
-            mode: 'login',
-            ready: false,
-            provider,
-            model,
-            reason: 'Sign in to continue.',
-          });
+      return this.runtimeState.setAccessState(
+        token
+          ? {
+              status: 'ready',
+              mode: 'login',
+              ready: true,
+              provider,
+              model,
+            }
+          : {
+              status: 'needs_login',
+              mode: 'login',
+              ready: false,
+              provider,
+              model,
+              reason: 'Sign in to continue.',
+            }
+      );
     }
     if (!selected) {
       return this.runtimeState.setAccessState({
@@ -1674,16 +1763,18 @@ export class ServerAgentBootstrap {
       });
     }
     const apiKey = await config.getProviderApiKey(selected.provider.id).catch(() => null);
-    return this.runtimeState.setAccessState(apiKey
-      ? { status: 'ready', mode: 'api_key', ready: true, provider, model }
-      : {
-          status: 'needs_api_key',
-          mode: 'api_key',
-          ready: false,
-          provider,
-          model,
-          reason: 'Configure an API key in Settings.',
-        });
+    return this.runtimeState.setAccessState(
+      apiKey
+        ? { status: 'ready', mode: 'api_key', ready: true, provider, model }
+        : {
+            status: 'needs_api_key',
+            mode: 'api_key',
+            ready: false,
+            provider,
+            model,
+            reason: 'Configure an API key in Settings.',
+          }
+    );
   }
 
   /**
@@ -1752,17 +1843,8 @@ export class ServerAgentBootstrap {
     if ((this.options.profile ?? 'server') !== 'desktop-runtime' || !this.registry) return;
 
     try {
-      const accessToken = await getCredentialStore()
-        .get('auth', 'access_token')
-        .catch(() => null);
-      if (!accessToken) return;
-
       const { MCPManager } = await import('@/core/mcp/MCPManager');
       const mcpManager = await MCPManager.getInstance('desktop');
-      mcpManager.setSessionTokenProvider(async () =>
-        getCredentialStore().get('auth', 'access_token')
-      );
-      mcpManager.setSessionTokenRefreshProvider(() => this.refreshDesktopRuntimeSessionTokens());
       const serverName = this.runtimeState?.getUrls().gatewayMcpName ?? 'gateway';
       const hubServer = mcpManager.getServerByName(serverName);
       if (!hubServer) return;
@@ -2304,7 +2386,9 @@ export class ServerAgentBootstrap {
     };
 
     this.promptStaticContext = Object.freeze({ ...staticContext });
-    console.log(`[ServerAgentBootstrap] Prompt context configured for ${isDesktopRuntime ? 'desktop runtime' : 'server'} mode`);
+    console.log(
+      `[ServerAgentBootstrap] Prompt context configured for ${isDesktopRuntime ? 'desktop runtime' : 'server'} mode`
+    );
   }
 
   /**
@@ -2594,9 +2678,10 @@ export class ServerAgentBootstrap {
         return run;
       },
       listToolNames: () => {
-        const registry = this.registry && this.defaultSessionId
-          ? this.registry.getSession(this.defaultSessionId)?.agent?.getToolRegistry()
-          : undefined;
+        const registry =
+          this.registry && this.defaultSessionId
+            ? this.registry.getSession(this.defaultSessionId)?.agent?.getToolRegistry()
+            : undefined;
         if (!registry) return [];
         try {
           return registry

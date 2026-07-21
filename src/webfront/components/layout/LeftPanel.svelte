@@ -10,6 +10,7 @@
   import LeftPanelSection from './LeftPanelSection.svelte';
   import ChatHistorySection from './ChatHistorySection.svelte';
   import SessionModeSwitch from './SessionModeSwitch.svelte';
+  import { showAppsNavigation } from '../../stores/appsStore';
 
   let {
     /**
@@ -46,7 +47,7 @@
     <SessionModeSwitch />
 
     <LeftPanelSection>
-      {#each NAV_ITEMS as item (item.id)}
+      {#each NAV_ITEMS.filter((item) => item.id !== 'apps' || $showAppsNavigation) as item (item.id)}
         <NavTab {item} active={isNavActive(item.route, $location)} onNavigate={handleNavigate} />
       {/each}
     </LeftPanelSection>

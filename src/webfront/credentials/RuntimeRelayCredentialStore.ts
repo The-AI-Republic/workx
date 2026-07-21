@@ -1,5 +1,5 @@
 /**
- * Runtime-relay credential store (desktop webview).
+ * Runtime-relay credential store (rendered Desktop/extension Webfront).
  *
  * The desktop webview cannot reach the OS keychain — that store lives in the
  * Node `desktop-runtime` sidecar. This implementation satisfies the
@@ -39,7 +39,7 @@ export class RuntimeRelayCredentialStore implements CredentialStore {
     const client = await getInitializedUIClient();
     const { accounts } = await client.serviceRequest<{ accounts: string[] }>(
       'credentials.listAccounts',
-      { service },
+      { service }
     );
     return accounts ?? [];
   }

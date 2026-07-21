@@ -54,6 +54,12 @@
       </svg>`,
     },
     {
+      id: 'apps',
+      label: t('Apps'),
+      description: t('Configure OpenHub Apps access'),
+      icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>`,
+    },
+    {
       id: 'general',
       label: t('General'),
       description: t('User preferences and interface settings'),

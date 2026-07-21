@@ -117,7 +117,9 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
     return normalizeRuntimeProfile(raw);
   }
 
-  async function validateOrRefreshStoredLogin(credentialStore: ReturnType<NonNullable<AuthServiceDeps['getCredentialStore']>>): Promise<{
+  async function validateOrRefreshStoredLogin(
+    credentialStore: ReturnType<NonNullable<AuthServiceDeps['getCredentialStore']>>
+  ): Promise<{
     accessToken: string | null;
     profile: RuntimeUserProfileSnapshot | null;
     refreshed: boolean;
@@ -126,7 +128,12 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
     const refreshToken = await credentialStore.get(AUTH_SERVICE, REFRESH_TOKEN_ACCOUNT);
     let profile = accessToken ? await refreshProfile(accessToken) : null;
 
-    if (!profile && refreshToken && deps.refreshAuthTokens && (deps.fetchUserProfile || !accessToken)) {
+    if (
+      !profile &&
+      refreshToken &&
+      deps.refreshAuthTokens &&
+      (deps.fetchUserProfile || !accessToken)
+    ) {
       const refreshed = await deps.refreshAuthTokens(refreshToken);
       if (refreshed?.accessToken && refreshed.refreshToken) {
         await Promise.all([
@@ -152,7 +159,7 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
     accessToken: string,
     refreshToken: string,
     backendBaseUrl: string | null,
-    oidc?: { clientId: string; tokenUrl: string },
+    oidc?: { clientId: string; tokenUrl: string }
   ) {
     if (!deps.getCredentialStore) {
       throw new Error('finalizeLogin: credential store not available on this platform');
@@ -208,7 +215,7 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
     }
 
     const auth = deps.runtimeState?.getAuthState();
-    const access = await deps.refreshAccessState?.() ?? deps.runtimeState?.getAccessState();
+    const access = (await deps.refreshAccessState?.()) ?? deps.runtimeState?.getAccessState();
     await deps.afterLogin?.();
     return { success: true, state: auth, access, user: auth?.profile ?? user };
   }
@@ -244,18 +251,18 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
      * `auth.completeLogin`.
      */
     'auth.exchangeOIDCCode': async (params) => {
-      const { code, codeVerifier, tokenUrl, clientId, redirectUri, backendBaseUrl } =
-        (params ?? {}) as {
-          code?: string;
-          codeVerifier?: string;
-          tokenUrl?: string;
-          clientId?: string;
-          redirectUri?: string;
-          backendBaseUrl?: string | null;
-        };
+      const { code, codeVerifier, tokenUrl, clientId, redirectUri, backendBaseUrl } = (params ??
+        {}) as {
+        code?: string;
+        codeVerifier?: string;
+        tokenUrl?: string;
+        clientId?: string;
+        redirectUri?: string;
+        backendBaseUrl?: string | null;
+      };
       if (!code || !codeVerifier || !tokenUrl || !clientId || !redirectUri) {
         throw new Error(
-          'auth.exchangeOIDCCode: code, codeVerifier, tokenUrl, clientId, and redirectUri are required',
+          'auth.exchangeOIDCCode: code, codeVerifier, tokenUrl, clientId, and redirectUri are required'
         );
       }
 
@@ -272,7 +279,10 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
       }
       const isLoopback =
         parsedTokenUrl.hostname === 'localhost' || parsedTokenUrl.hostname === '127.0.0.1';
-      if (parsedTokenUrl.protocol !== 'https:' && !(parsedTokenUrl.protocol === 'http:' && isLoopback)) {
+      if (
+        parsedTokenUrl.protocol !== 'https:' &&
+        !(parsedTokenUrl.protocol === 'http:' && isLoopback)
+      ) {
         throw new Error('auth.exchangeOIDCCode: tokenUrl must use https');
       }
       const runtimeAuthBase =
@@ -288,7 +298,7 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
         }
         if (expectedOrigin && expectedOrigin !== parsedTokenUrl.origin) {
           throw new Error(
-            'auth.exchangeOIDCCode: tokenUrl origin does not match the configured auth origin',
+            'auth.exchangeOIDCCode: tokenUrl origin does not match the configured auth origin'
           );
         }
       }
@@ -307,11 +317,15 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
       });
       if (!response.ok) {
         const errorBody = await response.text().catch(() => '');
-        throw new Error(`auth.exchangeOIDCCode: token exchange failed (${response.status}): ${errorBody}`);
+        throw new Error(
+          `auth.exchangeOIDCCode: token exchange failed (${response.status}): ${errorBody}`
+        );
       }
       const data = (await response.json()) as { access_token?: string; refresh_token?: string };
       if (!data.access_token || !data.refresh_token) {
-        throw new Error('auth.exchangeOIDCCode: token endpoint did not return access_token and refresh_token');
+        throw new Error(
+          'auth.exchangeOIDCCode: token endpoint did not return access_token and refresh_token'
+        );
       }
       return finalizeLogin(data.access_token, data.refresh_token, backendBaseUrl ?? null, {
         clientId,
@@ -335,7 +349,13 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
           });
           return deps.runtimeState.getAuthState();
         }
-        return { hasValidToken: false, hasToken: false, user: null, profile: null, profileStatus: 'idle' };
+        return {
+          hasValidToken: false,
+          hasToken: false,
+          user: null,
+          profile: null,
+          profileStatus: 'idle',
+        };
       }
       const credentialStore = deps.getCredentialStore();
       const accessToken = await credentialStore.get(AUTH_SERVICE, ACCESS_TOKEN_ACCOUNT);
@@ -351,7 +371,13 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
           });
           return deps.runtimeState.getAuthState();
         }
-        return { hasValidToken: false, hasToken: false, user: null, profile: null, profileStatus: 'idle' };
+        return {
+          hasValidToken: false,
+          hasToken: false,
+          user: null,
+          profile: null,
+          profileStatus: 'idle',
+        };
       }
 
       const existingAuthState = deps.runtimeState?.getAuthState();
@@ -377,7 +403,9 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
             hasToken: hasUsableToken,
             profile: user,
             profileStatus: hasUsableToken ? profileStatus : 'failed',
-            lastError: hasUsableToken ? undefined : 'Stored desktop login expired or profile unavailable',
+            lastError: hasUsableToken
+              ? undefined
+              : 'Stored desktop login expired or profile unavailable',
           });
           return deps.runtimeState.getAuthState();
         }
@@ -419,25 +447,6 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
     },
 
     /**
-     * Return the current access token for the WebView to authenticate
-     * first-party control-plane calls (e.g. the Apps catalog mutations) on
-     * desktop, where the WebView has no cookies and the runtime owns
-     * credentials. Refreshes from the stored refresh token when needed.
-     * Returns `{ accessToken: null }` when there is no valid login.
-     */
-    'auth.getAccessToken': async (): Promise<{ accessToken: string | null }> => {
-      if (!deps.getCredentialStore) {
-        return { accessToken: null };
-      }
-      try {
-        const { accessToken } = await validateOrRefreshStoredLogin(deps.getCredentialStore());
-        return { accessToken: accessToken ?? null };
-      } catch {
-        return { accessToken: null };
-      }
-    },
-
-    /**
      * Clear stored credentials. Sessions are recreated with a no-backend
      * auth manager so they fall back to user-supplied API keys until the
      * user logs in again.
@@ -464,12 +473,13 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
           })
         : undefined;
       const access = deps.runtimeState
-        ? await deps.refreshAccessState?.() ?? await deps.runtimeState.setAccessState({
-          status: 'needs_login',
-          mode: 'none',
-          ready: false,
-          reason: 'Log in to your account or configure an API key.',
-        })
+        ? ((await deps.refreshAccessState?.()) ??
+          (await deps.runtimeState.setAccessState({
+            status: 'needs_login',
+            mode: 'none',
+            ready: false,
+            reason: 'Log in to your account or configure an API key.',
+          })))
         : undefined;
       await deps.afterLogout?.();
       return { success: true, state: auth, access };
@@ -500,7 +510,9 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
      */
     'auth.chatgpt.awaitCompletion': async () => {
       if (!deps.chatgptFlow) {
-        throw new Error('auth.chatgpt.awaitCompletion: ChatGPT OAuth not available on this platform');
+        throw new Error(
+          'auth.chatgpt.awaitCompletion: ChatGPT OAuth not available on this platform'
+        );
       }
       await deps.chatgptFlow.waitForCompletion();
       return { success: true };
@@ -532,7 +544,10 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
      */
     'auth.chatgpt.logout': async () => {
       if (deps.getChatGPTStorage) {
-        await deps.getChatGPTStorage().clearTokens().catch(() => undefined);
+        await deps
+          .getChatGPTStorage()
+          .clearTokens()
+          .catch(() => undefined);
       }
       return { success: true };
     },

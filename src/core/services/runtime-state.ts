@@ -26,7 +26,12 @@ export interface RuntimeAuthState {
 }
 
 export type AgentAccessMode = 'login' | 'api_key' | 'none';
-export type AgentAccessStatus = 'ready' | 'needs_login' | 'needs_api_key' | 'initializing' | 'error';
+export type AgentAccessStatus =
+  | 'ready'
+  | 'needs_login'
+  | 'needs_api_key'
+  | 'initializing'
+  | 'error';
 
 export interface AgentAccessState {
   status: AgentAccessStatus;
@@ -48,7 +53,6 @@ export interface DesktopRuntimeStateSnapshot {
   auth: RuntimeAuthState;
   access: AgentAccessState;
   effectiveConfig: Record<string, unknown>;
-  urls: RuntimeUrlConfig;
 }
 
 export interface RuntimeReadyLike {
@@ -86,37 +90,47 @@ export function normalizeRuntimeProfile(profile: unknown): RuntimeUserProfileSna
   if (!profile || typeof profile !== 'object') return null;
   const value = profile as Record<string, unknown>;
   return {
-    id: typeof value.id === 'string' ? value.id : typeof value.user_id === 'string' ? value.user_id : undefined,
-    name: typeof value.name === 'string'
-      ? value.name
-      : typeof value.firstName === 'string'
-        ? value.firstName
-        : typeof value.display_name === 'string'
-          ? value.display_name
-          : typeof value.username === 'string'
-            ? value.username
-            : undefined,
-    email: typeof value.email === 'string' ? value.email : undefined,
-    avatar: typeof value.avatar === 'string'
-      ? value.avatar
-      : typeof value.avatar_url === 'string'
-        ? value.avatar_url
-        : typeof value.picture === 'string'
-          ? value.picture
+    id:
+      typeof value.id === 'string'
+        ? value.id
+        : typeof value.user_id === 'string'
+          ? value.user_id
           : undefined,
-    userType: typeof value.userType === 'number'
-      ? value.userType
-      : typeof value.user_type === 'number'
-        ? value.user_type
-        : undefined,
+    name:
+      typeof value.name === 'string'
+        ? value.name
+        : typeof value.firstName === 'string'
+          ? value.firstName
+          : typeof value.display_name === 'string'
+            ? value.display_name
+            : typeof value.username === 'string'
+              ? value.username
+              : undefined,
+    email: typeof value.email === 'string' ? value.email : undefined,
+    avatar:
+      typeof value.avatar === 'string'
+        ? value.avatar
+        : typeof value.avatar_url === 'string'
+          ? value.avatar_url
+          : typeof value.picture === 'string'
+            ? value.picture
+            : undefined,
+    userType:
+      typeof value.userType === 'number'
+        ? value.userType
+        : typeof value.user_type === 'number'
+          ? value.user_type
+          : undefined,
   };
 }
 
 export function accessStateFromReadyState(status: RuntimeReadyLike): AgentAccessState {
   const mode: AgentAccessMode =
-    status.authMode === 'login' ? 'login' :
-    status.authMode === 'api_key' || status.authMode === 'chatgpt_oauth' ? 'api_key' :
-    'none';
+    status.authMode === 'login'
+      ? 'login'
+      : status.authMode === 'api_key' || status.authMode === 'chatgpt_oauth'
+        ? 'api_key'
+        : 'none';
   let accessStatus: AgentAccessStatus = 'initializing';
   if (status.ready === true) {
     accessStatus = 'ready';
@@ -179,10 +193,14 @@ export class RuntimeStateController {
     };
   }
 
-  async setAuthState(next: Partial<Omit<RuntimeAuthState, 'hasValidToken' | 'user' | 'updatedAt'>>): Promise<RuntimeAuthState> {
+  async setAuthState(
+    next: Partial<Omit<RuntimeAuthState, 'hasValidToken' | 'user' | 'updatedAt'>>
+  ): Promise<RuntimeAuthState> {
     return this.enqueueAuthWrite(async () => {
       const profile = Object.prototype.hasOwnProperty.call(next, 'profile')
-        ? (next.profile ? { ...next.profile } : null)
+        ? next.profile
+          ? { ...next.profile }
+          : null
         : this.auth.profile;
       this.auth = {
         ...this.auth,
@@ -198,7 +216,9 @@ export class RuntimeStateController {
     });
   }
 
-  async setAccessState(next: Partial<Omit<AgentAccessState, 'updatedAt'>>): Promise<AgentAccessState> {
+  async setAccessState(
+    next: Partial<Omit<AgentAccessState, 'updatedAt'>>
+  ): Promise<AgentAccessState> {
     return this.enqueueAccessWrite(async () => {
       this.access = {
         ...this.access,
@@ -221,11 +241,13 @@ export class RuntimeStateController {
       auth: this.getAuthState(),
       access: this.getAccessState(),
       effectiveConfig: this.options.getEffectiveConfig?.() ?? {},
-      urls: this.getUrls(),
     };
   }
 
-  private async emit(kind: 'auth.stateChanged' | 'agent.accessChanged', payload: Record<string, unknown>): Promise<void> {
+  private async emit(
+    kind: 'auth.stateChanged' | 'agent.accessChanged',
+    payload: Record<string, unknown>
+  ): Promise<void> {
     if (!this.options.emitStateUpdate) return;
     await this.options.emitStateUpdate({
       type: 'StateUpdate',
@@ -239,13 +261,19 @@ export class RuntimeStateController {
 
   private enqueueAuthWrite<T>(write: () => Promise<T>): Promise<T> {
     const run = this.authWriteQueue.catch(() => undefined).then(write);
-    this.authWriteQueue = run.then(() => undefined, () => undefined);
+    this.authWriteQueue = run.then(
+      () => undefined,
+      () => undefined
+    );
     return run;
   }
 
   private enqueueAccessWrite<T>(write: () => Promise<T>): Promise<T> {
     const run = this.accessWriteQueue.catch(() => undefined).then(write);
-    this.accessWriteQueue = run.then(() => undefined, () => undefined);
+    this.accessWriteQueue = run.then(
+      () => undefined,
+      () => undefined
+    );
     return run;
   }
 }

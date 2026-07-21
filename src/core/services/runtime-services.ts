@@ -8,6 +8,5 @@ export interface RuntimeServiceDeps {
 export function createRuntimeServices(deps: RuntimeServiceDeps): Record<string, ServiceHandler> {
   return {
     'runtime.getStateSnapshot': async () => deps.runtimeState.getSnapshot(),
-    'runtime.getUrlConfig': async () => deps.runtimeState.getUrls(),
   };
 }

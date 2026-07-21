@@ -22,14 +22,10 @@ import type {
   IMCPManager,
 } from './types';
 import { MCPClient } from './MCPClient';
-import {
-  loadServers,
-  saveServers,
-  createServerConfig,
-  updateServerConfig,
-} from './MCPConfig';
-import { decryptApiKey, encryptApiKey } from '../../utils/encryption';
+import { loadServers, saveServers, createServerConfig, updateServerConfig } from './MCPConfig';
+import { decryptApiKey } from '../../utils/encryption';
 import { resolveRuntimeUrls } from '../../config/runtimeUrls';
+import { appsAccessPolicy } from '@/core/apps/appsAccessPolicy';
 
 /**
  * Maximum number of MCP servers allowed (excluding builtins).
@@ -55,9 +51,7 @@ const BUILTIN_BROWSER_SERVER_ID = '00000000-0000-4000-8000-000000000001';
 const BROWSER_MCP_ARGS = ['--no-usage-statistics'];
 
 function createBrowserMcpArgs(includePackageName: boolean): string[] {
-  return includePackageName
-    ? ['chrome-devtools-mcp', ...BROWSER_MCP_ARGS]
-    : [...BROWSER_MCP_ARGS];
+  return includePackageName ? ['chrome-devtools-mcp', ...BROWSER_MCP_ARGS] : [...BROWSER_MCP_ARGS];
 }
 const BUILTIN_GATEWAY_SERVER_ID = '00000000-0000-4000-8000-000000000002';
 const BUILTIN_GATEWAY_SERVER_NAME = 'gateway';
@@ -92,14 +86,18 @@ export class MCPManager implements IMCPManager {
   private platform: MCPPlatformScope;
   private sessionTokenProvider: (() => Promise<string | null>) | null = null;
   private sessionTokenRefreshProvider: (() => Promise<string | null>) | null = null;
+  private gatewayCredentialProvider: (() => Promise<string | null>) | null = null;
+  private gatewayUnauthorizedProvider:
+    | ((failedToken: string | null) => Promise<string | null>)
+    | null = null;
 
   private constructor(platform?: MCPPlatformScope) {
     // Detect platform from build mode if not specified
-    this.platform = platform ?? (
-      typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop'
+    this.platform =
+      platform ??
+      (typeof __BUILD_MODE__ !== 'undefined' && __BUILD_MODE__ === 'desktop'
         ? 'desktop'
-        : 'extension'
-    );
+        : 'extension');
   }
 
   /**
@@ -162,7 +160,7 @@ export class MCPManager implements IMCPManager {
     }
 
     // Check server limit (exclude builtins from count)
-    const userServers = Array.from(this.servers.values()).filter(s => !s.builtin);
+    const userServers = Array.from(this.servers.values()).filter((s) => !s.builtin);
     if (userServers.length >= MAX_SERVERS) {
       throw new Error(`Maximum of ${MAX_SERVERS} user MCP servers allowed`);
     }
@@ -251,7 +249,6 @@ export class MCPManager implements IMCPManager {
 
     // Emit event
     this.emit({ type: 'config-removed', configId: id });
-
   }
 
   /**
@@ -268,9 +265,7 @@ export class MCPManager implements IMCPManager {
    */
   async removeByPluginId(pluginId: string): Promise<void> {
     this.ensureInitialized();
-    const targets = Array.from(this.servers.values()).filter(
-      (s) => s.pluginId === pluginId,
-    );
+    const targets = Array.from(this.servers.values()).filter((s) => s.pluginId === pluginId);
     for (const target of targets) {
       try {
         await this.removeServer(target.id);
@@ -323,6 +318,14 @@ export class MCPManager implements IMCPManager {
 
   setSessionTokenRefreshProvider(provider: (() => Promise<string | null>) | null): void {
     this.sessionTokenRefreshProvider = provider;
+  }
+
+  setGatewayCredentialProvider(
+    provider: (() => Promise<string | null>) | null,
+    onUnauthorized?: ((failedToken: string | null) => Promise<string | null>) | null
+  ): void {
+    this.gatewayCredentialProvider = provider;
+    this.gatewayUnauthorizedProvider = onUnauthorized ?? null;
   }
 
   // ==========================================================================
@@ -627,7 +630,7 @@ export class MCPManager implements IMCPManager {
         return new NodeMCPBridge({ config, ...callbacks });
       }
       throw new Error(
-        'stdio MCP servers are runtime-owned; the WebView build cannot create stdio MCP clients. Route through the runtime via mcp.* services.',
+        'stdio MCP servers are runtime-owned; the WebView build cannot create stdio MCP clients. Route through the runtime via mcp.* services.'
       );
     }
 
@@ -644,6 +647,14 @@ export class MCPManager implements IMCPManager {
         apiKey,
         tokenProvider: this.sessionTokenProvider ?? undefined,
         refreshTokenProvider: this.sessionTokenRefreshProvider ?? undefined,
+        credentialProvider:
+          config.id === BUILTIN_GATEWAY_SERVER_ID
+            ? (this.gatewayCredentialProvider ?? undefined)
+            : undefined,
+        unauthorizedCredentialProvider:
+          config.id === BUILTIN_GATEWAY_SERVER_ID
+            ? (this.gatewayUnauthorizedProvider ?? undefined)
+            : undefined,
         ...callbacks,
       });
     }
@@ -667,63 +678,62 @@ export class MCPManager implements IMCPManager {
    * On desktop, injects the 'browser' server config for chrome-devtools-mcp.
    */
   private async seedBuiltinServers(): Promise<void> {
-    if (this.platform !== 'desktop') {
-      return;
-    }
+    if (this.platform === 'desktop') {
+      const hasBrowserServer =
+        this.servers.has(BUILTIN_BROWSER_SERVER_ID) ||
+        Array.from(this.servers.values()).some((config) => config.name === 'browser');
 
-    const hasBrowserServer = this.servers.has(BUILTIN_BROWSER_SERVER_ID)
-      || Array.from(this.servers.values()).some((config) => config.name === 'browser');
+      if (!hasBrowserServer) {
+        // Try the bundled sidecar binary first (production builds).
+        // Fall back to npx + node_modules for dev mode where no sidecar is built.
+        let command = 'npx';
+        let args = createBrowserMcpArgs(true);
+        let cwd: string | undefined;
 
-    if (!hasBrowserServer) {
-      // Try the bundled sidecar binary first (production builds).
-      // Fall back to npx + node_modules for dev mode where no sidecar is built.
-      let command = 'npx';
-      let args = createBrowserMcpArgs(true);
-      let cwd: string | undefined;
-
-      if (__BUILD_MODE__ === 'server') {
-        try {
-          const { getOptionalDesktopRuntimeHost } = await import('@/desktop-runtime/host');
-          const host = getOptionalDesktopRuntimeHost();
-          if (host?.browserMcpSidecarPath) {
-            command = host.browserMcpSidecarPath;
-            args = createBrowserMcpArgs(false);
-          } else if (host?.projectRoot) {
-            cwd = host.projectRoot;
+        if (__BUILD_MODE__ === 'server') {
+          try {
+            const { getOptionalDesktopRuntimeHost } = await import('@/desktop-runtime/host');
+            const host = getOptionalDesktopRuntimeHost();
+            if (host?.browserMcpSidecarPath) {
+              command = host.browserMcpSidecarPath;
+              args = createBrowserMcpArgs(false);
+            } else if (host?.projectRoot) {
+              cwd = host.projectRoot;
+            }
+          } catch (err) {
+            console.warn('[MCPManager] Failed to resolve desktop runtime MCP host paths:', err);
           }
-        } catch (err) {
-          console.warn('[MCPManager] Failed to resolve desktop runtime MCP host paths:', err);
         }
+        // Track 43: the `__BUILD_MODE__ === 'desktop'` branch that resolved the
+        // sidecar path via Tauri `invoke('get_browser_mcp_sidecar_path')` is
+        // gone — MCP runs in the runtime and the runtime host handshake carries
+        // `browserMcpSidecarPath` directly.
+
+        const now = Date.now();
+        const builtinConfig: IMCPServerConfig = {
+          id: BUILTIN_BROWSER_SERVER_ID,
+          name: 'browser',
+          url: '',
+          transport: 'stdio',
+          platform: 'desktop',
+          builtin: true,
+          command,
+          args,
+          cwd,
+          enabled: true,
+          timeout: 180000, // 3 min — browser tools can be slow
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        this.servers.set(builtinConfig.id, builtinConfig);
+        this.connections.set(builtinConfig.id, {
+          configId: builtinConfig.id,
+          status: 'disconnected',
+          tools: [],
+          resources: [],
+        });
       }
-      // Track 43: the `__BUILD_MODE__ === 'desktop'` branch that resolved the
-      // sidecar path via Tauri `invoke('get_browser_mcp_sidecar_path')` is
-      // gone — MCP runs in the runtime and the runtime host handshake carries
-      // `browserMcpSidecarPath` directly.
-
-      const now = Date.now();
-      const builtinConfig: IMCPServerConfig = {
-        id: BUILTIN_BROWSER_SERVER_ID,
-        name: 'browser',
-        url: '',
-        transport: 'stdio',
-        platform: 'desktop',
-        builtin: true,
-        command,
-        args,
-        cwd,
-        enabled: true,
-        timeout: 180000, // 3 min — browser tools can be slow
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      this.servers.set(builtinConfig.id, builtinConfig);
-      this.connections.set(builtinConfig.id, {
-        configId: builtinConfig.id,
-        status: 'disconnected',
-        tools: [],
-        resources: [],
-      });
     }
 
     this.seedGatewayServer();
@@ -747,18 +757,18 @@ export class MCPManager implements IMCPManager {
     }
 
     const now = Date.now();
-    const headers = urls.gatewayMcpToolDiscovery && urls.gatewayMcpToolDiscoveryHeader
-      ? { [urls.gatewayMcpToolDiscoveryHeader]: urls.gatewayMcpToolDiscovery }
-      : undefined;
+    const headers =
+      urls.gatewayMcpToolDiscovery && urls.gatewayMcpToolDiscoveryHeader
+        ? { [urls.gatewayMcpToolDiscoveryHeader]: urls.gatewayMcpToolDiscovery }
+        : undefined;
     const builtinConfig: IMCPServerConfig = {
       id: BUILTIN_GATEWAY_SERVER_ID,
       name: serverName,
       url: urls.gatewayMcpUrl,
       transport: 'streamable-http',
-      authMode: urls.gatewayMcpAuthMode,
-      apiKey: urls.gatewayMcpApiKey ? encryptApiKey(urls.gatewayMcpApiKey) : undefined,
+      authMode: appsAccessPolicy.authMethod,
       headers,
-      platform: 'desktop',
+      platform: this.platform,
       builtin: true,
       enabled: true,
       timeout: 180000,
@@ -773,7 +783,6 @@ export class MCPManager implements IMCPManager {
       tools: [],
       resources: [],
     });
-
   }
 
   // ==========================================================================
@@ -788,7 +797,7 @@ export class MCPManager implements IMCPManager {
 
   private async persistServers(): Promise<void> {
     // Only persist non-builtin servers
-    const configs = Array.from(this.servers.values()).filter(s => !s.builtin);
+    const configs = Array.from(this.servers.values()).filter((s) => !s.builtin);
     await saveServers(configs);
   }
 

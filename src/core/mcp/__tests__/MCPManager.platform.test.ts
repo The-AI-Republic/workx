@@ -26,8 +26,12 @@ const originalHubEnv = new Map<string, string | undefined>();
 function createMockConfigStorage(): ConfigStorageProvider {
   return {
     get: vi.fn(async (key: string) => store.get(key) ?? null) as any,
-    set: vi.fn(async (key: string, value: any) => { store.set(key, value); }) as any,
-    remove: vi.fn(async (key: string) => { store.delete(key); }),
+    set: vi.fn(async (key: string, value: any) => {
+      store.set(key, value);
+    }) as any,
+    remove: vi.fn(async (key: string) => {
+      store.delete(key);
+    }),
     getMany: vi.fn(async (keys: string[]) => {
       const result: Record<string, any> = {};
       for (const key of keys) {
@@ -44,7 +48,9 @@ function createMockConfigStorage(): ConfigStorageProvider {
       for (const key of keys) store.delete(key);
     }),
     getAll: vi.fn(async () => Object.fromEntries(store)),
-    clear: vi.fn(async () => { store.clear(); }),
+    clear: vi.fn(async () => {
+      store.clear();
+    }),
     getBytesInUse: vi.fn(async () => null),
   };
 }
@@ -147,13 +153,13 @@ describe('MCPManager Platform Features', () => {
         name: 'gateway',
         url: 'https://gateway.example.com/mcp',
         transport: 'streamable-http',
-        authMode: 'none',
+        authMode: 'api-key',
         builtin: true,
       });
       expect(hubServer?.headers).toBeUndefined();
     });
 
-    it('should seed gateway MCP with overlay-provided name, auth, and headers', async () => {
+    it('should seed gateway MCP with overlay-provided name and headers but policy-owned auth', async () => {
       process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
       process.env.WORKX_GATEWAY_MCP_NAME = 'first-party-gateway';
       process.env.WORKX_GATEWAY_MCP_AUTH_MODE = 'session-jwt';
@@ -167,7 +173,7 @@ describe('MCPManager Platform Features', () => {
         name: 'first-party-gateway',
         url: 'https://gateway.example.com/mcp',
         transport: 'streamable-http',
-        authMode: 'session-jwt',
+        authMode: 'api-key',
         headers: { 'X-Custom-Tool-Discovery': 'folded' },
         builtin: true,
       });
@@ -192,7 +198,7 @@ describe('MCPManager Platform Features', () => {
 
       // getServers should return shared + desktop servers (not extension)
       const servers = manager.getServers();
-      const serverNames = servers.map(s => s.name);
+      const serverNames = servers.map((s) => s.name);
 
       expect(serverNames).toContain('shared-server');
       expect(serverNames).toContain('desktop-server');
@@ -206,7 +212,7 @@ describe('MCPManager Platform Features', () => {
       const manager = await MCPManager.getInstance('desktop');
 
       const servers = manager.getServers();
-      const browserServer = servers.find(s => s.name === 'browser');
+      const browserServer = servers.find((s) => s.name === 'browser');
 
       expect(browserServer).toBeDefined();
       expect(browserServer?.builtin).toBe(true);
@@ -221,7 +227,7 @@ describe('MCPManager Platform Features', () => {
       const manager = await MCPManager.getInstance('extension');
 
       const servers = manager.getServers();
-      const browserServer = servers.find(s => s.name === 'browser');
+      const browserServer = servers.find((s) => s.name === 'browser');
 
       expect(browserServer).toBeUndefined();
     });
@@ -238,9 +244,7 @@ describe('MCPManager Platform Features', () => {
       // Check that storage only has the user server, not the builtin
       const savedServers = store.get('mcpServers') || [];
 
-      const builtinInStorage = savedServers.find(
-        (s: IMCPServerConfig) => s.builtin === true
-      );
+      const builtinInStorage = savedServers.find((s: IMCPServerConfig) => s.builtin === true);
       expect(builtinInStorage).toBeUndefined();
     });
 
