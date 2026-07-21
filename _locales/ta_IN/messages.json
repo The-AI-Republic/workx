@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "தயவுசெய்து செல்லுபடியாகும் கட்டளையை உள்ளிடவும்"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "உலகின் மிகவும் முன்னேற்றமான மாதிரிகளைத் திறக்க திட்டத்தை மேம்படுத்தவும்"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "போர்ட் 1455 பயன்பாட்டில் உள்ளது. இந்த போர்டை பயன்படுத்தும் பயன்பாட்டை மூடி மீண்டும் முயற்சிக்கவும்."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "பிரீமியம் ஆக மேம்படுத்து"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "உலகின் மிக சக்திவாய்ந்த மாதிரிகளை ஆராய மேம்படுத்துங்கள்"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "உலகின் மிக சக்திவாய்ந்த மாதிரிகளை ஆராய உங்கள் சந்தாவை மேம்படுத்துங்கள்"
   },
   "Use_Context_Menu": {
     "message": "சூழல் மெனுவைப் பயன்படுத்தவும்:"

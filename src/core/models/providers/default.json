@@ -19,6 +19,10 @@
       {
         "name": "Grok 4.1 Fast Reasoning",
         "modelKey": "grok-4-1-fast-reasoning",
+        "openHubRoute": {
+          "modelSlug": "x-ai/grok-4-1-fast-reasoning",
+          "providerSlug": "xai"
+        },
         "creator": "xAI",
         "contextWindow": 2000000,
         "maxOutputTokens": 16384,
@@ -64,6 +68,10 @@
       {
         "name": "GPT-5.5",
         "modelKey": "gpt-5.5",
+        "openHubRoute": {
+          "modelSlug": "openai/gpt-5.5",
+          "providerSlug": "azure"
+        },
         "creator": "OpenAI",
         "contextWindow": 1050000,
         "maxOutputTokens": 128000,
@@ -97,6 +105,10 @@
       {
         "name": "GPT-5.4",
         "modelKey": "gpt-5.4",
+        "openHubRoute": {
+          "modelSlug": "openai/gpt-5.4",
+          "providerSlug": "azure"
+        },
         "creator": "OpenAI",
         "contextWindow": 1000000,
         "maxOutputTokens": 128000,
@@ -148,6 +160,10 @@
       {
         "name": "Gemini 3.1 Pro",
         "modelKey": "gemini-3.1-pro",
+        "openHubRoute": {
+          "modelSlug": "google/gemini-3.1-pro",
+          "providerSlug": "google-ai-studio"
+        },
         "creator": "Google",
         "contextWindow": 2000000,
         "maxOutputTokens": 16384,
@@ -188,6 +204,10 @@
       {
         "name": "DeepSeek V4 Flash",
         "modelKey": "deepseek-v4-flash",
+        "openHubRoute": {
+          "modelSlug": "deepseek/deepseek-v4-flash",
+          "providerSlug": "deepseek"
+        },
         "creator": "DeepSeek",
         "contextWindow": 1000000,
         "maxOutputTokens": 65536,
@@ -227,6 +247,10 @@
       {
         "name": "Claude Opus 4.8",
         "modelKey": "claude-opus-4-8",
+        "openHubRoute": {
+          "modelSlug": "anthropic/claude-opus-4-8",
+          "providerSlug": "deepinfra"
+        },
         "creator": "Anthropic",
         "contextWindow": 1000000,
         "maxOutputTokens": 128000,
@@ -251,6 +275,10 @@
       {
         "name": "Claude Sonnet 4.6",
         "modelKey": "claude-sonnet-4-6",
+        "openHubRoute": {
+          "modelSlug": "anthropic/claude-sonnet-4-6",
+          "providerSlug": "deepinfra"
+        },
         "creator": "Anthropic",
         "contextWindow": 1000000,
         "maxOutputTokens": 64000,
@@ -275,6 +303,10 @@
       {
         "name": "Claude Fable 5",
         "modelKey": "claude-fable-5",
+        "openHubRoute": {
+          "modelSlug": "anthropic/claude-fable-5",
+          "providerSlug": "anthropic"
+        },
         "creator": "Anthropic",
         "contextWindow": 1000000,
         "maxOutputTokens": 128000,
@@ -299,6 +331,10 @@
       {
         "name": "Claude Haiku 4.5",
         "modelKey": "claude-haiku-4-5-20251001",
+        "openHubRoute": {
+          "modelSlug": "anthropic/claude-haiku-4.5",
+          "providerSlug": "anthropic"
+        },
         "creator": "Anthropic",
         "contextWindow": 200000,
         "maxOutputTokens": 64000,

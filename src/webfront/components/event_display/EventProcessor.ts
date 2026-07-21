@@ -26,8 +26,13 @@ import { formatCost } from '@/core/models/cost/cost';
 import type {
   DataContextLearnedProgress,
   DataQueryProgress,
+  LocalFileChangeProgress,
   ToolProgressData,
 } from '@/tools/runtimeMetadata';
+import {
+  isLocalFileChangeProgress,
+  localFilePreviewItemFromEvent,
+} from '../preview/model';
 
 /**
  * EventProcessor Implementation
@@ -588,6 +593,9 @@ export class EventProcessor {
       if (progress.type === 'data_query' || progress.type === 'data_context_learned') {
         return this.processDataProgress(event, progress);
       }
+      if (isLocalFileChangeProgress(progress)) {
+        return this.processLocalFileChange(event, progress);
+      }
       const data = progress as unknown as Record<string, unknown>;
       const status = typeof data.status === 'string' ? data.status : 'running';
       const eventStatus: EventStatus =
@@ -610,6 +618,32 @@ export class EventProcessor {
     }
 
     return null;
+  }
+
+  private processLocalFileChange(
+    event: Event,
+    progress: LocalFileChangeProgress,
+  ): ProcessedEvent {
+    const msg = event.msg;
+    if (msg.type !== 'ToolExecutionProgress') {
+      throw new Error('Local file progress requires ToolExecutionProgress');
+    }
+    const sessionId = this.sessionId ?? msg.data.session_id ?? '';
+    const previewItem = sessionId ? localFilePreviewItemFromEvent(sessionId, event) : null;
+    return {
+      id: event.id,
+      category: 'tool',
+      timestamp: new Date(msg.data.timestamp),
+      title: `tool ${msg.data.tool_name}`,
+      content: progress.message,
+      style: STYLE_PRESETS.tool_success,
+      status: 'success',
+      metadata: {
+        toolName: msg.data.tool_name,
+        ...(previewItem ? { previewItemId: previewItem.id } : {}),
+      },
+      collapsible: false,
+    };
   }
 
   private processDataProgress(event: Event, progress: ToolProgressData): ProcessedEvent {

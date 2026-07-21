@@ -381,11 +381,34 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
  */
 export function getDefaultProviders(): Record<string, IProviderConfig> {
   // Private builds may override the bundled catalog with one fetched from the
-  // backend at startup (see remoteCatalog + AgentConfig.initialize). When present
-  // it full-replaces default.json; otherwise we fall back to the bundled copy.
+  // backend at startup (see remoteCatalog + AgentConfig.initialize). Remote
+  // provider/model data replaces the bundled catalog, while WorkX-owned OpenHub
+  // routes remain sourced from matching default.json model entries so deployments
+  // cannot silently re-enable smart routing by omitting them from the remote payload.
   const remote = getRemoteProviders();
   if (remote) {
-    return remote;
+    const bundled = defaultProviders as Record<string, IProviderConfig>;
+    return Object.fromEntries(Object.entries(remote).map(([providerKey, provider]) => {
+      const bundledProvider = bundled[providerKey] ?? bundled[provider.id];
+      return [
+        providerKey,
+        {
+          ...provider,
+          models: (provider.models ?? []).map((model) => {
+            const bundledModel = bundledProvider?.models.find(
+              (candidate) => candidate.modelKey === model.modelKey,
+            );
+            const route = bundledModel?.openHubRoute;
+            return {
+              ...model,
+              openHubRoute: route
+                ? { ...route }
+                : undefined,
+            };
+          }),
+        },
+      ];
+    }));
   }
   // Return a deep copy to avoid mutation of the imported JSON
   return JSON.parse(JSON.stringify(defaultProviders));

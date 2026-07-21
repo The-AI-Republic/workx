@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Kérjük, írjon be egy érvényes parancsot"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Kérjük, frissítse a csomagot a világ legfejlettebb modelljeinek feloldásához"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "A 1455-ös port használatban van. Kérjük, zárja be az e portot használó alkalmazást, majd próbálja újra."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Frissítés Prémiumra"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Frissíts, hogy felfedezd a világ legfejlettebb modelljeit"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Frissítsd előfizetésedet, hogy felfedezhesd a világ legfejlettebb modelljeit"
   },
   "Use_Context_Menu": {
     "message": "Kontextusmenü használata:"

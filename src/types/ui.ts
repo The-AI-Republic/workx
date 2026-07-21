@@ -155,6 +155,8 @@ export interface EventMetadata {
   // File Operations
   filesChanged?: number; // Number of files in patch
   diffSummary?: string; // Patch summary
+  /** Raw preview item identity for opening the matching right-panel item. */
+  previewItemId?: string;
 
   // Model Info
   model?: string; // Model name
@@ -258,6 +260,40 @@ export interface ProcessedEventAction {
   params?: Record<string, unknown>;
   successMessage?: string;
   conflictMessage?: string;
+}
+
+// ============================================================================
+// Local File Preview Types
+// ============================================================================
+
+export type LocalFilePreviewView = 'diff' | 'rendered' | 'source';
+
+export interface LocalFilePreviewItem {
+  /** ToolExecutionProgress Event.id; stable across live delivery and replay. */
+  id: string;
+  sessionId: string;
+  sourceCallId?: string;
+  turnId?: string;
+  resource: {
+    type: 'local-text-file';
+    path: string;
+  };
+  operation: 'created' | 'modified';
+  size: number;
+  mtimeMs: number;
+  unifiedDiff?: string;
+  diffOmittedReason?: 'input_too_large' | 'diff_too_large' | 'generation_failed';
+  availableViews: LocalFilePreviewView[];
+  createdAt: number;
+}
+
+export interface ThreadPreviewState {
+  items: LocalFilePreviewItem[];
+  selectedItemId: string | null;
+  selectedView: LocalFilePreviewView | null;
+  open: boolean;
+  unread: boolean;
+  autoOpenSuppressed: boolean;
 }
 
 // ============================================================================

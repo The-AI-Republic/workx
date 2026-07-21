@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
   import { push } from 'svelte-spa-router';
   import { getInitializedUIClient } from '@/core/messaging';
   import type { UIChannelClient } from '@/core/messaging';
@@ -18,6 +19,12 @@
   import MessageSelector from '../../components/chat/MessageSelector.svelte';
   import EventDisplay from '../../components/event_display/EventDisplay.svelte';
   import { EventProcessor } from '../../components/event_display/EventProcessor';
+  import PreviewPanel from '../../components/preview/PreviewPanel.svelte';
+  import PreviewResizeHandle from '../../components/preview/PreviewResizeHandle.svelte';
+  import {
+    DEFAULT_CHAT_SPLIT_PERCENT,
+    clampChatSplitPercent,
+  } from '../../components/preview/splitModel';
   import { welcomeAsciiLines } from '../../constants/welcomeAscii';
   // Platform store
   import { platform } from '../../stores/platformStore';
@@ -64,6 +71,8 @@
     type TimelineSource,
   } from '../../lib/conversationTimeline';
   import { LatestViewedSession } from '../../lib/latestViewedSession';
+  import { isWideMode } from '../../stores/layoutStore';
+  import { previewStore } from '../../stores/previewStore';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = $state(null);
   let unsubscribers: Array<() => void> = $state([]);
@@ -93,6 +102,9 @@
   } = $state({ ready: false, authMode: 'none' });
   let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
   let loadingOlderHistory = $state(false);
+  let previewDrawer: HTMLDivElement | null = $state(null);
+  let previewToggleButton: HTMLButtonElement | null = $state(null);
+  let chatSplitPercent = $state(DEFAULT_CHAT_SPLIT_PERCENT);
 
   // Guards the auto-relogin so an expired desktop session opens the login flow
   // exactly once per expiry (reset when access returns to ready), rather than
@@ -171,6 +183,19 @@
   let isScheduledJobMode: boolean = $state(false);
 
   let activeSessionId: string | null = $state(null);
+  let activePreviewState = $derived(
+    activeSessionId ? $previewStore.bySession[activeSessionId] : undefined,
+  );
+  let showWidePreview = $derived(
+    platform.platformName === 'desktop'
+      && $isWideMode
+      && !!activeSessionId
+      && !!activePreviewState?.open,
+  );
+
+  function setChatSplitPercent(value: number): void {
+    chatSplitPercent = clampChatSplitPercent(value);
+  }
   const threadRouter = new ThreadEventRouter();
   const surfaceId = documentSurfaceId;
   let surfaceLease: { leaseId: string; sessionId: string } | null = null;
@@ -249,6 +274,51 @@
     const selected = $activeThread?.sessionId;
     if (client && selected && selected !== activeSessionId) void switchToThread(selected);
   });
+
+  $effect(() => {
+    if (!$isWideMode && activePreviewState?.open) {
+      void tick().then(() => {
+        previewDrawer
+          ?.querySelector<HTMLButtonElement>('[data-preview-close]')
+          ?.focus();
+      });
+    }
+  });
+
+  function closeActivePreview(): void {
+    if (activeSessionId) previewStore.closeSession(activeSessionId);
+    void tick().then(() => previewToggleButton?.focus());
+  }
+
+  function toggleActivePreview(): void {
+    if (activeSessionId) previewStore.toggleSession(activeSessionId);
+  }
+
+  function handlePreviewKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && !$isWideMode && activePreviewState?.open) {
+      closeActivePreview();
+    }
+  }
+
+  function handleProcessedEventClick(event: ProcessedEvent): void {
+    const previewItemId = event.metadata?.previewItemId;
+    if (activeSessionId && previewItemId) {
+      previewStore.revealItem(activeSessionId, previewItemId);
+    }
+  }
+
+  function projectPreviewEvent(
+    sessionId: string,
+    event: Event,
+    context: { isActive: boolean; isWide: boolean; isReplay: boolean },
+  ): void {
+    if (platform.platformName !== 'desktop') return;
+    try {
+      previewStore.projectEvent(sessionId, event, context);
+    } catch (error) {
+      console.warn('[App] Preview projection failed:', error);
+    }
+  }
 
   onMount(async () => {
     // Listen for zoom level changes
@@ -553,6 +623,13 @@
         replay: response.replay,
         observedEventIds: new Set(existing?.conversation.timeline.observedDeliveryIds ?? []),
       });
+      for (const event of replay.events) {
+        projectPreviewEvent(sessionId, event, {
+          isActive: sessionId === activeSessionId,
+          isWide: get(isWideMode),
+          isReplay: true,
+        });
+      }
       const replayEvents = replay.events
         .map((event) => processor.processEvent(event))
         .filter((event): event is ProcessedEvent => event !== null);
@@ -1305,6 +1382,7 @@
   async function chooseWorkingDirectory(): Promise<void> {
     if (platform.platformName !== 'desktop' || !activeSessionId || isProcessing) return;
     const targetSessionId = activeSessionId;
+    const previousWorkingDirectory = currentWorkingDirectory;
     workingDirectoryError = null;
     try {
       const { open } = await import('@tauri-apps/plugin-dialog');
@@ -1325,6 +1403,12 @@
         workingDirectory: selected,
       });
       if (response.entry) threadStore.mergeThread(response.entry);
+      if (
+        response.workingDirectory
+        && response.workingDirectory !== previousWorkingDirectory
+      ) {
+        previewStore.clearSession(targetSessionId);
+      }
       if (response.workingDirectory && activeSessionId === targetSessionId) {
         currentWorkingDirectory = response.workingDirectory;
       }
@@ -1350,6 +1434,7 @@
       throw new Error('This conversation is running. Stop it before deleting.');
     }
     threadStore.closeThread(sessionId);
+    previewStore.removeSession(sessionId);
     const next = threadStore.getActiveThread();
     if (next) await switchToThread(next.sessionId);
     else await createNewThread();
@@ -1473,6 +1558,11 @@
       runtimeEpoch: channelEvent.runtimeEpoch,
       eventSeq: channelEvent.eventSeq,
     };
+    projectPreviewEvent(sessionId, event, {
+      isActive: sessionId === activeSessionId,
+      isWide: get(isWideMode),
+      isReplay: false,
+    });
     if (sessionId === activeSessionId) handleEvent(event, attachDedupeBudget);
     else handleEventForSession(event, sessionId, attachDedupeBudget);
     updateAttachCursor(channelEvent);
@@ -1542,6 +1632,7 @@
         threadStore.mergeThread({ ...response.entry, ...(runtime ? { runtime } : {}) });
       } catch {
         threadStore.closeThread(sessionId);
+        previewStore.removeSession(sessionId);
       }
     })();
     unknownThreadFlights.set(sessionId, flight);
@@ -1555,12 +1646,16 @@
     { type: 'session_index_changed' }>['data']): void {
     if (data.change === 'soft-deleted' || data.change === 'purged') {
       threadStore.closeThread(data.sessionId);
+      previewStore.removeSession(data.sessionId);
       return;
     }
     if (data.entry) {
       const known = threadStore.getThread(data.sessionId);
+      const workspaceChanged = known?.workspace?.workingDirectory
+        !== data.entry.workspace?.workingDirectory;
       if (known || data.entry.pinned || data.sessionId === activeSessionId) {
         threadStore.mergeThread(data.entry);
+        if (known && workspaceChanged) previewStore.clearSession(data.sessionId);
         if (data.sessionId === activeSessionId) {
           currentWorkingDirectory = data.entry.workspace?.workingDirectory;
         }
@@ -1573,15 +1668,21 @@
   }
 </script>
 
+<svelte:window onkeydown={handlePreviewKey} />
+
 <!-- Single UI with theme-aware styling -->
 <div
-  class="flex flex-col overflow-hidden p-4 {currentTheme}
+  class="relative flex min-h-0 flex-1 overflow-hidden {currentTheme}
     {currentTheme === 'modern'
     ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
     : 'font-terminal bg-term-bg text-term-green'}"
-  role="log"
-  aria-label="Terminal output"
 >
+  <div
+    class="flex min-w-0 basis-0 flex-col overflow-hidden p-4"
+    style:flex-grow={showWidePreview ? chatSplitPercent : 1}
+    role="log"
+    aria-label="Terminal output"
+  >
     <div class="flex flex-col flex-1 min-h-0 max-w-[1500px] mx-auto w-full">
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
@@ -1597,6 +1698,24 @@
             {/if}
           </div>
           <div class="flex items-center space-x-2">
+            {#if platform.platformName === 'desktop' && activePreviewState?.items.length}
+              <button
+                bind:this={previewToggleButton}
+                type="button"
+                class="relative rounded border px-2 py-1 text-sm opacity-80 hover:opacity-100
+                  {currentTheme === 'modern'
+                    ? 'border-chat-border dark:border-chat-border-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
+                    : 'border-term-dim-green hover:bg-term-green/10'}"
+                onclick={toggleActivePreview}
+                aria-expanded={activePreviewState.open}
+                aria-label="Toggle local file preview"
+              >
+                Preview ({activePreviewState.items.length})
+                {#if activePreviewState.unread}
+                  <span class="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-blue-500" aria-label="New preview"></span>
+                {/if}
+              </button>
+            {/if}
             <BackgroundTasksBadge />
             {#if isProcessing}
               <TerminalMessage type="warning" content={$_t("[PROCESSING]")} />
@@ -1788,7 +1907,7 @@
           {/if}
 
           {#each processedEvents as event (event.id)}
-            <EventDisplay {event} />
+            <EventDisplay {event} onClick={handleProcessedEventClick} />
           {/each}
         </div>
 
@@ -1827,7 +1946,28 @@
 
         </div>
       </div>
-    </div>
+  </div>
+
+  {#if showWidePreview && activeSessionId && activePreviewState}
+    <PreviewResizeHandle
+      value={chatSplitPercent}
+      theme={currentTheme}
+      onChange={setChatSplitPercent}
+    />
+    <aside
+      class="min-w-0 basis-0 shrink-0 shadow-xl"
+      style:flex-grow={100 - chatSplitPercent}
+    >
+      <PreviewPanel
+        state={activePreviewState}
+        theme={currentTheme}
+        onClose={closeActivePreview}
+        onSelectItem={(itemId) => previewStore.selectItem(activeSessionId!, itemId)}
+        onSelectView={(view) => previewStore.selectView(activeSessionId!, view)}
+      />
+    </aside>
+  {/if}
+</div>
 
   <!-- Track 15: rewind turn-selector overlay (command-invoked) -->
   <MessageSelector
@@ -1836,6 +1976,34 @@
     onClose={() => showRewindSelector = false}
     onRewound={handleRewound}
   />
+
+  {#if platform.platformName === 'desktop' && !$isWideMode && activeSessionId && activePreviewState?.open}
+    <button
+      type="button"
+      class="fixed inset-0 z-40 bg-black/50"
+      transition:fade={{ duration: 150 }}
+      onclick={closeActivePreview}
+      aria-label="Close preview"
+    ></button>
+    <div
+      bind:this={previewDrawer}
+      class="fixed inset-y-0 right-0 z-50 max-w-[720px] shadow-2xl outline-none"
+      style="width: min(92vw, 720px)"
+      transition:fly={{ x: 760, duration: 200 }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Local file preview"
+      tabindex="-1"
+    >
+      <PreviewPanel
+        state={activePreviewState}
+        theme={currentTheme}
+        onClose={closeActivePreview}
+        onSelectItem={(itemId) => previewStore.selectItem(activeSessionId!, itemId)}
+        onSelectView={(view) => previewStore.selectView(activeSessionId!, view)}
+      />
+    </div>
+  {/if}
 
 <style>
   /* Animations - kept as they use @keyframes */

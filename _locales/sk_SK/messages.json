@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Zadajte platný príkaz"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Upgradujte plán, aby ste odblokovali najpokročilejšie modely na svete"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Port 1455 je obsadený. Prosím, zatvorte aplikáciu používajúcu tento port a skúste to znova."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Prejsť na Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Upgradujte, aby ste objavili najvýkonnejšie modely na svete"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Vylepšite svoje predplatné a objavte najvýkonnejšie modely sveta"
   },
   "Use_Context_Menu": {
     "message": "Použiť kontextové menu:"

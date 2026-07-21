@@ -115,6 +115,28 @@ export type ToolProgressCallback<P extends ToolProgressData = ToolProgressData> 
 // Tool-Specific Progress Types
 // =============================================================================
 
+export const LOCAL_FILE_DIFF_INPUT_MAX_BYTES = 512 * 1024;
+export const LOCAL_FILE_DIFF_MAX_BYTES = 32 * 1024;
+export const LOCAL_FILE_SOURCE_MAX_BYTES = 1024 * 1024;
+
+export type LocalFileChangeOperation = 'created' | 'modified';
+
+export interface LocalFileChangeProgress extends ToolProgressData {
+  type: 'local_file_change';
+  status: 'completed';
+  operation: LocalFileChangeOperation;
+  /** Normalized, workspace-relative path using forward slashes. */
+  path: string;
+  /** Resulting on-disk byte size. */
+  size: number;
+  /** Resulting on-disk mtime from the authoritative executor. */
+  mtimeMs: number;
+  /** Complete unified patch when it fits the bounded event contract. */
+  unifiedDiff?: string;
+  diffOmittedReason?: 'input_too_large' | 'diff_too_large' | 'generation_failed';
+  message: string;
+}
+
 export interface DOMToolProgress extends ToolProgressData {
   type: 'dom_progress';
   action: 'snapshot' | 'click' | 'type' | 'keypress' | 'scroll';

@@ -3,8 +3,9 @@
  *
  * When `modelCatalogUrl` is configured (VITE_/WORKX_MODEL_CATALOG_URL), the app
  * fetches a provider-keyed catalog from the backend at startup and uses it to
- * full-replace the bundled `default.json` model list. The endpoint is public
- * (no auth) and returns the same JSON shape as
+ * replace the bundled `default.json` provider/model list. WorkX-owned routing
+ * metadata is overlaid from the bundled catalog by `getDefaultProviders()`.
+ * The endpoint is public (no auth) and returns the same JSON shape as
  * `src/core/models/providers/default.json`.
  *
  * Fallback: if the URL is unset, the request fails/times out, or the payload is

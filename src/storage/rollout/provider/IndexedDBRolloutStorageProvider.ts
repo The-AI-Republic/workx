@@ -116,6 +116,35 @@ export class IndexedDBRolloutStorageProvider implements RolloutStorageProvider {
     });
   }
 
+  async deleteRollouts(rolloutIds: ConversationId[]): Promise<void> {
+    if (rolloutIds.length === 0) return;
+    const db = this.getDb();
+    return new Promise<void>((resolve, reject) => {
+      const tx = db.transaction([STORE_ROLLOUTS, STORE_ROLLOUT_ITEMS], 'readwrite');
+      const rolloutsStore = tx.objectStore(STORE_ROLLOUTS);
+      const itemsStore = tx.objectStore(STORE_ROLLOUT_ITEMS);
+      const rolloutIdIndex = itemsStore.index('rolloutId');
+
+      for (const rolloutId of rolloutIds) {
+        rolloutsStore.delete(rolloutId);
+        const cursorRequest = rolloutIdIndex.openCursor(IDBKeyRange.only(rolloutId));
+        cursorRequest.onsuccess = (event) => {
+          const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+          if (cursor) {
+            cursor.delete();
+            cursor.continue();
+          }
+        };
+      }
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () =>
+        reject(createDatabaseError('deleteRollouts', tx.error?.message || 'unknown error'));
+      tx.onabort = () =>
+        reject(createDatabaseError('deleteRollouts', 'Transaction aborted'));
+    });
+  }
+
   async getAllMetadata(): Promise<RolloutMetadataRecord[]> {
     const db = this.getDb();
     return new Promise<RolloutMetadataRecord[]>((resolve, reject) => {

@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Ange ett giltigt kommando"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Uppgradera planen för att låsa upp världens mest avancerade modeller"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Port 1455 är i bruk. Stäng alla program som använder denna port och försök igen."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Uppgradera till Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Uppgradera för att utforska världens mest kraftfulla modeller"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Uppgradera ditt abonnemang för att utforska världens mest kraftfulla modeller"
   },
   "Use_Context_Menu": {
     "message": "Använd kontextmeny:"

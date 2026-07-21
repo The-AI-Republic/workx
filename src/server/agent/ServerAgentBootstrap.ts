@@ -1570,6 +1570,20 @@ export class ServerAgentBootstrap {
         profile === 'desktop-runtime' && this.componentRuntimeHandle
           ? { handle: this.componentRuntimeHandle }
           : undefined,
+      preview:
+        profile === 'desktop-runtime' && this.registry
+          ? {
+              registry: this.registry,
+              stat: async (workspaceRoot: string, path: string) => {
+                const fsExecutor = await import('@/server/tools/fs/NodeFsExecutor');
+                return fsExecutor.stat(workspaceRoot, path);
+              },
+              readFile: async (workspaceRoot: string, path: string) => {
+                const fsExecutor = await import('@/server/tools/fs/NodeFsExecutor');
+                return fsExecutor.readFile(workspaceRoot, path);
+              },
+            }
+          : undefined,
     });
 
     console.log(`[ServerAgentBootstrap] Registered ${count} service handlers`);
