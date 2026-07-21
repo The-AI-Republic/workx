@@ -1036,6 +1036,7 @@ export class ServerAgentBootstrap {
     channelManager: ReturnType<typeof getChannelManager>
   ): Promise<void> {
     const { registerAllServices } = await import('@/core/services');
+    const { createRuntimeModelCatalogLoader } = await import('@/config/modelCatalog');
     const serviceRegistry = channelManager.getServiceRegistry();
     const profile = this.options.profile ?? 'server';
     const platformScope = profile === 'desktop-runtime' ? 'desktop' : 'server';
@@ -1635,9 +1636,14 @@ export class ServerAgentBootstrap {
       },
       memory: this.registry ? { registry: this.registry } : undefined,
       runtime: runtimeState ? { runtimeState } : undefined,
-      // Stateless BYOK connection probe — runs the real provider call from the
-      // runtime (no CORS), so the webview never has to reach LLM APIs directly.
-      models: {},
+      // Stateless BYOK connection probe plus an optional product catalog seam.
+      // OSS returns no catalog loader; product overlays may provide one for the
+      // desktop runtime without putting deployment-specific logic here.
+      models: {
+        getCatalog: profile === 'desktop-runtime'
+          ? createRuntimeModelCatalogLoader()
+          : undefined,
+      },
       // Expose the runtime credential store (OS keychain) to the desktop
       // webview, which cannot reach it directly. Without this, webview-side
       // BYOK API key saves are silently dropped.

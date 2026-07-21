@@ -228,3 +228,33 @@ describe('models.testConnection', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('models.getCatalog', () => {
+  it('returns the catalog supplied by the owning runtime', async () => {
+    const catalog = {
+      moonshot: {
+        id: 'moonshot',
+        name: 'Kimi AI',
+        apiKey: '',
+        timeout: 30000,
+        models: [{
+          name: 'Kimi K3',
+          modelKey: 'kimi-k3',
+          creator: 'Kimi',
+          contextWindow: 1_048_576,
+          maxOutputTokens: 1_048_576,
+          supportsReasoning: true,
+        }],
+      },
+    };
+    const getCatalog = vi.fn(async () => catalog);
+    const catalogHandler = createModelServices({ getCatalog })['models.getCatalog'];
+
+    await expect(catalogHandler({}, context)).resolves.toEqual(catalog);
+    expect(getCatalog).toHaveBeenCalledTimes(1);
+  });
+
+  it('is not exposed when the platform does not supply a catalog', () => {
+    expect(createModelServices({})['models.getCatalog']).toBeUndefined();
+  });
+});
