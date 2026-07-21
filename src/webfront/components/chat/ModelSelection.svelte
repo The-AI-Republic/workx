@@ -12,7 +12,7 @@
   import Tooltip from '../common/Tooltip.svelte';
   import PopupCard from '../common/PopupCard.svelte';
   import { t, _t } from '../../lib/i18n';
-  import { FREE_USER_DEFAULT_COMPOUND_KEY, isModelAvailableForFreeUser } from '../../lib/freeUserModels';
+  import { modelAccessPolicy } from '../../lib/modelAccessPolicy';
   import { getInitializedUIClient } from '@/core/messaging';
   import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
 
@@ -49,7 +49,14 @@
 
   // Subscribe to stores
   let isUserLoggedIn = $derived($userStore.isLoggedIn);
-  let isFreeUser = $derived($userStore.userType === 0);
+  let accountTier = $derived($userStore.userType);
+
+  function isModelLocked(modelKey: string, isCustom = false): boolean {
+    return modelAccessPolicy.isLocked(
+      { isAuthenticated: isUserLoggedIn, accountTier },
+      { modelKey, isCustom },
+    );
+  }
 
 
   // Filter models based on useOwnApiKey setting
@@ -62,8 +69,8 @@
   // Group models by name
   interface GroupedModel {
     modelName: string;
-    modelKey: string; // First provider's modelKey, used for free user check
-    isCustom: boolean; // True for user-defined custom endpoints (BYOK) — bypass free-tier lock
+    modelKey: string; // First provider's model key, supplied to the access policy
+    isCustom: boolean; // Whether every provider in the group is user-defined
     providers: Array<{
       modelId: string;
       modelKey: string;
@@ -79,8 +86,8 @@
       const existing = groups.get(item.modelName);
       if (existing) {
         // A group is "custom" only if EVERY provider in it is custom. A name
-        // collision between a built-in and a BYOK endpoint must NOT unlock the
-        // built-in for free users, so mixed groups safe-fail to non-custom.
+        // collision between a built-in and a BYOK endpoint must not cause the
+        // access policy to treat the built-in group as entirely custom.
         existing.isCustom = existing.isCustom && (item.isCustom ?? false);
         // Check for duplicate provider before adding
         const isDuplicate = existing.providers.some(p => p.providerId === item.providerId);
@@ -152,19 +159,22 @@
 
       modelSelectionItems = tempModelItems;
 
-      // If no model is selected, fall back to the free user default (or first
-      // available). setSelectedModel fires a 'model' change event, which the
-      // modelStore picks up — selectedModelKey updates reactively.
+      // If no model is selected, use the distribution's preferred default when
+      // present, then fall back to the first available model. setSelectedModel
+      // fires a 'model' change event, which the modelStore picks up.
       const currentKey = agentConfig.selectedModelKey;
       if (!currentKey || currentKey === '') {
-        const freeUserDefault = modelSelectionItems.find(m => m.modelId === FREE_USER_DEFAULT_COMPOUND_KEY);
-        if (freeUserDefault) {
-          await config.setSelectedModel(FREE_USER_DEFAULT_COMPOUND_KEY);
-          console.log('[ModelSelection] Set default model to:', FREE_USER_DEFAULT_COMPOUND_KEY);
-        } else if (modelSelectionItems.length > 0) {
-          const firstId = modelSelectionItems[0].modelId;
-          await config.setSelectedModel(firstId);
-          console.log('[ModelSelection] Free user default not found, using first model:', firstId);
+        const preferredModelId = modelAccessPolicy.getPreferredModelId(
+          { isAuthenticated: isUserLoggedIn, accountTier },
+          'initial',
+        );
+        const preferredModel = preferredModelId
+          ? modelSelectionItems.find((model) => model.modelId === preferredModelId)
+          : undefined;
+        const defaultModelId = preferredModel?.modelId ?? modelSelectionItems[0]?.modelId;
+        if (defaultModelId) {
+          await config.setSelectedModel(defaultModelId);
+          console.log('[ModelSelection] Set default model to:', defaultModelId);
         }
       }
     } catch (error) {
@@ -191,9 +201,7 @@
       return;
     }
 
-    // Block selection for free users trying to select premium models
-    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(modelKey, isCustom)) {
-      // Model is locked for free users - don't allow selection
+    if (isModelLocked(modelKey, isCustom)) {
       return;
     }
 
@@ -267,20 +275,20 @@
       {#each groupedModels as group (group.modelName)}
         {@const isSelected = selectedGroup?.modelName === group.modelName}
         {@const hasMultipleProviders = group.providers.length > 1}
-        {@const isLockedForFreeUser = isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey, group.isCustom)}
+        {@const isLockedForAccount = isModelLocked(group.modelKey, group.isCustom)}
 
         <div class="{currentTheme === 'modern'
           ? 'border-b border-white/10 last:border-b-0'
           : 'border-b border-term-dim-green/20 last:border-b-0'}">
           {#if hasMultipleProviders}
             <!-- Model with multiple providers -->
-            <div class="{isLockedForFreeUser ? 'opacity-50' : ''}">
+            <div class="{isLockedForAccount ? 'opacity-50' : ''}">
               <div class="flex items-center justify-between w-full text-left cursor-default font-medium
                 {currentTheme === 'modern'
-                  ? 'font-chat text-sm py-2.5 px-3.5 ' + (isLockedForFreeUser ? 'text-white/40' : 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark')
-                  : 'font-terminal text-sm py-2 px-3 ' + (isLockedForFreeUser ? 'text-[#666666]' : 'text-term-dim-green')}">
+                  ? 'font-chat text-sm py-2.5 px-3.5 ' + (isLockedForAccount ? 'text-white/40' : 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark')
+                  : 'font-terminal text-sm py-2 px-3 ' + (isLockedForAccount ? 'text-[#666666]' : 'text-term-dim-green')}">
                 <span class="overflow-hidden text-ellipsis whitespace-nowrap">{group.modelName}</span>
-                {#if isLockedForFreeUser}
+                {#if isLockedForAccount}
                   <svg class="w-3.5 h-3.5 shrink-0
                     {currentTheme === 'modern' ? 'text-white/40' : 'text-[#666666]'}" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
@@ -292,11 +300,11 @@
                   </svg>
                 {/if}
               </div>
-              {#if isLockedForFreeUser}
+              {#if isLockedForAccount}
                 <div class="italic
                   {currentTheme === 'modern'
                     ? 'font-chat text-white/50 py-1.5 px-3.5 pb-2.5 text-sm'
-                    : 'font-terminal text-[#888888] py-1 px-3 pb-2 text-sm'}">{$_t("Upgrade to explore world's most powerful models")}</div>
+                    : 'font-terminal text-[#888888] py-1 px-3 pb-2 text-sm'}">{$_t(modelAccessPolicy.lockedCopy.chatInline)}</div>
               {:else}
                 <div class="flex flex-wrap gap-1
                   {currentTheme === 'modern' ? 'py-1.5 px-3.5 pb-2.5' : 'py-1 px-3 pb-2'}">
@@ -320,8 +328,8 @@
             </div>
           {:else}
             <!-- Model with single provider -->
-            {#if isLockedForFreeUser}
-              <Tooltip content={$_t("Upgrade your subscription to explore world's most powerful models")}>
+            {#if isLockedForAccount}
+              <Tooltip content={$_t(modelAccessPolicy.lockedCopy.chatTooltip)}>
                 <button
                   type="button"
                   class="flex items-center justify-between w-full text-left bg-transparent border-none cursor-not-allowed opacity-50 transition-colors duration-150

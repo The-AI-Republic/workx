@@ -10,7 +10,7 @@
   import Tooltip from '../../components/common/Tooltip.svelte';
   import { t, _t } from '../../lib/i18n';
   import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
-  import { isModelAvailableForFreeUser } from '../../lib/freeUserModels';
+  import { modelAccessPolicy } from '../../lib/modelAccessPolicy';
 
   // Props
   let {
@@ -45,7 +45,14 @@
 
   // Subscribe to user store
   let isUserLoggedIn = $derived($userStore.isLoggedIn);
-  let isFreeUser = $derived($userStore.userType === 0);
+  let accountTier = $derived($userStore.userType);
+
+  function isModelLocked(modelKey: string, isCustom = false): boolean {
+    return modelAccessPolicy.isLocked(
+      { isAuthenticated: isUserLoggedIn, accountTier },
+      { modelKey, isCustom },
+    );
+  }
 
   let isOpen = $state(false);
   let focusedIndex = $state(-1);
@@ -58,8 +65,8 @@
   // Group models by model name for UI display
   interface GroupedModel {
     modelName: string;
-    modelKey: string; // First provider's modelKey, used for free user check
-    isCustom: boolean; // True for user-defined custom endpoints (BYOK) — bypass free-tier lock
+    modelKey: string; // First provider's model key, supplied to the access policy
+    isCustom: boolean; // Whether every provider in the group is user-defined
     providers: Array<{
       modelId: string;
       modelKey: string;
@@ -84,8 +91,8 @@
       const existing = groups.get(item.modelName);
       if (existing) {
         // A group is "custom" only if EVERY provider in it is custom, so a name
-        // collision between a built-in and a BYOK endpoint can't unlock the
-        // built-in for free users (mixed groups safe-fail to non-custom).
+        // collision between a built-in and a BYOK endpoint must not cause the
+        // access policy to treat the built-in group as entirely custom.
         existing.isCustom = existing.isCustom && (item.isCustom ?? false);
         // Check for duplicate provider before adding
         const isDuplicate = existing.providers.some((p) => p.providerId === item.providerId);
@@ -111,7 +118,7 @@
       } else {
         groups.set(item.modelName, {
           modelName: item.modelName,
-          modelKey: item.modelKey, // Store modelKey for free user check
+          modelKey: item.modelKey,
           isCustom: item.isCustom ?? false,
           providers: [
             {
@@ -151,9 +158,7 @@
   function handleModelRowClick(group: GroupedModel) {
     if (disabled) return;
 
-    // Block selection for free users trying to select premium models
-    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey, group.isCustom)) {
-      // Model is locked for free users - don't allow selection
+    if (isModelLocked(group.modelKey, group.isCustom)) {
       return;
     }
 
@@ -188,9 +193,7 @@
       return;
     }
 
-    // Block selection for free users trying to select premium models
-    if (isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(modelKey, isCustom)) {
-      // Model is locked for free users - don't allow selection
+    if (isModelLocked(modelKey, isCustom)) {
       // We don't stop propagation here so parent tooltip can catch the click
       return;
     }
@@ -395,12 +398,11 @@
         {@const hasMultipleProviders = group.providers.length > 1}
         {@const hasError = pendingProviderErrors.get(group.modelName)}
         {@const firstProvider = group.providers[0]}
-        {@const isLockedForFreeUser =
-          isUserLoggedIn && isFreeUser && !isModelAvailableForFreeUser(group.modelKey, group.isCustom)}
+        {@const isLockedForAccount = isModelLocked(group.modelKey, group.isCustom)}
 
         <Tooltip
-          content={$_t("Please upgrade the plan to unblock world's most advanced models")}
-          disabled={!isLockedForFreeUser}
+          content={$_t(modelAccessPolicy.lockedCopy.settingsTooltip)}
+          disabled={!isLockedForAccount}
           placement="top"
           trigger="mouseenter click"
           hideOnClick={false}
@@ -410,30 +412,30 @@
           <div class="model-row-wrapper relative">
             <div
               class="model-row w-full px-4 py-3 text-left transition-colors border-b border-gray-700 last:border-b-0"
-              class:bg-gray-700={isSelectedModelName && !isLockedForFreeUser}
+              class:bg-gray-700={isSelectedModelName && !isLockedForAccount}
               class:bg-gray-750={index === focusedIndex &&
                 !isSelectedModelName &&
-                !isLockedForFreeUser}
-              class:hover:bg-gray-700={!isSelectedModelName && !isLockedForFreeUser}
-              class:cursor-pointer={!hasMultipleProviders && !isLockedForFreeUser}
-              class:locked-model={isLockedForFreeUser}
+                !isLockedForAccount}
+              class:hover:bg-gray-700={!isSelectedModelName && !isLockedForAccount}
+              class:cursor-pointer={!hasMultipleProviders && !isLockedForAccount}
+              class:locked-model={isLockedForAccount}
               role="option"
               aria-selected={isSelectedModelName}
-              aria-disabled={isLockedForFreeUser}
+              aria-disabled={isLockedForAccount}
               onclick={() => handleModelRowClick(group)}
               onkeydown={(e) => e.key === 'Enter' && handleModelRowClick(group)}
-              tabindex={isLockedForFreeUser ? -1 : 0}
+              tabindex={isLockedForAccount ? -1 : 0}
             >
               <!-- Model name with providers: "<Model Name> - <provider1> <provider2> ..." format -->
               <div class="model-name-row flex items-start flex-wrap gap-x-2 gap-y-1">
                 <span
                   class="font-medium flex-shrink-0"
-                  class:text-gray-100={!isLockedForFreeUser}
-                  class:text-gray-500={isLockedForFreeUser}
+                  class:text-gray-100={!isLockedForAccount}
+                  class:text-gray-500={isLockedForAccount}
                 >
                   {group.modelName}
                 </span>
-                {#if isLockedForFreeUser}
+                {#if isLockedForAccount}
                   <svg
                     class="lock-icon w-4 h-4 text-gray-500 flex-shrink-0"
                     viewBox="0 0 20 20"
@@ -451,8 +453,8 @@
                   <!-- Multiple providers: show dash then capsule buttons inline -->
                   <span
                     class="flex-shrink-0"
-                    class:text-gray-500={!isLockedForFreeUser}
-                    class:text-gray-600={isLockedForFreeUser}>-</span
+                    class:text-gray-500={!isLockedForAccount}
+                    class:text-gray-600={isLockedForAccount}>-</span
                   >
                   <div class="provider-buttons flex flex-wrap gap-1.5 items-center">
                     {#each group.providers as provider (provider.modelId)}
@@ -464,10 +466,10 @@
                         <button
                           type="button"
                           class="provider-capsule px-2.5 py-0.5 text-sm rounded-full border transition-all"
-                          class:provider-selected={isProviderSelected && !isLockedForFreeUser}
-                          class:provider-unselected={!isProviderSelected && !isLockedForFreeUser}
-                          class:provider-locked={isLockedForFreeUser}
-                          aria-disabled={isLockedForFreeUser}
+                          class:provider-selected={isProviderSelected && !isLockedForAccount}
+                          class:provider-unselected={!isProviderSelected && !isLockedForAccount}
+                          class:provider-locked={isLockedForAccount}
+                          aria-disabled={isLockedForAccount}
                           onclick={(e) =>
                             handleProviderClick(
                               e,
@@ -478,11 +480,11 @@
                             )}
                         >
                           <span class="provider-name">{provider.providerName}</span>
-                          {#if provider.apiKey && !isLockedForFreeUser}
+                          {#if provider.apiKey && !isLockedForAccount}
                             <span class="ml-1 text-sm opacity-70">✓</span>
                           {/if}
                         </button>
-                        {#if !isLockedForFreeUser}
+                        {#if !isLockedForAccount}
                           <div class="provider-tooltip">
                             {#if provider.pricing}
                               <div class="tooltip-line">{$_t('In:')} {provider.pricing.inputToken}</div>
@@ -496,7 +498,7 @@
                         {/if}
                       </div>
                     {/each}
-                    {#if isSelectedModelName && !isLockedForFreeUser}
+                    {#if isSelectedModelName && !isLockedForAccount}
                       <span
                         class="selected-tag px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
                       >
@@ -508,22 +510,22 @@
                   <!-- Single provider: show provider name, configured badge, and selected indicator -->
                   <span
                     class="flex-shrink-0"
-                    class:text-gray-500={!isLockedForFreeUser}
-                    class:text-gray-600={isLockedForFreeUser}>-</span
+                    class:text-gray-500={!isLockedForAccount}
+                    class:text-gray-600={isLockedForAccount}>-</span
                   >
                   <span
                     class="text-sm"
-                    class:text-gray-400={!isLockedForFreeUser}
-                    class:text-gray-600={isLockedForFreeUser}
+                    class:text-gray-400={!isLockedForAccount}
+                    class:text-gray-600={isLockedForAccount}
                   >
                     {firstProvider.providerName}
                   </span>
-                  {#if firstProvider.apiKey && !isLockedForFreeUser}
+                  {#if firstProvider.apiKey && !isLockedForAccount}
                     <span class="px-2 py-0.5 text-sm bg-green-500/20 text-green-400 rounded">
                       {$_t('Configured')}
                     </span>
                   {/if}
-                  {#if isSelectedModelName && !isLockedForFreeUser}
+                  {#if isSelectedModelName && !isLockedForAccount}
                     <span
                       class="selected-tag px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded border border-cyan-500/30"
                     >
@@ -534,7 +536,7 @@
               </div>
 
               <!-- Error message when no provider selected (for multi-provider models) -->
-              {#if hasMultipleProviders && hasError && !isLockedForFreeUser}
+              {#if hasMultipleProviders && hasError && !isLockedForAccount}
                 <div class="provider-error mt-2 text-sm text-red-400 flex items-center gap-1">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="10"></circle>
@@ -546,7 +548,7 @@
               {/if}
 
               <!-- Pricing info (show from first provider or selected provider) - hide for locked models -->
-              {#if !isLockedForFreeUser}
+              {#if !isLockedForAccount}
                 {#if hasMultipleProviders}
                   {@const displayProvider =
                     group.providers.find((p) => p.modelId === selectedModel) || firstProvider}
@@ -611,7 +613,7 @@
               {/if}
             </div>
 
-            {#if isLockedForFreeUser}
+            {#if isLockedForAccount}
               <!-- High-priority overlay to capture all interactions and propagate to Tooltip wrapper -->
               <div
                 class="absolute inset-0 z-50 cursor-not-allowed bg-transparent"
@@ -769,7 +771,7 @@
     }
   }
 
-  /* Locked model styles for free users */
+  /* Account-locked model styles */
   .locked-model {
     opacity: 0.5;
     cursor: not-allowed;

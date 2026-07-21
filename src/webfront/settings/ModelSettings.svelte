@@ -16,7 +16,7 @@
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
   import { platform } from '../stores/platformStore';
-  import { FREE_USER_DEFAULT_COMPOUND_KEY, isModelAvailableForFreeUser } from '../lib/freeUserModels';
+  import { modelAccessPolicy } from '../lib/modelAccessPolicy';
 
   let {
     settingsConfig,
@@ -95,7 +95,14 @@
 
   // Derived state from user store
   let isUserLoggedIn = $derived($userStore.isLoggedIn);
-  let isFreeUser = $derived($userStore.userType === 0);
+  let accountTier = $derived($userStore.userType);
+
+  function isModelLocked(modelKey: string, isCustom = false): boolean {
+    return modelAccessPolicy.isLocked(
+      { isAuthenticated: isUserLoggedIn, accountTier },
+      { modelKey, isCustom },
+    );
+  }
 
   // Model selection array
   interface ModelSelectionItem {
@@ -375,15 +382,19 @@
       if (!selectedModelKey || selectedModelKey === '') {
         console.log('[ModelSettings] selectedModelKey is empty, selecting default model');
         if (modelSelectionItems.length > 0) {
-          // For free users or when no model is selected, try to use the free user default model
-          const freeUserDefault = modelSelectionItems.find(m => m.modelId === FREE_USER_DEFAULT_COMPOUND_KEY);
-          if (freeUserDefault) {
-            selectedModelKey = FREE_USER_DEFAULT_COMPOUND_KEY;
-            console.log('[ModelSettings] Using free user default model:', selectedModelKey);
+          const preferredModelId = modelAccessPolicy.getPreferredModelId(
+            { isAuthenticated: isUserLoggedIn, accountTier },
+            'initial',
+          );
+          const preferredModel = preferredModelId
+            ? modelSelectionItems.find((model) => model.modelId === preferredModelId)
+            : undefined;
+          if (preferredModel) {
+            selectedModelKey = preferredModel.modelId;
+            console.log('[ModelSettings] Using preferred default model:', selectedModelKey);
           } else {
-            // Fallback to first available model if kimi-k2p6 not found
             selectedModelKey = modelSelectionItems[0].modelId;
-            console.log('[ModelSettings] Free user default not found, using first model:', selectedModelKey);
+            console.log('[ModelSettings] Preferred default not found, using first model:', selectedModelKey);
           }
           await settingsConfig.setSelectedModel(selectedModelKey);
         } else {
@@ -608,18 +619,20 @@
       isAddingCustom = true;
 
       // deleteProvider rejects removing the provider that hosts the selected
-      // model, so switch to another available model first. For free users, the
-      // fallback must itself be free-tier-allowed — otherwise we'd silently park
-      // them on a premium model that every subsequent message fails on.
+      // model, so switch to another available model first. Prefer a model made
+      // available by the distribution's access policy.
       if (selectedModelKey.startsWith(`${id}:`)) {
         const candidates = modelSelectionItems.filter((m) => !m.modelId.startsWith(`${id}:`));
-        let fallback = candidates[0];
-        if (isFreeUser) {
-          fallback =
-            candidates.find((m) => m.modelId === FREE_USER_DEFAULT_COMPOUND_KEY) ??
-            candidates.find((m) => isModelAvailableForFreeUser(m.modelKey, m.isCustom)) ??
-            candidates[0];
-        }
+        const preferredModelId = modelAccessPolicy.getPreferredModelId(
+          { isAuthenticated: isUserLoggedIn, accountTier },
+          'access-fallback',
+        );
+        const fallback =
+          (preferredModelId
+            ? candidates.find((model) => model.modelId === preferredModelId)
+            : undefined) ??
+          candidates.find((model) => !isModelLocked(model.modelKey, model.isCustom)) ??
+          candidates[0];
         if (fallback) {
           await settingsConfig.setSelectedModel(fallback.modelId);
           selectedModelKey = fallback.modelId;
