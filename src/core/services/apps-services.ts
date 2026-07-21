@@ -52,6 +52,27 @@ function validateFields(value: unknown): Record<string, string> {
 }
 
 export function createAppsServices(deps: AppsServiceDeps): Record<string, ServiceHandler> {
+  const connectedAuth = new Set<string>();
+
+  const refreshMcpAfterMutation = async <T>(operation: Promise<T>): Promise<T> => {
+    const result = await operation;
+    await deps.access.refreshMcp();
+    return result;
+  };
+
+  const readAuthStatus = async (appId: string) => {
+    const status = await requireClient(deps).getAuthStatus(appId);
+    if (status?.status === 'connected') {
+      if (!connectedAuth.has(appId)) {
+        connectedAuth.add(appId);
+        await deps.access.refreshMcp();
+      }
+    } else {
+      connectedAuth.delete(appId);
+    }
+    return status;
+  };
+
   const authorize =
     (handler: ServiceHandler): ServiceHandler =>
     async (params, context) => {
@@ -74,20 +95,24 @@ export function createAppsServices(deps: AppsServiceDeps): Record<string, Servic
         throw new AppsServiceError('APPS_INVALID_ARGUMENT', 'Invalid marketplace limit.');
       return requireClient(deps).marketplace({ query, cursor, limit });
     }),
-    'apps.install': authorize(async (params) =>
-      requireClient(deps).install(stringParam(params, 'appId', 256)!)
-    ),
-    'apps.uninstall': authorize(async (params) =>
-      requireClient(deps).uninstall(stringParam(params, 'appId', 256)!)
-    ),
+    'apps.install': authorize(async (params) => {
+      const appId = stringParam(params, 'appId', 256)!;
+      connectedAuth.delete(appId);
+      return refreshMcpAfterMutation(requireClient(deps).install(appId));
+    }),
+    'apps.uninstall': authorize(async (params) => {
+      const appId = stringParam(params, 'appId', 256)!;
+      connectedAuth.delete(appId);
+      return refreshMcpAfterMutation(requireClient(deps).uninstall(appId));
+    }),
     'apps.activate': authorize(async (params) =>
-      requireClient(deps).activate(stringParam(params, 'appId', 256)!)
+      refreshMcpAfterMutation(requireClient(deps).activate(stringParam(params, 'appId', 256)!))
     ),
     'apps.deactivate': authorize(async (params) =>
-      requireClient(deps).deactivate(stringParam(params, 'appId', 256)!)
+      refreshMcpAfterMutation(requireClient(deps).deactivate(stringParam(params, 'appId', 256)!))
     ),
     'apps.auth.getStatus': authorize(async (params) =>
-      requireClient(deps).getAuthStatus(stringParam(params, 'appId', 256)!)
+      readAuthStatus(stringParam(params, 'appId', 256)!)
     ),
     'apps.auth.startOAuth': authorize(async (params) =>
       requireClient(deps).startOAuth(stringParam(params, 'appId', 256)!)
@@ -111,7 +136,12 @@ export function createAppsServices(deps: AppsServiceDeps): Record<string, Servic
           'Required credential fields are missing.'
         );
       const accountHint = stringParam(params, 'accountHint', 256, false);
-      return client.submitCredentials(appId, fields, accountHint);
+      const result = await client.submitCredentials(appId, fields, accountHint);
+      if (result?.status === 'connected') {
+        connectedAuth.add(appId);
+        await deps.access.refreshMcp();
+      }
+      return result;
     }),
     'apps.credentials.validate': authorize(async (params) =>
       deps.access.validateCandidate(stringParam(params, 'apiKey', 16 * 1024)!)

@@ -23,7 +23,7 @@ const APP_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 export interface OpenHubAppsClientObserver {
   onReachable?(): void | Promise<void>;
   onUnavailable?(): void | Promise<void>;
-  onRejected?(status: 401 | 403): void | Promise<void>;
+  onRejected?(status: 401 | 403, credential: OpenHubCredential): void | Promise<void>;
 }
 
 export interface OpenHubAppsClientOptions {
@@ -278,11 +278,26 @@ export class OpenHubAppsClient {
     fields: Record<string, string>,
     accountHint?: string
   ): Promise<AppAuthInfo | null> {
-    await this.requestJson(`${validateAppId(appId)}/auth/api-key`, {
+    const saved = await this.requestJson(`${validateAppId(appId)}/auth/api-key`, {
       method: 'POST',
       body: JSON.stringify({ fields, accountHint: accountHint ?? null }),
     });
-    return this.getAuthStatus(appId);
+    try {
+      return await this.getAuthStatus(appId);
+    } catch {
+      // The credential POST is authoritative. A transient status re-read must
+      // not tell the user that saving failed after OpenHub already committed it.
+      const normalized = normalizeAppAuth(saved);
+      if (normalized && normalized.type !== 'unknown') return normalized;
+      return {
+        type: 'api_key',
+        status: 'connected',
+        connectionStatus: 'connected',
+        accountHint: accountHint?.slice(0, 256) ?? null,
+        manualFields: [],
+        setupUrl: null,
+      };
+    }
   }
 
   async getIcon(appId: string): Promise<AppIconData | null> {
@@ -341,7 +356,7 @@ export class OpenHubAppsClient {
     }
     if (!response.ok) {
       if (response.status === 401 || response.status === 403)
-        await this.observer.onRejected?.(response.status);
+        await this.observer.onRejected?.(response.status, credential);
       else if (response.status >= 500 || response.status === 429)
         await this.observer.onUnavailable?.();
       throw appsErrorForStatus(response.status);

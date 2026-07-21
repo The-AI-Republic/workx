@@ -46,6 +46,9 @@ export async function initializeAppsStore(): Promise<void> {
       });
       await refreshAppsStore();
     } catch (error) {
+      unlisten?.();
+      unlisten = null;
+      initPromise = null;
       store.set({
         access: null,
         policy: null,

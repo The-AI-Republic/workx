@@ -4,6 +4,7 @@ import { AppsAccessController } from '../AppsAccessController';
 import { OpenHubCredentialProvider } from '../OpenHubCredentialProvider';
 import { AppsServiceError } from '../AppsServiceError';
 import type { AppsAccessPolicy } from '../types';
+import type { OpenHubAppsClientObserver } from '../OpenHubAppsClient';
 
 class Store implements CredentialStore {
   value: string | null = null;
@@ -46,7 +47,7 @@ function setup(
     reconnectMcp,
     disconnectMcp,
   });
-  return { access, store, emitState, reconnectMcp, disconnectMcp };
+  return { access, provider, store, emitState, reconnectMcp, disconnectMcp };
 }
 
 describe('AppsAccessController', () => {
@@ -174,7 +175,7 @@ describe('AppsAccessController', () => {
   });
 
   it('moves rejected private sessions to needs-login instead of an API-key error', async () => {
-    let observer: { onRejected?: (status: 401 | 403) => Promise<void> | void } = {};
+    let observer: OpenHubAppsClientObserver = {};
     const sessionPolicy: AppsAccessPolicy = {
       authMethod: 'session-jwt',
       setupCopy: { title: '', description: '', action: '' },
@@ -195,7 +196,12 @@ describe('AppsAccessController', () => {
       } as any,
     });
 
-    await observer.onRejected?.(401);
+    await observer.onRejected?.(401, {
+      method: 'session-jwt',
+      token: 'expired-session',
+      source: 'session',
+      generation: 0,
+    });
 
     expect(access.getState()).toMatchObject({
       credentialStatus: 'needs-login',
@@ -203,5 +209,51 @@ describe('AppsAccessController', () => {
       hasCredential: false,
       reason: 'session_expired',
     });
+  });
+
+  it('keeps an OSS API key ready when the unrelated login session ends', async () => {
+    const store = new Store();
+    store.value = 'stored';
+    const client = { validateCredential: vi.fn(async () => validation), setObserver: vi.fn() };
+    const { access, disconnectMcp } = setup(client, store);
+    await access.initialize();
+
+    await access.sessionEnded();
+
+    expect(access.getState()).toMatchObject({
+      credentialStatus: 'ready',
+      credentialSource: 'stored-api-key',
+      hasCredential: true,
+    });
+    expect(disconnectMcp).not.toHaveBeenCalled();
+  });
+
+  it('ignores a rejection from an older credential generation', async () => {
+    let observer: OpenHubAppsClientObserver = {};
+    const store = new Store();
+    store.value = 'old-key';
+    const client = {
+      validateCredential: vi.fn(async () => validation),
+      setObserver: (value: typeof observer) => {
+        observer = value;
+      },
+    };
+    const { access, disconnectMcp } = setup(client as any, store);
+    await access.initialize();
+    await access.saveCandidate('new-key');
+    disconnectMcp.mockClear();
+
+    await observer.onRejected?.(403, {
+      method: 'api-key',
+      token: 'old-key',
+      source: 'stored-api-key',
+      generation: 0,
+    });
+
+    expect(access.getState()).toMatchObject({
+      credentialStatus: 'ready',
+      credentialSource: 'stored-api-key',
+    });
+    expect(disconnectMcp).not.toHaveBeenCalled();
   });
 });

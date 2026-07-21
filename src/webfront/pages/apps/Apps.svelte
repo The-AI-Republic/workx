@@ -323,10 +323,10 @@
           : 'border-term-dim-green'}"
       >
         <h2 class="m-0 text-base font-semibold">
-          {policy?.setupCopy.title ?? $_t('Apps unavailable')}
+          {policy ? $_t(policy.setupCopy.title) : $_t('Apps unavailable')}
         </h2>
         <p class="text-sm opacity-70">
-          {policy?.setupCopy.description ?? $appsStore.error ?? access?.reason}
+          {policy ? $_t(policy.setupCopy.description) : ($appsStore.error ?? access?.reason)}
         </p>
         {#if access?.credentialStatus === 'unverified' || access?.capabilityStatus === 'incompatible'}
           <button class="text-sm underline" onclick={() => refreshAppsStore()}
@@ -339,7 +339,7 @@
               : 'border border-term-dim-green'}"
             onclick={openSetup}
           >
-            {policy?.setupCopy.action ?? $_t('Configure')}
+            {policy ? $_t(policy.setupCopy.action) : $_t('Configure')}
           </button>
         {/if}
       </div>

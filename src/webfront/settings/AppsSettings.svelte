@@ -29,7 +29,6 @@
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause);
     } finally {
-      apiKey = '';
       busy = false;
     }
   }
@@ -74,7 +73,7 @@
     <button class="back" onclick={onBack} aria-label={t('Back to settings')}>←</button>
     <div>
       <h2 id="apps-settings-title">{t('Apps')}</h2>
-      <p>{policy?.setupCopy.description ?? t('Configure OpenHub Apps access.')}</p>
+      <p>{policy ? t(policy.setupCopy.description) : t('Configure OpenHub Apps access.')}</p>
     </div>
   </div>
 
@@ -114,16 +113,18 @@
     </div>
   {:else}
     <div class="card">
-      <h3>{policy?.setupCopy.title ?? t('Sign in to use Apps')}</h3>
+      <h3>{policy ? t(policy.setupCopy.title) : t('Sign in to use Apps')}</h3>
       <p>
         {access?.credentialStatus === 'ready'
           ? t('Your AI Republic session enables Apps.')
-          : policy?.setupCopy.description}
+          : policy
+            ? t(policy.setupCopy.description)
+            : ''}
       </p>
       {#if access?.credentialStatus !== 'ready'}<button
           class="primary"
           onclick={() => window.dispatchEvent(new CustomEvent('workx:request-login'))}
-          >{policy?.setupCopy.action ?? t('Sign in')}</button
+          >{policy ? t(policy.setupCopy.action) : t('Sign in')}</button
         >{/if}
     </div>
   {/if}

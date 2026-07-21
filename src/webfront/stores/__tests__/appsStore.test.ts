@@ -5,15 +5,14 @@ import type { AppsAccessPolicy, AppsAccessState } from '@/core/apps/types';
 const mocks = vi.hoisted(() => ({
   getAppsState: vi.fn(),
   getAppsPolicy: vi.fn(),
+  getInitializedUIClient: vi.fn(),
   onEvent: vi.fn(),
   unlisten: vi.fn(),
   listener: undefined as ((event: { msg: unknown }) => void) | undefined,
 }));
 
 vi.mock('@/core/messaging', () => ({
-  getInitializedUIClient: vi.fn(async () => ({
-    onEvent: mocks.onEvent,
-  })),
+  getInitializedUIClient: mocks.getInitializedUIClient,
 }));
 
 vi.mock('../../lib/apis/apps', () => ({
@@ -53,6 +52,7 @@ beforeEach(() => {
   _resetAppsStoreForTesting();
   vi.clearAllMocks();
   mocks.listener = undefined;
+  mocks.getInitializedUIClient.mockResolvedValue({ onEvent: mocks.onEvent });
   mocks.onEvent.mockImplementation((_name: string, listener: (event: { msg: unknown }) => void) => {
     mocks.listener = listener;
     return mocks.unlisten;
@@ -108,5 +108,17 @@ describe('appsStore', () => {
       loading: false,
       error: 'runtime unavailable',
     });
+  });
+
+  it('retries client initialization and restores event subscription after a transient failure', async () => {
+    mocks.getInitializedUIClient.mockRejectedValueOnce(new Error('runtime starting'));
+
+    await initializeAppsStore();
+    expect(get(appsStore)).toMatchObject({ error: 'runtime starting', loading: false });
+
+    await initializeAppsStore();
+    expect(mocks.getInitializedUIClient).toHaveBeenCalledTimes(2);
+    expect(mocks.onEvent).toHaveBeenCalledWith('StateUpdate', expect.any(Function));
+    expect(get(appsStore)).toMatchObject({ access: state(1), policy, error: null });
   });
 });

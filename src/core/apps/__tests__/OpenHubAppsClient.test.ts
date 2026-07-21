@@ -179,4 +179,21 @@ describe('OpenHubAppsClient', () => {
     await client.marketplace();
     await expect(client.getIcon('mail')).resolves.toMatchObject({ mimeType: 'image/png' });
   });
+
+  it('does not report a committed manual credential as failed when status refresh is unavailable', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ connection: { status: 'connected' } }))
+      .mockRejectedValueOnce(new Error('offline'));
+    const client = await apiClient(fetchMock);
+
+    await expect(
+      client.submitCredentials('mail', { api_key: 'provider-secret' }, 'account@example.com')
+    ).resolves.toMatchObject({
+      type: 'api_key',
+      status: 'connected',
+      accountHint: 'account@example.com',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

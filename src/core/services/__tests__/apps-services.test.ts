@@ -17,6 +17,7 @@ function setup() {
       };
     },
     requireReady: vi.fn(),
+    refreshMcp: vi.fn(async () => undefined),
     validateCandidate: vi.fn(async () => ({ valid: true })),
     saveCandidate: vi.fn(async () => ({ credentialStatus: 'ready' })),
     removeStoredKey: vi.fn(async () => ({ credentialStatus: 'needs-api-key' })),
@@ -27,12 +28,14 @@ function setup() {
     uninstall: vi.fn(async () => null),
     activate: vi.fn(async () => null),
     deactivate: vi.fn(async () => null),
-    getAuthStatus: vi.fn(async () => ({ manualFields: [{ key: 'api_key', optional: false }] })),
+    getAuthStatus: vi.fn(
+      async (): Promise<any> => ({ manualFields: [{ key: 'api_key', optional: false }] })
+    ),
     startOAuth: vi.fn(async () => ({
       authorizationUrl: 'https://provider.example',
       expiresIn: null,
     })),
-    submitCredentials: vi.fn(async () => null),
+    submitCredentials: vi.fn(async (): Promise<any> => null),
     getIcon: vi.fn(async () => null),
   };
   const handlers = createAppsServices({
@@ -67,7 +70,7 @@ describe('apps.* services', () => {
   });
 
   it('accepts only runtime-declared manual credential fields', async () => {
-    const { handlers, client } = setup();
+    const { handlers, client, access } = setup();
     await expect(
       handlers['apps.auth.submitCredentials'](
         { appId: 'mail', fields: { unexpected: 'secret' } },
@@ -79,6 +82,30 @@ describe('apps.* services', () => {
       desktop
     );
     expect(client.submitCredentials).toHaveBeenCalledWith('mail', { api_key: 'secret' }, undefined);
+    expect(access.refreshMcp).not.toHaveBeenCalled();
+  });
+
+  it('refreshes MCP after app mutations and a newly connected auth status', async () => {
+    const { handlers, client, access } = setup();
+    await handlers['apps.install']({ appId: 'mail' }, desktop);
+    expect(access.refreshMcp).toHaveBeenCalledTimes(1);
+
+    client.getAuthStatus.mockResolvedValue({ status: 'connected', manualFields: [] });
+    await handlers['apps.auth.getStatus']({ appId: 'mail' }, desktop);
+    await handlers['apps.auth.getStatus']({ appId: 'mail' }, desktop);
+    expect(access.refreshMcp).toHaveBeenCalledTimes(2);
+  });
+
+  it('refreshes MCP after a manual credential becomes connected', async () => {
+    const { handlers, client, access } = setup();
+    client.submitCredentials.mockResolvedValue({ status: 'connected' });
+
+    await handlers['apps.auth.submitCredentials'](
+      { appId: 'mail', fields: { api_key: 'secret' } },
+      desktop
+    );
+
+    expect(access.refreshMcp).toHaveBeenCalledTimes(1);
   });
 
   it('does not trust a previous validation when saving', async () => {

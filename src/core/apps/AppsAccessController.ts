@@ -6,6 +6,7 @@ import type {
   AppsAccessState,
   AppsCredentialValidationResult,
   AppsAccessPolicy,
+  OpenHubCredential,
 } from './types';
 
 export interface AppsAccessControllerOptions {
@@ -48,7 +49,7 @@ export class AppsAccessController {
     options.client?.setObserver({
       onReachable: () => this.updateObservation({ backendStatus: 'reachable' }),
       onUnavailable: () => this.updateObservation({ backendStatus: 'unavailable' }),
-      onRejected: (status) => this.rejectCurrent(status),
+      onRejected: (status, credential) => this.rejectCurrent(status, credential),
     });
   }
 
@@ -161,8 +162,17 @@ export class AppsAccessController {
     return this.enqueue(() => this.refreshUnlocked());
   }
 
+  async refreshMcp(): Promise<void> {
+    await this.reconnectMcpBestEffort();
+  }
+
   async sessionEnded(reason: AppsAccessReason = 'login_required'): Promise<AppsAccessState> {
     return this.enqueue(async () => {
+      if (this.options.policy.authMethod === 'api-key') {
+        // First-party login is unrelated to OSS Apps access. Re-read the
+        // stored/managed key instead of publishing a false needs-login state.
+        return this.refreshUnlocked();
+      }
       this.options.provider.bumpGeneration();
       await this.disconnectMcpBestEffort();
       return this.commit({
@@ -290,8 +300,20 @@ export class AppsAccessController {
     }
   }
 
-  private async rejectCurrent(status: 401 | 403): Promise<void> {
+  private async rejectCurrent(status: 401 | 403, failed: OpenHubCredential): Promise<void> {
     await this.enqueue(async () => {
+      const current = await this.options.provider.getCredential();
+      if (
+        current &&
+        (current.generation !== failed.generation ||
+          current.token !== failed.token ||
+          current.method !== failed.method)
+      ) {
+        return;
+      }
+      if (!current && !(status === 401 && this.options.policy.authMethod === 'session-jwt')) {
+        return;
+      }
       await this.disconnectMcpBestEffort();
       if (status === 401 && this.options.policy.authMethod === 'session-jwt') {
         this.options.provider.bumpGeneration();
