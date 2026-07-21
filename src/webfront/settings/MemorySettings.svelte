@@ -113,7 +113,7 @@
 
     try {
       isSaving = true;
-      await settingsConfig.updateConfig({ preferences: currentPreferences });
+      await settingsConfig.updateConfigAndPersist({ preferences: currentPreferences });
 
       getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(e => console.warn('[messaging] config update failed:', e));
 
@@ -210,7 +210,7 @@
 
 <div class="p-6">
   <button
-    class="bg-transparent border-none cursor-pointer text-[15px] font-medium py-2 px-0 mb-4 flex items-center gap-1 transition-opacity duration-200 hover:opacity-80
+    class="bg-transparent border-none cursor-pointer text-sm font-medium py-2 px-0 mb-4 flex items-center gap-1 transition-opacity duration-200 hover:opacity-80
       {currentTheme === 'modern'
         ? 'font-chat text-chat-primary dark:text-chat-primary-dark'
         : 'font-terminal text-term-green'}"
@@ -235,12 +235,12 @@
       <div>
         <div class="flex items-center justify-between gap-4">
           <div class="flex flex-col gap-1">
-            <span class="text-[15px] font-medium
+            <span class="text-sm font-medium
               {currentTheme === 'modern'
                 ? 'font-chat text-chat-text dark:text-chat-text-dark'
                 : 'font-terminal text-term-green'}"
             >{$_t("Agent Memory")}</span>
-            <span class="text-sm leading-relaxed
+            <span class="text-sm leading-ui
               {currentTheme === 'modern'
                 ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
                 : 'font-terminal text-term-dim-green'}"
@@ -266,7 +266,7 @@
                     ? 'font-chat text-chat-text dark:text-chat-text-dark'
                     : 'font-terminal text-term-green'}"
                 >{$_t("Use own OpenAI API key")}</span>
-                <span class="text-xs leading-relaxed
+                <span class="text-meta font-normal
                   {currentTheme === 'modern'
                     ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
                     : 'font-terminal text-term-dim-green'}"
@@ -327,7 +327,7 @@
         data-setting-id="memory-current"
       >
         <div class="flex items-center justify-between gap-4 mb-3">
-          <span class="text-[15px] font-medium
+          <span class="text-sm font-medium
             {currentTheme === 'modern'
               ? 'font-chat text-chat-text dark:text-chat-text-dark'
               : 'font-terminal text-term-green'}"
@@ -366,7 +366,7 @@
                   : 'bg-term-black text-term-green'}"
               >{memorySnapshot.coreMemory?.trim() || $_t("No core memory stored.")}</pre>
               {#if memorySnapshot.coreMemoryTruncated}
-                <div class="mt-1 text-xs">{$_t("Core memory preview is truncated.")}</div>
+                <div class="mt-1 text-meta font-normal">{$_t("Core memory preview is truncated.")}</div>
               {/if}
             </div>
 
@@ -382,7 +382,7 @@
                 <div class="flex flex-col gap-2">
                   {#each memorySnapshot.dailyFiles ?? [] as day}
                     <div>
-                      <div class="text-xs font-medium mb-1">{day.date}</div>
+                      <div class="text-meta font-medium mb-1">{day.date}</div>
                       <ul class="m-0 pl-4 flex flex-col gap-1">
                         {#each day.entries as entry}
                           <li>
@@ -392,7 +392,7 @@
                         {/each}
                       </ul>
                       {#if day.truncated}
-                        <div class="mt-1 text-xs">{$_t("More entries hidden.")}</div>
+                        <div class="mt-1 text-meta font-normal">{$_t("More entries hidden.")}</div>
                       {/if}
                     </div>
                   {/each}
@@ -412,12 +412,12 @@
           : 'bg-term-bg border-term-dim-green'}"
     >
       <div class="flex flex-col gap-2">
-        <span class="text-[15px] font-medium
+        <span class="text-sm font-medium
           {currentTheme === 'modern'
             ? 'font-chat text-chat-text dark:text-chat-text-dark'
             : 'font-terminal text-term-green'}"
         >{$_t("How it works")}</span>
-        <div class="text-sm leading-relaxed flex flex-col gap-1.5
+        <div class="text-sm leading-ui flex flex-col gap-1.5
           {currentTheme === 'modern'
             ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
             : 'font-terminal text-term-dim-green'}"

@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Typ een geldige opdracht"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Upgrade het abonnement om 's werelds meest geavanceerde modellen te ontgrendelen"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Poort 1455 is in gebruik. Sluit eventuele applicaties die deze poort gebruiken en probeer het opnieuw."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Upgrade naar Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Upgrade om 's werelds krachtigste modellen te verkennen"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Upgrade je abonnement om de krachtigste modellen van de wereld te verkennen"
   },
   "Use_Context_Menu": {
     "message": "Gebruik contextmenu:"

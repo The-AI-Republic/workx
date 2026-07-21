@@ -239,14 +239,14 @@ export async function registerDesktopToolsImpl(
           platforms: ['desktop'],
         },
       },
-      async (params) => {
+      async (params, context) => {
         return await terminalTool.handleInvocation(params as {
           command: string;
-          cwd?: string;
+          workdir?: string;
           timeout?: number;
           userConfirmed?: boolean;
           sandboxed?: boolean;
-        });
+        }, context);
       },
       terminalAssessor
     );

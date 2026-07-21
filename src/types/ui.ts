@@ -17,15 +17,15 @@ import type { PlanReviewPlan } from '../tools/planReview/types';
  * (Renamed from EventCategory for clarity)
  */
 export type EventDisplayCategory =
-  | 'task'        // TaskStarted, TaskComplete, TaskFailed
-  | 'message'     // AgentMessage, AgentMessageDelta
-  | 'reasoning'   // AgentReasoning*, 4 types
-  | 'tool'        // McpToolCall*, ExecCommand*, WebSearch*, PatchApply*
-  | 'output'      // ExecCommandOutputDelta
-  | 'error'       // Error, StreamError, TaskFailed
-  | 'approval'    // ExecApprovalRequest, ApplyPatchApprovalRequest
-  | 'plan'        // PlanUpdate / TaskUpdate - task planning and progress tracking
-  | 'system';     // TokenCount, Notification, etc.
+  | 'task' // TaskStarted, TaskComplete, TaskFailed
+  | 'message' // AgentMessage, AgentMessageDelta
+  | 'reasoning' // AgentReasoning*, 4 types
+  | 'tool' // McpToolCall*, ExecCommand*, WebSearch*, PatchApply*
+  | 'output' // ExecCommandOutputDelta
+  | 'error' // Error, StreamError, TaskFailed
+  | 'approval' // ExecApprovalRequest, ApplyPatchApprovalRequest
+  | 'plan' // PlanUpdate / TaskUpdate - task planning and progress tracking
+  | 'system'; // TokenCount, Notification, etc.
 
 /**
  * EventStatus - Current status of an operation
@@ -35,7 +35,7 @@ export type EventStatus = 'running' | 'success' | 'error';
 /**
  * Color and styling type aliases
  */
-export type ColorClass = string;  // Tailwind color class (e.g., 'text-green-400')
+export type ColorClass = string; // Tailwind color class (e.g., 'text-green-400')
 export type FontWeight = 'font-normal' | 'font-bold';
 export type FontStyle = 'italic' | 'normal';
 export type IconType = 'info' | 'success' | 'error' | 'warning' | 'tool' | 'thinking';
@@ -130,9 +130,9 @@ export interface TokenUsage {
  */
 export interface EventMetadata {
   // Time & Performance
-  duration?: number;              // Operation duration in ms
-  startTime?: Date;               // Operation start time
-  endTime?: Date;                 // Operation end time
+  duration?: number; // Operation duration in ms
+  startTime?: Date; // Operation start time
+  endTime?: Date; // Operation end time
 
   // Token Usage (TokenCount events)
   tokenUsage?: TokenUsage;
@@ -144,21 +144,23 @@ export interface EventMetadata {
   costEstimated?: boolean;
 
   // Command Execution
-  command?: string;               // Original command
-  exitCode?: number;              // Exit code (0 = success)
-  tabId?: number;                 // Browser tab ID (replaced workingDir/cwd)
+  command?: string; // Original command
+  exitCode?: number; // Exit code (0 = success)
+  tabId?: number; // Browser tab ID (replaced workingDir/cwd)
 
   // Tool Calls
-  toolName?: string;              // MCP tool name
+  toolName?: string; // MCP tool name
   toolParams?: Record<string, any>; // Tool parameters
 
   // File Operations
-  filesChanged?: number;          // Number of files in patch
-  diffSummary?: string;           // Patch summary
+  filesChanged?: number; // Number of files in patch
+  diffSummary?: string; // Patch summary
+  /** Raw preview item identity for opening the matching right-panel item. */
+  previewItemId?: string;
 
   // Model Info
-  model?: string;                 // Model name
-  turnCount?: number;             // Turn number
+  model?: string; // Model name
+  turnCount?: number; // Turn number
 }
 
 // ============================================================================
@@ -170,18 +172,18 @@ export interface EventMetadata {
  */
 export interface OperationState {
   // Identity
-  callId: string;                      // Unique operation ID
-  type: 'exec' | 'tool' | 'patch';     // Operation type
+  callId: string; // Unique operation ID
+  type: 'exec' | 'tool' | 'patch'; // Operation type
 
   // Timing
-  startTime: Date;                     // When operation began
+  startTime: Date; // When operation began
 
   // Content
-  buffer: string;                      // Accumulated deltas
-  processedEventId?: string;           // ID of ProcessedEvent for this operation
+  buffer: string; // Accumulated deltas
+  processedEventId?: string; // ID of ProcessedEvent for this operation
 
   // Metadata
-  metadata: Record<string, any>;       // Type-specific data
+  metadata: Record<string, any>; // Type-specific data
 }
 
 /**
@@ -192,15 +194,15 @@ export interface StreamingState {
   type: 'message' | 'reasoning' | 'raw_reasoning';
 
   // Content
-  buffer: string;                      // Accumulated deltas
-  processedEventId?: string;           // Associated ProcessedEvent
+  buffer: string; // Accumulated deltas
+  processedEventId?: string; // Associated ProcessedEvent
 
   // Timing
   startTime: Date;
   lastUpdateTime: Date;
 
   // Display
-  headerShown: boolean;                // Has header been displayed?
+  headerShown: boolean; // Has header been displayed?
 }
 
 // ============================================================================
@@ -211,29 +213,30 @@ export interface StreamingState {
  * ApprovalRequest - Data for interactive approval UI
  */
 export interface ApprovalRequest {
-  id: string;                          // Approval request ID
-  type: 'exec' | 'patch' | 'tool';    // What needs approval
+  id: string; // Approval request ID
+  type: 'exec' | 'patch' | 'tool'; // What needs approval
 
   // Content
-  command?: string;                    // For exec approvals
-  explanation?: string;                // Why this action
+  command?: string; // For exec approvals
+  explanation?: string; // Why this action
 
-  patch?: {                            // For patch approvals
+  patch?: {
+    // For patch approvals
     path: string;
     diff: string;
   };
 
   // Risk metadata (from approval gate)
-  toolName?: string;                   // Tool being called
-  riskScore?: number;                  // 0-100
-  riskLevel?: string;                  // 'none' | 'low' | 'medium' | 'high' | 'critical'
-  riskFactors?: string[];              // Human-readable risk factors
-  countdown?: number;                  // Seconds remaining for auto-timeout
-  plan?: PlanReviewPlan;               // Track 14: structured plan → editable card
+  toolName?: string; // Tool being called
+  riskScore?: number; // 0-100
+  riskLevel?: string; // 'none' | 'low' | 'medium' | 'high' | 'critical'
+  riskFactors?: string[]; // Human-readable risk factors
+  countdown?: number; // Seconds remaining for auto-timeout
+  plan?: PlanReviewPlan; // Track 14: structured plan → editable card
 
   // Response callbacks
-  onApprove: () => void;               // Callback for approval
-  onReject: () => void;                // Callback for rejection
+  onApprove: () => void; // Callback for approval
+  onReject: () => void; // Callback for rejection
   onRequestChange?: (text: string) => void; // Optional: send alternative instructions
   onRemember?: (scope: 'session' | 'no') => void; // Optional: remember decision
 }
@@ -248,6 +251,51 @@ export type ContentBlock =
   | { type: 'list'; items: string[] }
   | { type: 'table'; headers: string[]; rows: string[][] };
 
+export interface ProcessedEventAction {
+  id: string;
+  label: string;
+  kind: 'navigate' | 'service';
+  href?: string;
+  service?: string;
+  params?: Record<string, unknown>;
+  successMessage?: string;
+  conflictMessage?: string;
+}
+
+// ============================================================================
+// Local File Preview Types
+// ============================================================================
+
+export type LocalFilePreviewView = 'diff' | 'rendered' | 'source';
+
+export interface LocalFilePreviewItem {
+  /** ToolExecutionProgress Event.id; stable across live delivery and replay. */
+  id: string;
+  sessionId: string;
+  sourceCallId?: string;
+  turnId?: string;
+  resource: {
+    type: 'local-text-file';
+    path: string;
+  };
+  operation: 'created' | 'modified';
+  size: number;
+  mtimeMs: number;
+  unifiedDiff?: string;
+  diffOmittedReason?: 'input_too_large' | 'diff_too_large' | 'generation_failed';
+  availableViews: LocalFilePreviewView[];
+  createdAt: number;
+}
+
+export interface ThreadPreviewState {
+  items: LocalFilePreviewItem[];
+  selectedItemId: string | null;
+  selectedView: LocalFilePreviewView | null;
+  open: boolean;
+  unread: boolean;
+  autoOpenSuppressed: boolean;
+}
+
 // ============================================================================
 // ProcessedEvent - Main UI Event Type
 // ============================================================================
@@ -258,25 +306,26 @@ export type ContentBlock =
  */
 export interface ProcessedEvent {
   // Identity
-  id: string;                          // Unique event ID (from Event.id)
-  category: EventDisplayCategory;      // Display category
-  timestamp: Date;                     // When event occurred
+  id: string; // Unique event ID (from Event.id)
+  category: EventDisplayCategory; // Display category
+  timestamp: Date; // When event occurred
 
   // Display
-  title: string;                       // Header text (e.g., "workx", "exec ls", "tool Read")
-  content: string | ContentBlock[];    // Main content (text or structured)
-  style: EventStyle;                   // Visual styling category
+  title: string; // Header text (e.g., "workx", "exec ls", "tool Read")
+  content: string | ContentBlock[]; // Main content (text or structured)
+  style: EventStyle; // Visual styling category
 
   // State
-  status?: EventStatus;                // For operations: 'running' | 'success' | 'error'
-  streaming?: boolean;                 // Is this event still receiving deltas?
+  status?: EventStatus; // For operations: 'running' | 'success' | 'error'
+  streaming?: boolean; // Is this event still receiving deltas?
 
   // Metadata
-  metadata?: EventMetadata;            // Additional info (duration, tokens, etc.)
+  metadata?: EventMetadata; // Additional info (duration, tokens, etc.)
 
   // Interactive
-  requiresApproval?: ApprovalRequest;  // For approval events
-  collapsible?: boolean;               // Can be collapsed (reasoning, tool output)
-  collapsed?: boolean;                 // Current collapse state
-  modelKey?: string;                   // Model that generated this message (format: "providerId:modelId")
+  requiresApproval?: ApprovalRequest; // For approval events
+  actions?: ProcessedEventAction[]; // Accessible local UI actions
+  collapsible?: boolean; // Can be collapsed (reasoning, tool output)
+  collapsed?: boolean; // Current collapse state
+  modelKey?: string; // Model that generated this message (format: "providerId:modelId")
 }

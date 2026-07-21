@@ -135,6 +135,16 @@ describe('TaskOutputStore', () => {
     expect(await store.getDelta('a2')).toHaveLength(1);
   });
 
+  it('hard-purges only chunks owned by the requested durable session', async () => {
+    const store = new TaskOutputStore(makeAdapter());
+    await store.appendChunk('task-a', 'event', 'a1', 'session-a');
+    await store.appendChunk('task-a', 'event', 'a2', 'session-a');
+    await store.appendChunk('task-b', 'event', 'b1', 'session-b');
+    await store.deleteSession('session-a');
+    expect(await store.getDelta('task-a')).toEqual([]);
+    expect((await store.getDelta('task-b')).map((chunk) => chunk.data)).toEqual(['b1']);
+  });
+
   it('flush is a no-op when queue is empty', async () => {
     const store = new TaskOutputStore(makeAdapter());
     await expect(store.flush('a1')).resolves.toBeUndefined();

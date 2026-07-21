@@ -16,7 +16,7 @@
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
   import { platform } from '../stores/platformStore';
-  import { FREE_USER_DEFAULT_COMPOUND_KEY, isModelAvailableForFreeUser } from '../lib/freeUserModels';
+  import { modelAccessPolicy } from '../lib/modelAccessPolicy';
 
   let {
     settingsConfig,
@@ -95,7 +95,14 @@
 
   // Derived state from user store
   let isUserLoggedIn = $derived($userStore.isLoggedIn);
-  let isFreeUser = $derived($userStore.userType === 0);
+  let accountTier = $derived($userStore.userType);
+
+  function isModelLocked(modelKey: string, isCustom = false): boolean {
+    return modelAccessPolicy.isLocked(
+      { isAuthenticated: isUserLoggedIn, accountTier },
+      { modelKey, isCustom },
+    );
+  }
 
   // Model selection array
   interface ModelSelectionItem {
@@ -197,7 +204,7 @@
         const config = settingsConfig.getConfig();
         const providerConfig = config.providers?.openai;
         if (providerConfig) {
-          await settingsConfig.updateConfig({
+          await settingsConfig.updateConfigAndPersist({
             providers: {
               ...config.providers,
               openai: { ...providerConfig, authMethod: 'chatgpt_oauth' },
@@ -250,7 +257,7 @@
         const config = settingsConfig.getConfig();
         const providerConfig = config.providers?.openai;
         if (providerConfig) {
-          await settingsConfig.updateConfig({
+          await settingsConfig.updateConfigAndPersist({
             providers: {
               ...config.providers,
               openai: { ...providerConfig, authMethod: 'api_key' },
@@ -375,15 +382,19 @@
       if (!selectedModelKey || selectedModelKey === '') {
         console.log('[ModelSettings] selectedModelKey is empty, selecting default model');
         if (modelSelectionItems.length > 0) {
-          // For free users or when no model is selected, try to use the free user default model
-          const freeUserDefault = modelSelectionItems.find(m => m.modelId === FREE_USER_DEFAULT_COMPOUND_KEY);
-          if (freeUserDefault) {
-            selectedModelKey = FREE_USER_DEFAULT_COMPOUND_KEY;
-            console.log('[ModelSettings] Using free user default model:', selectedModelKey);
+          const preferredModelId = modelAccessPolicy.getPreferredModelId(
+            { isAuthenticated: isUserLoggedIn, accountTier },
+            'initial',
+          );
+          const preferredModel = preferredModelId
+            ? modelSelectionItems.find((model) => model.modelId === preferredModelId)
+            : undefined;
+          if (preferredModel) {
+            selectedModelKey = preferredModel.modelId;
+            console.log('[ModelSettings] Using preferred default model:', selectedModelKey);
           } else {
-            // Fallback to first available model if kimi-k2p6 not found
             selectedModelKey = modelSelectionItems[0].modelId;
-            console.log('[ModelSettings] Free user default not found, using first model:', selectedModelKey);
+            console.log('[ModelSettings] Preferred default not found, using first model:', selectedModelKey);
           }
           await settingsConfig.setSelectedModel(selectedModelKey);
         } else {
@@ -608,18 +619,20 @@
       isAddingCustom = true;
 
       // deleteProvider rejects removing the provider that hosts the selected
-      // model, so switch to another available model first. For free users, the
-      // fallback must itself be free-tier-allowed — otherwise we'd silently park
-      // them on a premium model that every subsequent message fails on.
+      // model, so switch to another available model first. Prefer a model made
+      // available by the distribution's access policy.
       if (selectedModelKey.startsWith(`${id}:`)) {
         const candidates = modelSelectionItems.filter((m) => !m.modelId.startsWith(`${id}:`));
-        let fallback = candidates[0];
-        if (isFreeUser) {
-          fallback =
-            candidates.find((m) => m.modelId === FREE_USER_DEFAULT_COMPOUND_KEY) ??
-            candidates.find((m) => isModelAvailableForFreeUser(m.modelKey, m.isCustom)) ??
-            candidates[0];
-        }
+        const preferredModelId = modelAccessPolicy.getPreferredModelId(
+          { isAuthenticated: isUserLoggedIn, accountTier },
+          'access-fallback',
+        );
+        const fallback =
+          (preferredModelId
+            ? candidates.find((model) => model.modelId === preferredModelId)
+            : undefined) ??
+          candidates.find((model) => !isModelLocked(model.modelKey, model.isCustom)) ??
+          candidates[0];
         if (fallback) {
           await settingsConfig.setSelectedModel(fallback.modelId);
           selectedModelKey = fallback.modelId;
@@ -793,7 +806,7 @@
       // Persist the user's preference after the runtime confirms the effective
       // access state. The runtime remains the source of truth for display.
       const config = settingsConfig.getConfig();
-      await settingsConfig.updateConfig({
+      await settingsConfig.updateConfigAndPersist({
         preferences: {
           ...config.preferences,
           useOwnApiKey: newValue,
@@ -1060,7 +1073,7 @@
     </div>
 
     <!-- ChatGPT OAuth Section (OpenAI only, direct API mode) -->
-    {#if currentProvider === 'openai' && useOwnApiKey}
+    {#if currentProvider === 'openai' && (!isUserLoggedIn || useOwnApiKey)}
       <div class="form-group chatgpt-oauth-section">
         <label class="form-label">{t("ChatGPT Subscription")}</label>
         {#if chatgptOAuthConnected}
@@ -1503,8 +1516,9 @@
     border: none;
     color: var(--workx-primary);
     cursor: pointer;
-    font-size: 0.9375rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     padding: 0.5rem 0;
     display: flex;
     align-items: center;
@@ -1536,8 +1550,9 @@
 
   .section-title {
     margin: 0 0 1rem 0;
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -1549,10 +1564,11 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
   }
 
   .auth-status.authenticated {
@@ -1572,8 +1588,9 @@
   .form-label {
     display: block;
     margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     color: var(--workx-text);
   }
 
@@ -1589,8 +1606,9 @@
     border-radius: 0.5rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
-    font-family: 'SF Mono', 'Monaco', monospace;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-family: var(--font-mono);
     transition: all 0.2s;
   }
 
@@ -1633,7 +1651,8 @@
     border-radius: 0.5rem;
     background: var(--workx-surface);
     color: var(--workx-text);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     cursor: pointer;
     transition: all 0.2s;
   }
@@ -1651,7 +1670,8 @@
 
   .help-text {
     margin-top: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text-secondary);
   }
 
@@ -1667,8 +1687,9 @@
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
     transition: all 0.2s;
     border: 1px solid var(--workx-primary);
@@ -1735,7 +1756,8 @@
     gap: 0.5rem;
     padding: 0.75rem;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-top: 1rem;
   }
 
@@ -1777,15 +1799,15 @@
   }
 
   .security-title {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     margin-bottom: 0.25rem;
     color: var(--workx-text);
   }
 
   .security-text {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary);
-    line-height: 1.5;
+    line-height: var(--leading-normal);
   }
 
   /* Provider Information */
@@ -1817,15 +1839,17 @@
   }
 
   .provider-info-label {
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     color: var(--workx-text-secondary);
     flex-shrink: 0;
   }
 
   .provider-info-value {
-    font-size: 0.875rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
     max-width: 150px;
     overflow: hidden;
@@ -1838,8 +1862,9 @@
     border: none;
     color: var(--workx-primary);
     cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-medium);
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;
     transition: all 0.2s;
@@ -1867,13 +1892,15 @@
   }
 
   .toggle-label {
-    font-size: 0.9375rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .toggle-description {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     color: var(--workx-text-secondary);
   }
 
@@ -1966,7 +1993,8 @@
 
   .chatgpt-oauth-status .btn-sm {
     padding: 0.25rem 0.5rem;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     margin-left: auto;
   }
 
@@ -1986,18 +2014,19 @@
   }
 
   .divider-text {
-    font-size: 0.8rem;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-wider);
   }
 
   /* Custom endpoints (BYOK) */
   .custom-help {
     margin: 0 0 1rem 0;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary, var(--workx-text));
     opacity: 0.8;
-    line-height: 1.4;
+    line-height: var(--leading-ui);
   }
 
   .custom-list {
@@ -2023,13 +2052,15 @@
   }
 
   .custom-item-name {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .custom-item-meta {
-    font-size: 0.75rem;
+    font-size: var(--text-meta);
+    line-height: var(--text-meta--line-height);
     color: var(--workx-text-secondary, var(--workx-text));
     opacity: 0.75;
     overflow: hidden;
@@ -2049,7 +2080,8 @@
 
   .btn-sm {
     padding: 0.35rem 0.7rem;
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     flex-shrink: 0;
   }
 </style>

@@ -55,6 +55,8 @@ export class AgentTask {
        */
       taskOutputStore?: import('./tasks/TaskOutputStore').TaskOutputStore;
       taskId?: string;
+      clientMessageId?: string;
+      inputDigest?: string;
     }
   ) {
     this.sessionId = sessionId;
@@ -78,6 +80,8 @@ export class AgentTask {
         drainPendingMessages: options?.drainPendingMessages,
         taskOutputStore: options?.taskOutputStore,
         taskId: options?.taskId,
+        clientMessageId: options?.clientMessageId,
+        inputDigest: options?.inputDigest,
       }
     );
   }

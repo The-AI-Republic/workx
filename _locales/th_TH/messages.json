@@ -1405,9 +1405,6 @@
   "Please_type_a_valid_command": {
     "message": "กรุณาพิมพ์คำสั่งที่ถูกต้อง"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "กรุณาอัปเกรดแผนเพื่อปลดบล็อกโมเดลที่ก้าวหน้าที่สุดของโลก"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "พอร์ต1455กำลังใช้งานอยู่โปรดปิดแอปพลิเคชันที่ใช้พอร์ตนี้และลองใหม่อีกครั้ง."
   },
@@ -1973,12 +1970,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "อัปเกรดเป็นพรีเมียม"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "อัปเกรดเพื่อสำรวจโมเดลที่ทรงพลังที่สุดในโลก"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "อัปเกรดการสมัครของคุณเพื่อสำรวจโมเดลที่ทรงพลังที่สุดในโลก"
   },
   "Use_Context_Menu": {
     "message": "ใช้เมนูบริบท:"

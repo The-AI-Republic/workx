@@ -20,11 +20,27 @@
   import SecuritySettings from '../../settings/SecuritySettings.svelte';
   import MemorySettings from '../../settings/MemorySettings.svelte';
   import KeyboardShortcutsSettings from '../../settings/KeyboardShortcutsSettings.svelte';
+  import DataSourcesSettings from '../../settings/DataSourcesSettings.svelte';
+  import ComponentsSettings from '../../settings/ComponentsSettings.svelte';
   import { t } from '../../lib/i18n';
   import { uiTheme } from '../../stores/themeStore';
 
   // Navigation state - includes 'advanced-model-config' for 3rd level menu
-  type NavigationView = 'menu' | 'model-config' | 'advanced-model-config' | 'general' | 'memory' | 'storage' | 'tools' | 'mcp-servers' | 'extension' | 'approval' | 'security' | 'keyboard-shortcuts';
+  type NavigationView =
+    | 'menu'
+    | 'model-config'
+    | 'advanced-model-config'
+    | 'general'
+    | 'memory'
+    | 'storage'
+    | 'tools'
+    | 'data-sources'
+    | 'components'
+    | 'mcp-servers'
+    | 'extension'
+    | 'approval'
+    | 'security'
+    | 'keyboard-shortcuts';
   let currentView: NavigationView = $state('menu');
   let hasUnsavedChanges: boolean = $state(false);
   let showUnsavedDialog: boolean = $state(false);
@@ -36,8 +52,11 @@
   // Advanced config context (for 3rd level menu)
   let advancedConfigModelId: string = $state('');
   let advancedConfigProviderId: string = $state('');
+  let initialDataSourceId: string | undefined = $state(undefined);
+  let initialDataSourceTab: 'details' | 'context' = $state('details');
 
-  // Settings component has its own AgentConfig instance (not shared with agent)
+  // The webfront has one AgentConfig cache. The agent runtime lives in a
+  // separate process and receives committed updates through messaging.
   let settingsConfig: AgentConfig | null = $state(null);
   let isInitializing: boolean = $state(true);
 
@@ -46,30 +65,34 @@
 
   // Load existing settings on mount
   onMount(async () => {
+    applyValidatedDeepLink();
     await loadSettings();
   });
 
-  /**
-   * Load settings from ConfigStorageProvider with isolated AgentConfig
-   */
+  function applyValidatedDeepLink() {
+    const hashQuery = window.location.hash.includes('?')
+      ? window.location.hash.slice(window.location.hash.indexOf('?') + 1)
+      : '';
+    const query = new URLSearchParams(window.location.search || hashQuery);
+    if (query.get('view') !== 'data-sources') return;
+    currentView = 'data-sources';
+    const sourceId = query.get('source');
+    if (
+      sourceId &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sourceId)
+    ) {
+      initialDataSourceId = sourceId;
+    }
+    initialDataSourceTab = query.get('tab') === 'context' ? 'context' : 'details';
+  }
+
+  /** Load the webfront's shared, initialized configuration service. */
   async function loadSettings() {
-    let configInstance: any = null;
     try {
       isInitializing = true;
-      configInstance = new (AgentConfig as any)();
-
-      if (!configInstance) {
-        throw new Error('Failed to initialize AgentConfig');
-      }
-      await configInstance.initialize();
-      settingsConfig = configInstance;
+      settingsConfig = await AgentConfig.getInstance();
     } catch (error) {
       console.error('[Settings] Failed to load settings:', error);
-      // Even on error, expose the instance if it exists — AgentConfig.initialize()
-      // internally falls back to defaults, so the instance is still usable.
-      if (configInstance && !settingsConfig) {
-        settingsConfig = configInstance;
-      }
     } finally {
       isInitializing = false;
     }
@@ -133,8 +156,8 @@
 <div class="settings-page" class:modern={currentTheme === 'modern'}>
   <div class="settings-container">
     <div class="settings-header">
-      <h2 class="settings-title">{t("Settings")}</h2>
-      <button class="close-button" onclick={closeSettings} aria-label={t("Close settings")}>
+      <h2 class="settings-title">{t('Settings')}</h2>
+      <button class="close-button" onclick={closeSettings} aria-label={t('Close settings')}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -149,7 +172,7 @@
         <!-- Wait for AgentConfig to be fully initialized before rendering settings components -->
         <div class="settings-loading">
           <div class="loading-spinner"></div>
-          <span>{t("Loading settings...")}</span>
+          <span>{t('Loading settings...')}</span>
         </div>
       {:else if currentView === 'model-config'}
         <ModelSettings
@@ -203,6 +226,14 @@
           onSaved={() => {}}
           bind:isDirty={hasUnsavedChanges}
         />
+      {:else if currentView === 'data-sources'}
+        <DataSourcesSettings
+          onBack={handleBack}
+          initialSourceId={initialDataSourceId}
+          initialTab={initialDataSourceTab}
+        />
+      {:else if currentView === 'components'}
+        <ComponentsSettings onBack={handleBack} />
       {:else if currentView === 'mcp-servers'}
         <MCPSettings
           {settingsConfig}
@@ -228,11 +259,7 @@
           bind:isDirty={hasUnsavedChanges}
         />
       {:else if currentView === 'security'}
-        <SecuritySettings
-          onBack={handleBack}
-          onSaved={() => {}}
-          bind:isDirty={hasUnsavedChanges}
-        />
+        <SecuritySettings onBack={handleBack} onSaved={() => {}} bind:isDirty={hasUnsavedChanges} />
       {:else if currentView === 'keyboard-shortcuts'}
         <KeyboardShortcutsSettings
           {settingsConfig}
@@ -336,8 +363,9 @@
 
   .settings-title {
     margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 

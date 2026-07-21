@@ -287,4 +287,62 @@ describe('MessageInput Component', () => {
       expect(textarea.tagName.toLowerCase()).toBe('textarea');
     });
   });
+
+  describe('Working folder chip', () => {
+    it('shows only the final folder and exposes the full path on hover', () => {
+      render(MessageInput, {
+        props: {
+          value: '',
+          workingDirectory: '/Users/rich/projects/workx',
+          onChooseWorkingDirectory: vi.fn(),
+        },
+      });
+
+      const chip = screen.getByRole('button', { name: /working folder/i });
+      expect(chip.textContent).toContain('.../workx');
+      expect(chip.textContent).not.toContain('📁');
+      expect(chip.classList.contains('text-sm')).toBe(true);
+      expect(chip.classList.contains('text-xs')).toBe(false);
+      expect(chip.textContent).not.toContain('/Users/rich/projects');
+      expect(chip.getAttribute('title')).toBe('/Users/rich/projects/workx');
+      const contextRow = chip.closest('.composer-context-row');
+      expect(contextRow).toBeTruthy();
+      const spacer = contextRow?.querySelector('.flex-1');
+      const newConversation = screen.getByRole('button', { name: /start new conversation/i });
+      expect(spacer).toBeTruthy();
+      expect(contextRow?.contains(newConversation)).toBe(true);
+      expect(chip.compareDocumentPosition(spacer!) & Node.DOCUMENT_POSITION_FOLLOWING)
+        .toBeTruthy();
+      expect(spacer!.compareDocumentPosition(newConversation) & Node.DOCUMENT_POSITION_FOLLOWING)
+        .toBeTruthy();
+    });
+
+    it('opens the folder picker callback when clicked', async () => {
+      const onChooseWorkingDirectory = vi.fn();
+      render(MessageInput, {
+        props: {
+          value: '',
+          workingDirectory: '/home/rich',
+          onChooseWorkingDirectory,
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /working folder/i }));
+      expect(onChooseWorkingDirectory).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['/', 'C:\\'])('shows a root path without adding an ellipsis: %s', (root) => {
+      render(MessageInput, {
+        props: {
+          value: '',
+          workingDirectory: root,
+          onChooseWorkingDirectory: vi.fn(),
+        },
+      });
+
+      const chip = screen.getByRole('button', { name: /working folder/i });
+      expect(chip.textContent).toContain(root);
+      expect(chip.textContent).not.toContain('.../');
+    });
+  });
 });

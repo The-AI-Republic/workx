@@ -22,7 +22,7 @@ import {
 } from '../models/types/SchedulerContracts';
 import type { ScheduleEvent } from '../models/types/ScheduleEvent';
 import type { ExecutionRecord, ExecutionStatus } from '../models/types/ScheduleEvent';
-import type { AgentRegistry } from '../registry/AgentRegistry';
+import type { SessionManager } from '../registry/SessionManager';
 import type { ScheduleManager } from './ScheduleManager';
 import type { JobExecutor, ExecutionNotificationHandler, ExecutionJobLauncher, ExecutionConnectivityCheck, ExecutionEventEmitter } from './JobExecutor';
 import { recurrenceRuleToRRule } from './rruleAdapter';
@@ -91,7 +91,7 @@ export class Scheduler {
   // Configuration setters (pass through to delegates)
   // ==========================================================================
 
-  setRegistry(registry: AgentRegistry): void {
+  setRegistry(registry: SessionManager): void {
     this.jobExecutor.setRegistry(registry);
   }
 

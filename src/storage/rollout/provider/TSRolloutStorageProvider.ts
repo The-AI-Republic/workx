@@ -13,7 +13,10 @@ import type {
   RolloutItemRecord,
   ConversationsPage,
   Cursor,
+  RolloutRecoveryMetadata,
+  RolloutItemRange,
 } from '../types';
+import { applyRecoveryMutations, emptyRecoveryMetadata } from './RolloutRecovery';
 
 export class TSRolloutStorageProvider implements RolloutStorageProvider {
   private db: import('better-sqlite3').Database | null = null;
@@ -66,7 +69,7 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
 
       CREATE TABLE IF NOT EXISTS rollout_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        rollout_id TEXT NOT NULL REFERENCES rollout_metadata(id) ON DELETE CASCADE,
+        rollout_id TEXT NOT NULL REFERENCES rollout_metadata(id) ON DELETE RESTRICT,
         timestamp TEXT NOT NULL,
         sequence INTEGER NOT NULL,
         type TEXT NOT NULL,
@@ -75,6 +78,7 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
       );
       CREATE INDEX IF NOT EXISTS idx_items_rollout_seq ON rollout_items(rollout_id, sequence);
     `);
+    this.ensureRestrictiveItemForeignKey();
   }
 
   async close(): Promise<void> {
@@ -85,6 +89,48 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
   private getDb(): import('better-sqlite3').Database {
     if (!this.db) throw new Error('TSRolloutStorageProvider not initialized. Call initialize() first.');
     return this.db;
+  }
+
+  /** Migrate legacy CASCADE schemas without changing or reordering item rows. */
+  private ensureRestrictiveItemForeignKey(): void {
+    const db = this.getDb();
+    const itemForeignKey = (db.pragma('foreign_key_list(rollout_items)') as RawForeignKeyRow[])
+      .find((row) => row.table === 'rollout_metadata' && row.from === 'rollout_id');
+    if (itemForeignKey?.on_delete.toUpperCase() === 'RESTRICT') return;
+
+    const orphan = db.prepare(
+      `SELECT rollout_items.rollout_id
+       FROM rollout_items
+       LEFT JOIN rollout_metadata ON rollout_metadata.id = rollout_items.rollout_id
+       WHERE rollout_metadata.id IS NULL
+       LIMIT 1`,
+    ).get() as { rollout_id: string } | undefined;
+    if (orphan) {
+      throw new Error(`Cannot migrate rollout item ownership: missing metadata for ${orphan.rollout_id}`);
+    }
+
+    const migrate = db.transaction(() => {
+      db.exec(`
+        DROP TABLE IF EXISTS rollout_items_restrict_migration;
+        CREATE TABLE rollout_items_restrict_migration (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          rollout_id TEXT NOT NULL REFERENCES rollout_metadata(id) ON DELETE RESTRICT,
+          timestamp TEXT NOT NULL,
+          sequence INTEGER NOT NULL,
+          type TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          UNIQUE(rollout_id, sequence)
+        );
+        INSERT INTO rollout_items_restrict_migration
+          (id, rollout_id, timestamp, sequence, type, payload)
+        SELECT id, rollout_id, timestamp, sequence, type, payload
+        FROM rollout_items;
+        DROP TABLE rollout_items;
+        ALTER TABLE rollout_items_restrict_migration RENAME TO rollout_items;
+        CREATE INDEX idx_items_rollout_seq ON rollout_items(rollout_id, sequence);
+      `);
+    });
+    migrate();
   }
 
   // ==========================================================================
@@ -100,9 +146,20 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
   }
 
   async putMetadata(metadata: RolloutMetadataRecord): Promise<void> {
-    this.getDb().prepare(
-      `INSERT OR REPLACE INTO rollout_metadata (id, created, updated, expires_at, session_meta, item_count, status)
-       VALUES (@id, @created, @updated, @expiresAt, @sessionMeta, @itemCount, @status)`
+    const db = this.getDb();
+    // This must be an in-place update. SQLite's INSERT OR REPLACE deletes the
+    // parent first: legacy schemas cascaded that deletion into rollout_items,
+    // while the restrictive schema correctly rejects it.
+    db.prepare(
+      `INSERT INTO rollout_metadata (id, created, updated, expires_at, session_meta, item_count, status)
+       VALUES (@id, @created, @updated, @expiresAt, @sessionMeta, @itemCount, @status)
+       ON CONFLICT(id) DO UPDATE SET
+         created = excluded.created,
+         updated = excluded.updated,
+         expires_at = excluded.expires_at,
+         session_meta = excluded.session_meta,
+         item_count = MAX(rollout_metadata.item_count, excluded.item_count),
+         status = excluded.status`
     ).run({
       id: metadata.id,
       created: metadata.created,
@@ -112,6 +169,58 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
       itemCount: metadata.itemCount,
       status: metadata.status,
     });
+  }
+
+  async createRollout(
+    metadata: RolloutMetadataRecord,
+    items: Array<{ timestamp: string; sequence: number; type: string; payload: unknown }>,
+  ): Promise<boolean> {
+    const db = this.getDb();
+    const exists = db.prepare('SELECT 1 FROM rollout_metadata WHERE id = ?');
+    const insertMetadata = db.prepare(
+      `INSERT INTO rollout_metadata (id, created, updated, expires_at, session_meta, item_count, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const insertItem = db.prepare(
+      `INSERT INTO rollout_items (rollout_id, timestamp, sequence, type, payload)
+       VALUES (?, ?, ?, ?, ?)`,
+    );
+    const transaction = db.transaction(() => {
+      if (exists.get(metadata.id)) return false;
+      insertMetadata.run(
+        metadata.id,
+        metadata.created,
+        metadata.updated,
+        metadata.expiresAt ?? null,
+        JSON.stringify(metadata.sessionMeta),
+        items.length,
+        metadata.status,
+      );
+      for (const item of items) {
+        insertItem.run(
+          metadata.id,
+          item.timestamp,
+          item.sequence,
+          item.type,
+          typeof item.payload === 'string' ? item.payload : JSON.stringify(item.payload),
+        );
+      }
+      return true;
+    });
+    return transaction();
+  }
+
+  async deleteRollouts(rolloutIds: ConversationId[]): Promise<void> {
+    if (rolloutIds.length === 0) return;
+    const db = this.getDb();
+    const placeholders = rolloutIds.map(() => '?').join(', ');
+    const transaction = db.transaction(() => {
+      db.prepare(`DELETE FROM rollout_items WHERE rollout_id IN (${placeholders})`)
+        .run(...rolloutIds);
+      db.prepare(`DELETE FROM rollout_metadata WHERE id IN (${placeholders})`)
+        .run(...rolloutIds);
+    });
+    transaction();
   }
 
   async deleteMetadata(rolloutId: ConversationId): Promise<void> {
@@ -124,6 +233,26 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
     ).all() as RawMetadataRow[];
 
     return rows.map((r) => this.toMetadataRecord(r));
+  }
+
+  async getRecoveryMetadata(rolloutId: ConversationId): Promise<RolloutRecoveryMetadata> {
+    const metadata = await this.getMetadata(rolloutId);
+    return structuredClone(metadata?.sessionMeta.runtimeRecovery ?? emptyRecoveryMetadata());
+  }
+
+  async listOpenTurnRecovery(): Promise<Array<{
+    sessionId: ConversationId;
+    recovery: RolloutRecoveryMetadata;
+  }>> {
+    const rows = this.getDb().prepare(
+      'SELECT id, session_meta FROM rollout_metadata WHERE session_meta IS NOT NULL',
+    ).all() as Array<{ id: string; session_meta: string }>;
+    return rows.flatMap((row) => {
+      const sessionMeta = this.parseJson(row.session_meta) as RolloutMetadataRecord['sessionMeta'];
+      return sessionMeta.runtimeRecovery?.openTurns.length
+        ? [{ sessionId: row.id, recovery: structuredClone(sessionMeta.runtimeRecovery) }]
+        : [];
+    });
   }
 
   // ==========================================================================
@@ -141,8 +270,13 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
       `INSERT INTO rollout_items (rollout_id, timestamp, sequence, type, payload)
        VALUES (?, ?, ?, ?, ?)`
     );
+    const getMetadata = db.prepare(
+      'SELECT session_meta FROM rollout_metadata WHERE id = ?'
+    );
     const updateCount = db.prepare(
-      `UPDATE rollout_metadata SET item_count = item_count + ?, updated = ? WHERE id = ?`
+      `UPDATE rollout_metadata
+       SET item_count = item_count + ?, updated = ?, session_meta = ?
+       WHERE id = ?`
     );
 
     const tx = db.transaction(() => {
@@ -150,7 +284,11 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
         const payload = typeof item.payload === 'string' ? item.payload : JSON.stringify(item.payload);
         insertItem.run(rolloutId, item.timestamp, item.sequence, item.type, payload);
       }
-      updateCount.run(items.length, Date.now(), rolloutId);
+      const row = getMetadata.get(rolloutId) as { session_meta: string } | undefined;
+      if (row) {
+        const sessionMeta = applyRecoveryMutations(this.parseJson(row.session_meta), items);
+        updateCount.run(items.length, Date.now(), JSON.stringify(sessionMeta), rolloutId);
+      }
     });
 
     tx();
@@ -168,6 +306,39 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
       sequence: r.sequence,
       type: r.type,
       payload: this.parseJson(r.payload),
+    }));
+  }
+
+  async getItemsByRolloutIdRange(
+    rolloutId: ConversationId,
+    range: RolloutItemRange,
+  ): Promise<RolloutItemRecord[]> {
+    const limit = normalizeRangeLimit(range.limit);
+    const clauses = ['rollout_id = ?'];
+    const params: Array<string | number> = [rolloutId];
+    if (range.afterSequence !== undefined) {
+      clauses.push('sequence > ?');
+      params.push(range.afterSequence);
+    }
+    if (range.beforeSequence !== undefined) {
+      clauses.push('sequence < ?');
+      params.push(range.beforeSequence);
+    }
+    params.push(limit);
+    const rows = this.getDb().prepare(
+      `SELECT id, rollout_id, timestamp, sequence, type, payload
+       FROM rollout_items
+       WHERE ${clauses.join(' AND ')}
+       ORDER BY sequence ${range.direction === 'desc' ? 'DESC' : 'ASC'}
+       LIMIT ?`,
+    ).all(...params) as RawItemRow[];
+    return rows.map((row) => ({
+      id: row.id,
+      rolloutId: row.rollout_id,
+      timestamp: row.timestamp,
+      sequence: row.sequence,
+      type: row.type,
+      payload: this.parseJson(row.payload),
     }));
   }
 
@@ -298,6 +469,13 @@ export class TSRolloutStorageProvider implements RolloutStorageProvider {
   }
 }
 
+function normalizeRangeLimit(limit: number): number {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+    throw new Error('range limit must be an integer from 1 to 1000');
+  }
+  return limit;
+}
+
 // SQLite row types (snake_case column names)
 interface RawMetadataRow {
   id: string;
@@ -316,4 +494,10 @@ interface RawItemRow {
   sequence: number;
   type: string;
   payload: string;
+}
+
+interface RawForeignKeyRow {
+  table: string;
+  from: string;
+  on_delete: string;
 }

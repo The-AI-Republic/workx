@@ -158,8 +158,8 @@
   class="px-4 py-3 my-2 rounded-lg transition-all duration-200 {roleBgClasses} {systemTextClasses} {textColorClasses}"
   class:streaming={isStreaming}
 >
-  <div class="flex justify-between mb-2 text-sm">
-    <span class="font-semibold {roleLabelClasses}">
+  <div class="flex justify-between mb-2 text-meta font-normal">
+    <span class="font-medium {roleLabelClasses}">
       {#if message.role === 'user'}
         {$_t("You")}
       {:else if message.role === 'assistant'}
@@ -267,29 +267,32 @@
   .content-text :global(h6) {
     margin-top: 1em;
     margin-bottom: 0.5em;
-    font-weight: 600;
-    line-height: 1.25;
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-tight);
   }
 
   .content-text :global(h1) {
-    font-size: 1.5em;
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
     border-bottom: 1px solid #e0e0e0;
     padding-bottom: 0.3em;
   }
 
   .content-text :global(h2) {
-    font-size: 1.3em;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
     border-bottom: 1px solid #e0e0e0;
     padding-bottom: 0.3em;
   }
 
   .content-text :global(h3) {
-    font-size: 1.15em;
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
   }
 
   .content-text :global(p) {
     margin: 0.5em 0;
-    line-height: 1.6;
+    line-height: var(--text-base--line-height);
   }
 
   .content-text :global(ul),
@@ -306,8 +309,9 @@
     background: rgba(0, 0, 0, 0.05);
     padding: 0.2em 0.4em;
     border-radius: 3px;
-    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-    font-size: 0.9em;
+    font-family: var(--font-mono);
+    font-size: var(--text-code-inline);
+    line-height: var(--text-code-inline--line-height);
     word-break: break-word;
   }
 
@@ -327,7 +331,8 @@
     background: transparent;
     padding: 0;
     color: inherit;
-    font-size: 0.9em;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
     white-space: pre-wrap;
     word-break: break-all;
     overflow: visible;
@@ -341,7 +346,7 @@
   }
 
   .content-text :global(strong) {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   .content-text :global(em) {
@@ -378,7 +383,7 @@
 
   .content-text :global(th) {
     background: #f5f5f5;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   .content-text :global(img) {

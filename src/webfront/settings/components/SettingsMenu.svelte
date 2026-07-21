@@ -39,6 +39,7 @@
     label: string;
     description: string;
     icon: string;
+    desktopOnly?: boolean;
   }
 
   const categories: Category[] = [
@@ -50,7 +51,7 @@
         <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
         <path d="M2 17l10 5 10-5"></path>
         <path d="M2 12l10 5 10-5"></path>
-      </svg>`
+      </svg>`,
     },
     {
       id: 'general',
@@ -59,7 +60,7 @@
       icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="3"></circle>
         <path d="M12 1v6m0 6v6m5.66-17.66l-3 3m-3.46 3.46l-3 3m17.66 5.66l-6 0m-6 0l-6 0m17.66-5.66l-3 3m-3.46 3.46l-3 3"></path>
-      </svg>`
+      </svg>`,
     },
     {
       id: 'keyboard-shortcuts',
@@ -68,7 +69,7 @@
       icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <rect x="3" y="5" width="18" height="14" rx="2"></rect>
         <path d="M7 9h.01M11 9h.01M15 9h.01M17 13h.01M13 13h.01M9 13h.01M7 17h10"></path>
-      </svg>`
+      </svg>`,
     },
     {
       id: 'memory',
@@ -78,7 +79,7 @@
         <path d="M12 2a4 4 0 0 1 4 4v1a3 3 0 0 1 3 3v1a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2v-1a3 3 0 0 1 3-3V6a4 4 0 0 1 4-4z"></path>
         <line x1="8" y1="21" x2="16" y2="21"></line>
         <line x1="12" y1="17" x2="12" y2="21"></line>
-      </svg>`
+      </svg>`,
     },
     {
       id: 'storage',
@@ -88,7 +89,7 @@
         <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
         <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
         <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
-      </svg>`
+      </svg>`,
     },
     {
       id: 'tools',
@@ -96,7 +97,30 @@
       description: t('Browser automation tool toggles'),
       icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-      </svg>`
+      </svg>`,
+    },
+    {
+      id: 'data-sources',
+      label: t('Data Sources'),
+      description: t('Connect read-only databases for AI-assisted analysis'),
+      desktopOnly: true,
+      icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <ellipse cx="12" cy="5" rx="8" ry="3"></ellipse>
+        <path d="M4 5v7c0 1.66 3.58 3 8 3s8-1.34 8-3V5"></path>
+        <path d="M4 12v7c0 1.66 3.58 3 8 3s8-1.34 8-3v-7"></path>
+      </svg>`,
+    },
+    {
+      id: 'components',
+      label: t('Components'),
+      description: t('Install optional local tools and runtimes for WorkX'),
+      desktopOnly: true,
+      icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2v6"></path>
+        <path d="m9 5 3 3 3-3"></path>
+        <rect x="4" y="10" width="16" height="10" rx="2"></rect>
+        <path d="M8 15h.01M12 15h4"></path>
+      </svg>`,
     },
     {
       id: 'mcp-servers',
@@ -109,7 +133,7 @@
         <circle cx="7" cy="10" r="1.5"></circle>
         <circle cx="12" cy="10" r="1.5"></circle>
         <circle cx="17" cy="10" r="1.5"></circle>
-      </svg>`
+      </svg>`,
     },
     {
       id: 'approval',
@@ -117,7 +141,7 @@
       description: t('Action approval mode, trusted domains, risk settings'),
       icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-      </svg>`
+      </svg>`,
     },
     {
       id: 'security',
@@ -127,7 +151,7 @@
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
         <circle cx="12" cy="16" r="1"></circle>
-      </svg>`
+      </svg>`,
     },
     {
       id: 'extension',
@@ -136,8 +160,8 @@
       icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-      </svg>`
-    }
+      </svg>`,
+    },
   ];
 
   function selectCategory(categoryId: string) {
@@ -146,14 +170,14 @@
 </script>
 
 <div class="settings-menu">
-  <h2 class="menu-title">{t("Settings")}</h2>
+  <h2 class="menu-title">{t('Settings')}</h2>
   <SettingsSearch
     {isDesktop}
     onResultSelected={handleSearchResult}
     onSearchActive={handleSearchActive}
   />
   <div class="categories-grid" class:hidden-but-present={searchActive}>
-    {#each categories as category}
+    {#each categories.filter((category) => !category.desktopOnly || isDesktop) as category}
       <button
         class="category-card"
         onclick={() => selectCategory(category.id)}
@@ -179,8 +203,9 @@
 
   .menu-title {
     margin: 0 0 1.5rem 0;
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
@@ -241,15 +266,16 @@
 
   .category-label {
     margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+    font-weight: var(--font-weight-semibold);
     color: var(--workx-text);
   }
 
   .category-description {
     margin: 0;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: var(--workx-text-secondary);
-    line-height: 1.5;
+    line-height: var(--leading-normal);
   }
 </style>

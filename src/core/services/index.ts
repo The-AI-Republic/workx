@@ -23,6 +23,9 @@ import { createMemoryServices, type MemoryServiceDeps } from './memory-services'
 import { createRuntimeServices, type RuntimeServiceDeps } from './runtime-services';
 import { createModelServices, type ModelsServiceDeps } from './models-services';
 import { createCredentialServices, type CredentialServiceDeps } from './credentials-services';
+import { createDataSourceServices, type DataSourceServiceDeps } from './data-sources-services';
+import { createComponentServices, type ComponentServiceDeps } from './components-services';
+import { createPreviewServices, type PreviewServiceDeps } from './preview-services';
 
 /**
  * Dependencies for registering all services.
@@ -44,6 +47,9 @@ export interface AllServiceDeps {
   runtime?: RuntimeServiceDeps;
   models?: ModelsServiceDeps;
   credentials?: CredentialServiceDeps;
+  dataSources?: DataSourceServiceDeps;
+  components?: ComponentServiceDeps;
+  preview?: PreviewServiceDeps;
 }
 
 /**
@@ -51,10 +57,7 @@ export interface AllServiceDeps {
  *
  * @returns The number of services registered
  */
-export function registerAllServices(
-  registry: ServiceRegistry,
-  deps: AllServiceDeps
-): number {
+export function registerAllServices(registry: ServiceRegistry, deps: AllServiceDeps): number {
   let count = 0;
 
   const factories: Array<[keyof AllServiceDeps, (d: any) => Record<string, any>]> = [
@@ -73,6 +76,9 @@ export function registerAllServices(
     ['runtime', createRuntimeServices],
     ['models', createModelServices],
     ['credentials', createCredentialServices],
+    ['dataSources', createDataSourceServices],
+    ['components', createComponentServices],
+    ['preview', createPreviewServices],
   ];
 
   for (const [key, factory] of factories) {
@@ -105,3 +111,6 @@ export { createMemoryServices, type MemoryServiceDeps } from './memory-services'
 export { createRuntimeServices, type RuntimeServiceDeps } from './runtime-services';
 export { createModelServices, type ModelsServiceDeps } from './models-services';
 export { createCredentialServices, type CredentialServiceDeps } from './credentials-services';
+export { createDataSourceServices, type DataSourceServiceDeps } from './data-sources-services';
+export { createComponentServices, type ComponentServiceDeps } from './components-services';
+export { createPreviewServices, type PreviewServiceDeps } from './preview-services';

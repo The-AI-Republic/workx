@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "ਕਿਰਪਾ ਕਰਕੇ ਇੱਕ ਵੈਧ ਕਮਾਂਡ ਟਾਈਪ ਕਰੋ"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "ਦੁਨੀਆ ਦੇ ਸਭ ਤੋਂ ਉੱਨਤ ਮਾਡਲਾਂ ਨੂੰ ਅਨਲੌਕ ਕਰਨ ਲਈ ਕਿਰਪਾ ਕਰਕੇ ਯੋਜਨਾ ਅਪਗਰੇਡ ਕਰੋ"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "ਪੋਰਟ 1455 ਵਰਤੋਂ ਵਿੱਚ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਇਸ ਪੋਰਟ ਨੂੰ ਵਰਤ ਰਹੀ ਕਿਸੇ ਵੀ ਐਪਲੀਕੇਸ਼ਨ ਨੂੰ ਬੰਦ ਕਰੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "ਪ੍ਰੀਮੀਅਮ ਲਈ ਅਪਗਰੇਡ ਕਰੋ"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "ਦੁਨੀਆ ਦੇ ਸਭ ਤੋਂ ਸ਼ਕਤੀਸ਼ਾਲੀ ਮਾਡਲਾਂ ਦੀ ਖੋਜ ਲਈ ਅਪਗਰੇਡ ਕਰੋ"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "ਦੁਨੀਆ ਦੇ ਸਭ ਤੋਂ ਸ਼ਕਤੀਸ਼ਾਲੀ ਮਾਡਲਾਂ ਦੀ ਖੋਜ ਲਈ ਆਪਣੀ ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਅਪਗਰੇਡ ਕਰੋ"
   },
   "Use_Context_Menu": {
     "message": "ਸੰਦਰਭ ਮੀਨੂ ਵਰਤੋ:"

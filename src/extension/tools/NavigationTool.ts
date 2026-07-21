@@ -5,7 +5,7 @@
  * and navigation event handling. Supports waiting for page loads and navigation error handling.
  */
 
-import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition } from '../../tools/BaseTool';
+import { BaseTool, createToolDefinition, type BaseToolRequest, type BaseToolOptions, type ToolDefinition, type ScopedBrowserTab } from '../../tools/BaseTool';
 
 /**
  * Navigation tool request interface
@@ -156,9 +156,9 @@ export class NavigationTool extends BaseTool {
     }
 
     // Validate tab exists
-    let targetTab: chrome.tabs.Tab;
+    let targetTab: ScopedBrowserTab;
     try {
-      targetTab = await chrome.tabs.get(tabId);
+      targetTab = await this.getOwnedTab(tabId);
     } catch (error) {
       throw new Error(`Target tab ${tabId} not found or inaccessible`);
     }
@@ -246,7 +246,7 @@ export class NavigationTool extends BaseTool {
       this.log('info', `Navigating to ${validUrl} in tab ${tabId}`);
 
       // Update tab URL
-      const updatedTab = await chrome.tabs.update(tabId, { url: validUrl });
+      const updatedTab = await this.updateOwnedTab(tabId, { url: validUrl });
 
       let navigationResult: NavigationToolResponse = {
         url: validUrl,
@@ -283,10 +283,10 @@ export class NavigationTool extends BaseTool {
     const startTime = Date.now();
 
     try {
-      const currentTab = await chrome.tabs.get(tabId);
+      const currentTab = await this.getOwnedTab(tabId);
 
       // Reload the tab
-      await chrome.tabs.reload(tabId, {
+      await this.reloadOwnedTab(tabId, {
         bypassCache: request.options?.bypassCache || false,
       });
 
@@ -337,7 +337,7 @@ export class NavigationTool extends BaseTool {
         await this.waitForTabToLoad(tabId, request.options?.timeout || 10000);
 
         // Get tab info AFTER navigation completes
-        const tab = await chrome.tabs.get(tabId);
+        const tab = await this.getOwnedTab(tabId);
 
         return {
           url: tab.url || '',
@@ -373,7 +373,7 @@ export class NavigationTool extends BaseTool {
         await this.waitForTabToLoad(tabId, request.options?.timeout || 10000);
 
         // Get tab info AFTER navigation completes
-        const tab = await chrome.tabs.get(tabId);
+        const tab = await this.getOwnedTab(tabId);
 
         return {
           url: tab.url || '',
@@ -438,7 +438,7 @@ export class NavigationTool extends BaseTool {
         func: () => { window.stop(); }
       });
 
-      const tab = await chrome.tabs.get(tabId);
+      const tab = await this.getOwnedTab(tabId);
 
       this.log('info', `Stopped navigation in tab ${tabId}`);
 
@@ -458,7 +458,7 @@ export class NavigationTool extends BaseTool {
    */
   private async getCurrentUrl(tabId: number, request: NavigationToolRequest): Promise<NavigationToolResponse> {
     try {
-      const tab = await chrome.tabs.get(tabId);
+      const tab = await this.getOwnedTab(tabId);
 
       return {
         url: tab.url || '',
@@ -481,7 +481,7 @@ export class NavigationTool extends BaseTool {
 
       await this.waitForTabToLoad(tabId, timeout);
 
-      const tab = await chrome.tabs.get(tabId);
+      const tab = await this.getOwnedTab(tabId);
 
       return {
         url: tab.url || '',
@@ -510,7 +510,7 @@ export class NavigationTool extends BaseTool {
       await this.waitForTabToLoad(tabId, timeout);
 
       // Get final tab state
-      const tab = await chrome.tabs.get(tabId);
+      const tab = await this.getOwnedTab(tabId);
 
       return {
         url: tab.url || '',
@@ -538,7 +538,7 @@ export class NavigationTool extends BaseTool {
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeoutMs) {
-      const tab = await chrome.tabs.get(tabId);
+      const tab = await this.getOwnedTab(tabId);
 
       if (tab.status === 'complete') {
         return;
@@ -687,17 +687,17 @@ export class NavigationTool extends BaseTool {
   async navigateAndWaitFor(
     tabId: number,
     url: string,
-    condition: (tab: chrome.tabs.Tab) => boolean,
+    condition: (tab: ScopedBrowserTab) => boolean,
     timeout: number = 30000
   ): Promise<NavigationToolResponse> {
     const startTime = Date.now();
 
     // Start navigation
-    await chrome.tabs.update(tabId, { url });
+    await this.updateOwnedTab(tabId, { url });
 
     // Wait for condition
     while (Date.now() - startTime < timeout) {
-      const tab = await chrome.tabs.get(tabId);
+      const tab = await this.getOwnedTab(tabId);
 
       if (condition(tab)) {
         return {

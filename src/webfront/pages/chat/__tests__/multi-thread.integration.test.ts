@@ -1,18 +1,22 @@
 /**
- * Multi-thread integration tests
+ * Integration tests for the production threadStore + timeline reducer.
  *
- * Tests the UI-side state management logic extracted from Main.svelte:
- * saveThreadState, loadThreadState, handleEventForSession, switchToThread,
- * welcome screen condition, and full independence scenarios.
- *
- * Uses a MultiThreadStateManager class that replicates Main.svelte's
- * pure state logic so we can test without mounting the full component.
+ * These intentionally use the real state containers instead of duplicating
+ * Main.svelte's former messages[]/processedEvents[] implementation in a fake
+ * test-only manager.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { get } from 'svelte/store';
-
-// ---------- Mock ConfigStorageProvider ----------
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { EventProcessor } from '@/webfront/components/event_display/EventProcessor';
+import {
+  emptyTimeline,
+  reconcileAttachedTimeline,
+  timelineEvents,
+  upsertTimelineEvent,
+} from '@/webfront/lib/conversationTimeline';
+import { createThreadIndexEntry } from '@/core/thread/ThreadIndexStore';
+import { threadStore } from '@/webfront/stores/threadStore';
+import type { ProcessedEvent } from '@/types/ui';
 
 const mockConfigStorage = {
   get: vi.fn().mockResolvedValue(null),
@@ -24,490 +28,136 @@ vi.mock('@/core/storage/ConfigStorageProvider', () => ({
   getConfigStorage: vi.fn(() => mockConfigStorage),
 }));
 
-import { threadStore } from '@/webfront/stores/threadStore';
-import { isConfigStorageInitialized } from '@/core/storage/ConfigStorageProvider';
-
-// ---------- Types matching Main.svelte ----------
-
-interface Message {
-  type: 'user' | 'agent';
-  content: string;
-  timestamp: number;
-}
-
-interface ProcessedEvent {
-  id: string;
-  [key: string]: any;
-}
-
-interface MockEventProcessor {
-  processEvent: (event: any) => ProcessedEvent | null;
-}
-
-interface ThreadConversationState {
-  messages: Message[];
-  processedEvents: ProcessedEvent[];
-  inputText: string;
-  isProcessing: boolean;
-  currentTabId: number;
-  eventProcessor: MockEventProcessor;
-}
-
-// ---------- MultiThreadStateManager (replicates Main.svelte logic) ----------
-
-function createMockEventProcessor(): MockEventProcessor {
+function message(id: string, content: string, title: 'user' | 'workx' = 'user'): ProcessedEvent {
   return {
-    processEvent: vi.fn((event: any) => ({
-      id: `pe_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      type: event.msg?.type ?? 'unknown',
-      raw: event,
-    })),
+    id,
+    category: 'message',
+    timestamp: new Date(0),
+    title,
+    content,
+    style: { textColor: title === 'user' ? 'text-cyan-400' : 'text-white' },
+    streaming: false,
+    collapsible: false,
   };
 }
 
-class MultiThreadStateManager {
-  threadStates = new Map<string, ThreadConversationState>();
-  activeSessionId: string | null = null;
-
-  // "UI state" — mimics the reactive variables in Main.svelte
-  messages: Message[] = [];
-  processedEvents: ProcessedEvent[] = [];
-  inputText: string = '';
-  isProcessing: boolean = false;
-  currentTabId: number = -1;
-  eventProcessor: MockEventProcessor = createMockEventProcessor();
-
-  /** Save current UI state to the threadStates map */
-  saveThreadState(threadId: string) {
-    const state: ThreadConversationState = {
-      messages: [...this.messages],
-      processedEvents: [...this.processedEvents],
-      inputText: this.inputText,
-      isProcessing: this.isProcessing,
-      currentTabId: this.currentTabId,
-      eventProcessor: this.eventProcessor,
-    };
-    this.threadStates.set(threadId, state);
-  }
-
-  /** Load thread state from map to UI */
-  loadThreadState(threadId: string) {
-    const state = this.threadStates.get(threadId);
-    if (state) {
-      this.messages = [...state.messages];
-      this.processedEvents = [...state.processedEvents];
-      this.inputText = state.inputText;
-      this.isProcessing = state.isProcessing;
-      this.currentTabId = state.currentTabId;
-      this.eventProcessor = state.eventProcessor;
-    } else {
-      this.messages = [];
-      this.processedEvents = [];
-      this.inputText = '';
-      this.isProcessing = false;
-      this.currentTabId = -1;
-      this.eventProcessor = createMockEventProcessor();
-    }
-  }
-
-  /** Handle incoming event for a specific session (background thread) */
-  handleEventForSession(event: { id: string; msg: { type: string; [key: string]: any } }, sessionId: string) {
-    const thread = threadStore.getThread(sessionId);
-    if (!thread) return;
-
-    let state = this.threadStates.get(thread.sessionId);
-    if (!state) {
-      state = {
-        messages: [],
-        processedEvents: [],
-        inputText: '',
-        isProcessing: false,
-        currentTabId: -1,
-        eventProcessor: createMockEventProcessor(),
-      };
-      this.threadStates.set(thread.sessionId, state);
-    }
-
-    const processed = state.eventProcessor.processEvent(event);
-    if (processed) {
-      state.processedEvents = [...state.processedEvents, processed];
-    }
-
-    const msg = event.msg;
-    if (msg.type === 'TaskStarted') {
-      state.isProcessing = true;
-    } else if (msg.type === 'TaskComplete' || msg.type === 'TaskFailed') {
-      state.isProcessing = false;
-    }
-
-    this.threadStates.set(thread.sessionId, state);
-  }
-
-  /** Switch to a specific thread (replicates switchToThread in Main.svelte) */
-  switchToThread(threadId: string) {
-    const currentActiveThread = threadStore.getActiveThread();
-    if (currentActiveThread) {
-      this.saveThreadState(currentActiveThread.sessionId);
-    }
-
-    threadStore.setActiveThread(threadId);
-
-    const newThread = threadStore.getActiveThread();
-    if (newThread) {
-      this.activeSessionId = newThread.sessionId;
-    }
-
-    this.loadThreadState(threadId);
-  }
-
-  /** Welcome screen condition */
-  get showWelcome(): boolean {
-    return !this.isProcessing && this.processedEvents.length === 0 && this.messages.length === 0;
-  }
-}
-
-// ---------- Tests ----------
-
-describe('Multi-thread integration (UI state management)', () => {
-  let mgr: MultiThreadStateManager;
-
+describe('multi-thread production state integration', () => {
   beforeEach(() => {
     threadStore.clear();
     vi.clearAllMocks();
-    vi.mocked(isConfigStorageInitialized).mockReturnValue(true);
-    mockConfigStorage.get.mockResolvedValue(null);
-    mockConfigStorage.set.mockResolvedValue(undefined);
-
-    mgr = new MultiThreadStateManager();
   });
 
-  // =========================================================================
-  // saveThreadState / loadThreadState roundtrip
-  // =========================================================================
-
-  describe('saveThreadState / loadThreadState roundtrip', () => {
-    it('preserves all fields', () => {
-      const thread = threadStore.createThread('s1');
-
-      mgr.messages = [{ type: 'user', content: 'hi', timestamp: 1 }];
-      mgr.processedEvents = [{ id: 'pe1', type: 'AgentMessage' }];
-      mgr.inputText = 'draft';
-      mgr.isProcessing = true;
-      mgr.currentTabId = 42;
-
-      mgr.saveThreadState(thread.sessionId);
-
-      // Nuke UI state
-      mgr.messages = [];
-      mgr.processedEvents = [];
-      mgr.inputText = '';
-      mgr.isProcessing = false;
-      mgr.currentTabId = -1;
-
-      mgr.loadThreadState(thread.sessionId);
-
-      expect(mgr.messages).toEqual([{ type: 'user', content: 'hi', timestamp: 1 }]);
-      expect(mgr.processedEvents).toEqual([{ id: 'pe1', type: 'AgentMessage' }]);
-      expect(mgr.inputText).toBe('draft');
-      expect(mgr.isProcessing).toBe(true);
-      expect(mgr.currentTabId).toBe(42);
+  it('preserves independent timelines and drafts across A to B to A switching', () => {
+    threadStore.createThread('a');
+    threadStore.createThread('b');
+    threadStore.patchConversation('a', {
+      timeline: upsertTimelineEvent(emptyTimeline(), message('a-user', 'from a'), 'optimistic'),
+      inputText: 'draft a',
+    });
+    threadStore.patchConversation('b', {
+      timeline: upsertTimelineEvent(emptyTimeline(), message('b-user', 'from b'), 'optimistic'),
+      inputText: 'draft b',
     });
 
-    it('produces defensive copies (mutating UI state does not corrupt saved state)', () => {
-      const thread = threadStore.createThread('s1');
+    threadStore.setActiveThread('a');
+    threadStore.setActiveThread('b');
+    threadStore.setActiveThread('a');
 
-      mgr.messages = [{ type: 'user', content: 'original', timestamp: 1 }];
-      mgr.saveThreadState(thread.sessionId);
-
-      // Mutate the current UI array
-      mgr.messages.push({ type: 'agent', content: 'extra', timestamp: 2 });
-
-      // Reload — should get the original snapshot
-      mgr.loadThreadState(thread.sessionId);
-      expect(mgr.messages).toHaveLength(1);
-      expect(mgr.messages[0].content).toBe('original');
-    });
-
-    it('gives each thread its own EventProcessor instance', () => {
-      const t1 = threadStore.createThread('s1');
-      const t2 = threadStore.createThread('s2');
-
-      mgr.saveThreadState(t1.sessionId);
-      const ep1 = mgr.eventProcessor;
-
-      mgr.eventProcessor = createMockEventProcessor();
-      mgr.saveThreadState(t2.sessionId);
-
-      mgr.loadThreadState(t1.sessionId);
-      const ep1Loaded = mgr.eventProcessor;
-
-      mgr.loadThreadState(t2.sessionId);
-      const ep2Loaded = mgr.eventProcessor;
-
-      expect(ep1Loaded).toBe(ep1);
-      expect(ep1Loaded).not.toBe(ep2Loaded);
-    });
+    expect(threadStore.getActiveThread()?.sessionId).toBe('a');
+    expect(threadStore.getThread('a')?.conversation.inputText).toBe('draft a');
+    expect(timelineEvents(threadStore.getThread('a')!.conversation.timeline))
+      .toMatchObject([{ id: 'a-user', content: 'from a' }]);
+    expect(timelineEvents(threadStore.getThread('b')!.conversation.timeline))
+      .toMatchObject([{ id: 'b-user', content: 'from b' }]);
   });
 
-  // =========================================================================
-  // loadThreadState for missing thread
-  // =========================================================================
-
-  describe('loadThreadState for missing thread', () => {
-    it('initializes fresh state when no saved state exists', () => {
-      mgr.messages = [{ type: 'user', content: 'stale', timestamp: 99 }];
-
-      mgr.loadThreadState('nonexistent-id');
-
-      expect(mgr.messages).toEqual([]);
-      expect(mgr.processedEvents).toEqual([]);
-      expect(mgr.inputText).toBe('');
-      expect(mgr.isProcessing).toBe(false);
-      expect(mgr.currentTabId).toBe(-1);
+  it('keeps a background event isolated from the selected conversation', () => {
+    threadStore.createThread('active');
+    threadStore.createThread('background');
+    threadStore.setActiveThread('active');
+    const background = threadStore.getThread('background')!;
+    threadStore.patchConversation('background', {
+      timeline: upsertTimelineEvent(
+        background.conversation.timeline,
+        message('background-agent', 'background answer', 'workx'),
+        'live',
+      ),
+      isProcessing: true,
     });
+
+    expect(timelineEvents(threadStore.getThread('active')!.conversation.timeline)).toEqual([]);
+    expect(threadStore.getThread('active')?.conversation.isProcessing).toBe(false);
+    expect(timelineEvents(threadStore.getThread('background')!.conversation.timeline))
+      .toMatchObject([{ id: 'background-agent' }]);
   });
 
-  // =========================================================================
-  // Event routing — handleEventForSession
-  // =========================================================================
+  it('retains the last optimistic user message across an attach that has not stored it yet', () => {
+    threadStore.createThread('session');
+    const optimistic = upsertTimelineEvent(
+      emptyTimeline(),
+      message('user:client-1', 'last user message'),
+      'optimistic',
+    );
+    threadStore.patchConversation('session', { timeline: optimistic });
 
-  describe('handleEventForSession', () => {
-    it('stores event in the correct background thread', () => {
-      const thread1 = threadStore.createThread('session_1');
-      const thread2 = threadStore.createThread('session_2');
+    const reconciled = reconcileAttachedTimeline(
+      threadStore.getThread('session')!.conversation.timeline,
+      [],
+      [],
+      new Set(['client-1']),
+    );
+    threadStore.patchConversation('session', { timeline: reconciled });
 
-      const event = { id: 'evt_1', msg: { type: 'AgentMessage', data: {} } };
-      mgr.handleEventForSession(event, 'session_1');
-
-      const state1 = mgr.threadStates.get(thread1.sessionId);
-      const state2 = mgr.threadStates.get(thread2.sessionId);
-
-      expect(state1?.processedEvents).toHaveLength(1);
-      expect(state2).toBeUndefined(); // Not touched
-    });
-
-    it('does not affect active UI state', () => {
-      threadStore.createThread('session_bg');
-
-      mgr.messages = [{ type: 'user', content: 'current', timestamp: 1 }];
-      mgr.processedEvents = [];
-
-      mgr.handleEventForSession(
-        { id: 'evt_2', msg: { type: 'AgentMessage', data: {} } },
-        'session_bg'
-      );
-
-      // Active UI is untouched
-      expect(mgr.processedEvents).toHaveLength(0);
-    });
-
-    it('creates state on demand for a thread without prior state', () => {
-      const thread = threadStore.createThread('session_new');
-
-      mgr.handleEventForSession(
-        { id: 'e1', msg: { type: 'AgentMessage', data: {} } },
-        'session_new'
-      );
-
-      expect(mgr.threadStates.has(thread.sessionId)).toBe(true);
-      expect(mgr.threadStates.get(thread.sessionId)?.processedEvents).toHaveLength(1);
-    });
-
-    it('ignores unknown sessionId', () => {
-      mgr.handleEventForSession(
-        { id: 'e1', msg: { type: 'AgentMessage', data: {} } },
-        'unknown_session'
-      );
-
-      expect(mgr.threadStates.size).toBe(0);
-    });
-
-    it('sets isProcessing=true on TaskStarted', () => {
-      const thread = threadStore.createThread('session_x');
-
-      mgr.handleEventForSession(
-        { id: 'e1', msg: { type: 'TaskStarted', data: {} } },
-        'session_x'
-      );
-
-      expect(mgr.threadStates.get(thread.sessionId)?.isProcessing).toBe(true);
-    });
-
-    it('sets isProcessing=false on TaskComplete', () => {
-      const thread = threadStore.createThread('session_x');
-
-      mgr.handleEventForSession(
-        { id: 'e1', msg: { type: 'TaskStarted', data: {} } },
-        'session_x'
-      );
-      mgr.handleEventForSession(
-        { id: 'e2', msg: { type: 'TaskComplete', data: {} } },
-        'session_x'
-      );
-
-      expect(mgr.threadStates.get(thread.sessionId)?.isProcessing).toBe(false);
-    });
-
-    it('sets isProcessing=false on TaskFailed', () => {
-      const thread = threadStore.createThread('session_x');
-
-      mgr.handleEventForSession(
-        { id: 'e1', msg: { type: 'TaskStarted', data: {} } },
-        'session_x'
-      );
-      mgr.handleEventForSession(
-        { id: 'e2', msg: { type: 'TaskFailed', data: {} } },
-        'session_x'
-      );
-
-      expect(mgr.threadStates.get(thread.sessionId)?.isProcessing).toBe(false);
-    });
+    expect(timelineEvents(threadStore.getThread('session')!.conversation.timeline))
+      .toMatchObject([{ id: 'user:client-1', content: 'last user message' }]);
   });
 
-  // =========================================================================
-  // switchToThread
-  // =========================================================================
+  it('lets the durable row replace its optimistic copy without duplicating it', () => {
+    threadStore.createThread('session');
+    const current = upsertTimelineEvent(
+      emptyTimeline(),
+      message('user:client-1', 'optimistic'),
+      'optimistic',
+    );
+    const reconciled = reconcileAttachedTimeline(
+      current,
+      [message('user:client-1', 'durable')],
+      [],
+      new Set(['client-1']),
+    );
+    threadStore.patchConversation('session', { timeline: reconciled });
 
-  describe('switchToThread', () => {
-    it('saves old state and loads new state', () => {
-      const t1 = threadStore.createThread('s1');
-      const t2 = threadStore.createThread('s2');
-
-      // Put some state on t1
-      threadStore.setActiveThread(t1.sessionId);
-      mgr.activeSessionId = 's1';
-      mgr.messages = [{ type: 'user', content: 'thread1 msg', timestamp: 1 }];
-      mgr.inputText = 'draft1';
-
-      // Switch to t2
-      mgr.switchToThread(t2.sessionId);
-
-      // t2 should have fresh state
-      expect(mgr.messages).toEqual([]);
-      expect(mgr.inputText).toBe('');
-      expect(mgr.activeSessionId).toBe('s2');
-
-      // Switch back to t1 — should restore saved state
-      mgr.switchToThread(t1.sessionId);
-
-      expect(mgr.messages).toEqual([{ type: 'user', content: 'thread1 msg', timestamp: 1 }]);
-      expect(mgr.inputText).toBe('draft1');
-      expect(mgr.activeSessionId).toBe('s1');
-    });
-
-    it('updates activeSessionId', () => {
-      const t1 = threadStore.createThread('s1');
-      const t2 = threadStore.createThread('s2');
-
-      threadStore.setActiveThread(t1.sessionId);
-      mgr.switchToThread(t2.sessionId);
-
-      expect(mgr.activeSessionId).toBe('s2');
-    });
+    expect(reconciled.order).toEqual(['user:client-1']);
+    expect(timelineEvents(reconciled)).toMatchObject([{ content: 'durable' }]);
   });
 
-  // =========================================================================
-  // Welcome screen condition
-  // =========================================================================
-
-  describe('welcome screen condition', () => {
-    it('shows welcome when thread is empty and not processing', () => {
-      expect(mgr.showWelcome).toBe(true);
+  it('preserves the transient EventProcessor reference during timeline commits', () => {
+    threadStore.createThread('session');
+    const processor = { processEvent: vi.fn() } as unknown as EventProcessor;
+    threadStore.patchConversation('session', { eventProcessor: processor });
+    const before = threadStore.getThread('session')!;
+    threadStore.setConversation('session', {
+      ...before.conversation,
+      timeline: upsertTimelineEvent(
+        before.conversation.timeline,
+        message('agent', 'answer', 'workx'),
+        'live',
+      ),
     });
 
-    it('hides welcome when processing', () => {
-      mgr.isProcessing = true;
-      expect(mgr.showWelcome).toBe(false);
-    });
-
-    it('hides welcome when there are processed events', () => {
-      mgr.processedEvents = [{ id: 'pe1' }];
-      expect(mgr.showWelcome).toBe(false);
-    });
-
-    it('hides welcome when there are messages', () => {
-      mgr.messages = [{ type: 'user', content: 'hello', timestamp: 1 }];
-      expect(mgr.showWelcome).toBe(false);
-    });
+    expect(threadStore.getThread('session')?.conversation.eventProcessor).toBe(processor);
   });
 
-  // =========================================================================
-  // Full independence scenario
-  // =========================================================================
+  it('selection alone does not reorder history recency', () => {
+    threadStore.mergeThread(createThreadIndexEntry({ sessionId: 'older', now: 1 }));
+    threadStore.mergeThread(createThreadIndexEntry({ sessionId: 'newer', now: 2 }));
+    threadStore.setActiveThread('newer');
+    expect(threadStore.getActiveThread()?.sessionId).toBe('newer');
 
-  describe('full independence', () => {
-    it('two threads maintain independent message histories', () => {
-      const t1 = threadStore.createThread('s1');
-      const t2 = threadStore.createThread('s2');
+    threadStore.setActiveThread('older');
 
-      // Start on t1
-      threadStore.setActiveThread(t1.sessionId);
-      mgr.activeSessionId = 's1';
-      mgr.messages = [{ type: 'user', content: 'msg_t1', timestamp: 1 }];
-      mgr.saveThreadState(t1.sessionId);
-
-      // Switch to t2, add different messages
-      mgr.switchToThread(t2.sessionId);
-      mgr.messages = [{ type: 'agent', content: 'msg_t2', timestamp: 2 }];
-      mgr.saveThreadState(t2.sessionId);
-
-      // Load t1 — should see t1's messages
-      mgr.loadThreadState(t1.sessionId);
-      expect(mgr.messages).toEqual([{ type: 'user', content: 'msg_t1', timestamp: 1 }]);
-
-      // Load t2 — should see t2's messages
-      mgr.loadThreadState(t2.sessionId);
-      expect(mgr.messages).toEqual([{ type: 'agent', content: 'msg_t2', timestamp: 2 }]);
-    });
-
-    it('processing state does not cross between threads', () => {
-      const t1 = threadStore.createThread('s1');
-      const t2 = threadStore.createThread('s2');
-
-      // Start processing on t1 via background event
-      mgr.handleEventForSession(
-        { id: 'e1', msg: { type: 'TaskStarted', data: {} } },
-        's1'
-      );
-
-      // t1 should be processing
-      expect(mgr.threadStates.get(t1.sessionId)?.isProcessing).toBe(true);
-
-      // t2 should NOT be processing (state doesn't even exist yet)
-      expect(mgr.threadStates.get(t2.sessionId)?.isProcessing).toBeUndefined();
-    });
-
-    it('background events accumulate correctly for each thread', () => {
-      const t1 = threadStore.createThread('s1');
-      const t2 = threadStore.createThread('s2');
-
-      // Send events to both threads in background
-      mgr.handleEventForSession({ id: 'e1', msg: { type: 'AgentMessage', data: {} } }, 's1');
-      mgr.handleEventForSession({ id: 'e2', msg: { type: 'AgentMessage', data: {} } }, 's1');
-      mgr.handleEventForSession({ id: 'e3', msg: { type: 'AgentMessage', data: {} } }, 's2');
-
-      expect(mgr.threadStates.get(t1.sessionId)?.processedEvents).toHaveLength(2);
-      expect(mgr.threadStates.get(t2.sessionId)?.processedEvents).toHaveLength(1);
-    });
-
-    it('switching threads reveals accumulated background events', () => {
-      const t1 = threadStore.createThread('s1');
-      const t2 = threadStore.createThread('s2');
-
-      // Simulate: active on t1, background events arrive for t2
-      threadStore.setActiveThread(t1.sessionId);
-      mgr.activeSessionId = 's1';
-      mgr.messages = [{ type: 'user', content: 'active thread', timestamp: 1 }];
-
-      mgr.handleEventForSession({ id: 'bg1', msg: { type: 'AgentMessage', data: {} } }, 's2');
-      mgr.handleEventForSession({ id: 'bg2', msg: { type: 'AgentMessage', data: {} } }, 's2');
-
-      // Switch to t2
-      mgr.switchToThread(t2.sessionId);
-
-      // Should see the 2 accumulated events
-      expect(mgr.processedEvents).toHaveLength(2);
-      expect(mgr.messages).toEqual([]);
-    });
+    expect(threadStore.getActiveThread()?.sessionId).toBe('older');
+    expect(threadStore.getThread('older')?.lastActiveAt).toBe(1);
+    expect(threadStore.getThread('newer')?.lastActiveAt).toBe(2);
   });
 });

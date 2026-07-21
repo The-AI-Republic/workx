@@ -1,6 +1,8 @@
 <script lang="ts">
   // Track 20: "Managed by your organization" affordance for policy-locked
   // settings. Render next to a disabled control when `locked` is true.
+  import { uiTheme } from '../../stores/themeStore';
+
   let {
     locked = false,
     tooltip = 'Managed by your organization — contact your administrator to change this.',
@@ -8,11 +10,17 @@
     locked?: boolean;
     tooltip?: string;
   } = $props();
+
+  // Terminal theme uses the terminal amber/yellow; modern keeps the amber badge
+  // with a dark-mode variant so it stays legible in modern-dark.
+  let badgeClass = $derived($uiTheme === 'terminal'
+    ? 'bg-term-yellow/10 text-term-yellow border border-term-yellow/30'
+    : 'bg-amber-100 dark:bg-amber-400/20 text-amber-800 dark:text-amber-300');
 </script>
 
 {#if locked}
   <span
-    class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 align-middle"
+    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium align-middle {badgeClass}"
     title={tooltip}
     data-testid="managed-badge"
   >

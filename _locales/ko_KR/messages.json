@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "유효한 명령을 입력해 주세요."
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "전 세계에서 가장 진보된 모델의 차단을 해제하려면 플랜을 업그레이드해 주세요."
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "포트 1455가 사용 중입니다. 해당 포트를 사용하는 애플리케이션을 종료하고 다시 시도하십시오."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "프리미엄으로 업그레이드"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "가장 강력한 모델을 탐색하려면 업그레이드하십시오"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "전 세계에서 가장 강력한 모델을 사용하려면 구독을 업그레이드하세요"
   },
   "Use_Context_Menu": {
     "message": "컨텍스트 메뉴 사용:"

@@ -101,6 +101,7 @@ describe('ApprovalManager', () => {
       const requested = emittedEvents.find(e => e.msg.type === 'ApprovalRequested');
       expect(requested).toBeDefined();
       expect(requested!.id).toContain(req.id);
+      expect((requested!.msg as any).data.turn_id).toBe(req.metadata?.turnId);
     });
 
     it('should include risk_score in the emitted ApprovalRequested event', async () => {

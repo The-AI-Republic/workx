@@ -46,7 +46,7 @@ describe('TaskKind enum', () => {
 
 describe('isNewHistory', () => {
   it('should return true for new history', () => {
-    const history: InitialHistory = { mode: 'new' };
+    const history: InitialHistory = { mode: 'new', sessionId: 'new-1' };
     expect(isNewHistory(history)).toBe(true);
   });
 
@@ -62,14 +62,16 @@ describe('isNewHistory', () => {
   it('should return false for forked history', () => {
     const history: InitialHistory = {
       mode: 'forked',
+      sessionId: 'fork-1',
       rolloutItems: [],
       sourceConversationId: 'conv-1',
+      historyAlreadyPersisted: false,
     };
     expect(isNewHistory(history)).toBe(false);
   });
 
   it('should narrow type correctly (new mode has no extra properties)', () => {
-    const history: InitialHistory = { mode: 'new' };
+    const history: InitialHistory = { mode: 'new', sessionId: 'new-1' };
     if (isNewHistory(history)) {
       // This should compile - mode is 'new'
       expect(history.mode).toBe('new');
@@ -88,15 +90,17 @@ describe('isResumedHistory', () => {
   });
 
   it('should return false for new history', () => {
-    const history: InitialHistory = { mode: 'new' };
+    const history: InitialHistory = { mode: 'new', sessionId: 'new-1' };
     expect(isResumedHistory(history)).toBe(false);
   });
 
   it('should return false for forked history', () => {
     const history: InitialHistory = {
       mode: 'forked',
+      sessionId: 'fork-1',
       rolloutItems: [],
       sourceConversationId: 'conv-1',
+      historyAlreadyPersisted: false,
     };
     expect(isResumedHistory(history)).toBe(false);
   });
@@ -127,14 +131,16 @@ describe('isForkedHistory', () => {
   it('should return true for forked history', () => {
     const history: InitialHistory = {
       mode: 'forked',
+      sessionId: 'fork-1',
       rolloutItems: [{ id: '1' }],
       sourceConversationId: 'conv-source',
+      historyAlreadyPersisted: false,
     };
     expect(isForkedHistory(history)).toBe(true);
   });
 
   it('should return false for new history', () => {
-    const history: InitialHistory = { mode: 'new' };
+    const history: InitialHistory = { mode: 'new', sessionId: 'new-1' };
     expect(isForkedHistory(history)).toBe(false);
   });
 
@@ -150,8 +156,10 @@ describe('isForkedHistory', () => {
   it('should narrow type to include sourceConversationId and rolloutItems', () => {
     const history: InitialHistory = {
       mode: 'forked',
+      sessionId: 'fork-1',
       rolloutItems: [{ action: 'fork' }],
       sourceConversationId: 'conv-original',
+      historyAlreadyPersisted: false,
     };
     if (isForkedHistory(history)) {
       expect(history.sourceConversationId).toBe('conv-original');
@@ -162,8 +170,10 @@ describe('isForkedHistory', () => {
   it('should handle empty rolloutItems', () => {
     const history: InitialHistory = {
       mode: 'forked',
+      sessionId: 'fork-1',
       rolloutItems: [],
       sourceConversationId: 'conv-src',
+      historyAlreadyPersisted: false,
     };
     expect(isForkedHistory(history)).toBe(true);
   });
@@ -171,7 +181,7 @@ describe('isForkedHistory', () => {
 
 describe('Type guard mutual exclusivity', () => {
   it('new history: only isNewHistory returns true', () => {
-    const history: InitialHistory = { mode: 'new' };
+    const history: InitialHistory = { mode: 'new', sessionId: 'new-1' };
     expect(isNewHistory(history)).toBe(true);
     expect(isResumedHistory(history)).toBe(false);
     expect(isForkedHistory(history)).toBe(false);
@@ -191,8 +201,10 @@ describe('Type guard mutual exclusivity', () => {
   it('forked history: only isForkedHistory returns true', () => {
     const history: InitialHistory = {
       mode: 'forked',
+      sessionId: 'fork-1',
       rolloutItems: [],
       sourceConversationId: 'conv-1',
+      historyAlreadyPersisted: false,
     };
     expect(isNewHistory(history)).toBe(false);
     expect(isResumedHistory(history)).toBe(false);

@@ -37,6 +37,8 @@
     onTabSelected,
     onCommandOutput,
     onOpenRewindSelector,
+    workingDirectory,
+    onChooseWorkingDirectory,
   }: {
     value?: string;
     /** Track 24.3: predicted next message; chip + Tab-accept. */
@@ -55,6 +57,9 @@
     onCommandOutput?: (data: { title: string; content: string }) => void;
     /** Track 15: open the rewind turn-selector overlay. */
     onOpenRewindSelector?: () => void;
+    /** Session-owned local folder shown above the composer (desktop). */
+    workingDirectory?: string;
+    onChooseWorkingDirectory?: () => void;
   } = $props();
 
   let isFocused = $state(false);
@@ -78,6 +83,14 @@
   let pendingReads: Promise<void>[] = [];
 
   let currentTheme = $derived($uiTheme);
+
+  function workingDirectoryLabel(path: string | undefined): string {
+    if (!path) return 'Select folder…';
+    const trimmed = path.replace(/[\\/]+$/, '');
+    const segments = trimmed.split(/[\\/]+/).filter(Boolean);
+    if (segments.length <= 1) return path;
+    return `.../${segments.at(-1) ?? trimmed}`;
+  }
 
   function clearAttachments(): void {
     pendingAttachments = [];
@@ -671,7 +684,22 @@
 
 <div class="w-full">
   <!-- Tab Context Display -->
-  <div class="mb-2 flex flex-wrap items-center gap-2">
+  <div class="composer-context-row mb-2 flex flex-wrap items-center gap-2">
+    {#if onChooseWorkingDirectory}
+      <button
+        type="button"
+        class="max-w-[min(20rem,55vw)] truncate rounded-md border-none bg-transparent px-1.5 py-1 text-sm cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-50
+          {currentTheme === 'modern'
+            ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+            : 'text-term-dim-green hover:bg-term-dim-green/10 hover:text-term-green'}"
+        title={workingDirectory ?? 'Select working folder'}
+        aria-label={workingDirectory
+          ? `Working folder: ${workingDirectory}. Click to change`
+          : 'Select working folder'}
+        onclick={onChooseWorkingDirectory}
+        disabled={isProcessing}
+      >{workingDirectoryLabel(workingDirectory)} ▾</button>
+    {/if}
     {#if platform.hasTabSelection}
       <!-- Only apply mousedown preventDefault to TabContext area for drag behavior -->
       <div class="contents" onmousedown={(e) => e.preventDefault()}>
@@ -720,7 +748,7 @@
 
     <!-- Track 13: pasted-image attachment indicator -->
     {#if pendingAttachments.length > 0}
-      <div class="mb-1 flex items-center gap-2 text-xs {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+      <div class="mb-1 flex items-center gap-2 text-meta font-normal {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
         <span>📎 {pendingAttachments.length} {pendingAttachments.length === 1 ? $_t('image attached') : $_t('images attached')}</span>
         <button
           type="button"
@@ -741,7 +769,7 @@
          Visible exactly when Tab will accept: palette closed AND input empty
          OR the typed text is a live prefix of the suggestion. -->
     {#if suggestion && !isCommandMode && (!value.trim() || suggestion.toLowerCase().startsWith(value.toLowerCase()))}
-      <div class="mb-1 flex items-center gap-2 text-xs {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+      <div class="mb-1 flex items-center gap-2 text-meta font-normal {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
         <span class="opacity-70">Tab ↹</span>
         <span class="truncate">{suggestion}</span>
         <button
@@ -768,7 +796,7 @@
         onfocus={() => isFocused = true}
         onblur={handleBlur}
         style="--textarea-py: {currentTheme === 'modern' ? '0.75rem' : '0.5rem'}"
-        class="terminal-textarea w-full bg-transparent border-none outline-none resize-none overflow-y-auto leading-relaxed text-sm
+        class="terminal-textarea w-full bg-transparent border-none outline-none resize-none overflow-y-auto text-base
           {currentTheme === 'modern'
             ? 'text-chat-text dark:text-chat-text-dark font-chat px-4 py-3 caret-chat-text dark:caret-white'
             : 'text-term-green font-terminal px-3 py-2'}"

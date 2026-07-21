@@ -1,5 +1,5 @@
 /**
- * FileSystemExecutor — the single abstraction over the code-mode fs commands.
+ * FileSystemExecutor — the single abstraction over local filesystem commands.
  *
  * Sibling of RipgrepExecutor (./ripgrep.ts).
  *
@@ -9,7 +9,7 @@
  * contract (design §4.6/§4.8, R1/R3/R4/R5/R6) moved with it into
  * src/server/tools/fs/NodeFsExecutor.ts; this module is the typed entry
  * point both desktop UI _and_ runtime can import (the desktop UI branch
- * is intentionally unreachable post-cutover — code-mode tools run in the
+ * is intentionally unreachable post-cutover — file tools run in the
  * agent, not the WebView).
  */
 
@@ -23,16 +23,22 @@ export interface FileMeta {
 
 export type ReadOutcome = { contentLf: string } & FileMeta;
 export type StatOutcome = { exists: boolean; mtimeMs: number; size: number };
+/** Complete LF-normalized contents observed and committed by one successful mutation. */
+export interface FileMutationReceipt {
+  operation: 'created' | 'modified';
+  previousContentLf: string;
+  newContentLf: string;
+}
 export type EditOutcome =
-  | ({ ok: 'true'; newContentLf: string } & FileMeta)
+  | ({ ok: 'true' } & FileMutationReceipt & FileMeta)
   | { ok: 'false'; reason: string; message: string };
 export type WriteOutcome =
-  | ({ written: 'true' } & FileMeta)
+  | ({ written: 'true' } & FileMutationReceipt & FileMeta)
   | { written: 'false'; reason: string; message: string };
 
 export class FsUnsupportedPlatformError extends Error {
   constructor() {
-    super('Code-mode file tools are available on the WorkX desktop app only.');
+    super('Local file tools are available on the WorkX desktop app only.');
     this.name = 'FsUnsupportedPlatformError';
   }
 }

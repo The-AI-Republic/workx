@@ -11,11 +11,7 @@
 
 import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
 import type { IAuthManager } from '@/core/models/types/Auth';
-import {
-  accessStateFromReadyState,
-  type AgentAccessState,
-  type RuntimeStateController,
-} from './runtime-state';
+import type { AgentAccessState, RuntimeStateController } from './runtime-state';
 import { stripLockedWrites } from '@/core/config/policy/guards';
 import type { ApprovalMode } from '@/core/approval/types';
 
@@ -86,10 +82,13 @@ export interface AgentServiceDeps {
   createAuthManager?: (shouldUseBackend: boolean, backendBaseUrl: string | null) => IAuthManager;
 
   /** Preserve auth manager for agent recreation */
-  setAuthManager?: (authManager: IAuthManager | null) => void;
+  updateAuthContext?: (authManager: IAuthManager | null) => void;
 
   /** Runtime-owned desktop access state contract (Track 44). */
   runtimeState?: RuntimeStateController;
+
+  /** Bootstrap-owned readiness projection; never depends on a hydrated chat. */
+  getGlobalAccessState?: () => Promise<AgentAccessState> | AgentAccessState;
 
   /** Update approval config in storage and in-memory ApprovalGate */
   updateApprovalConfig?: (config: Record<string, unknown>) => Promise<void>;
@@ -98,32 +97,9 @@ export interface AgentServiceDeps {
 export function createAgentServices(deps: AgentServiceDeps): Record<string, ServiceHandler> {
   const { registry } = deps;
 
-  function isPrimarySessionId(sessionId: string): boolean {
-    const sessions = registry.listSessions() as Array<{
-      sessionId: string;
-      state: string;
-      sessionType?: string;
-      type?: string;
-    }>;
-    const activeSessions = sessions.filter((s) => s.state !== 'terminated');
-    const explicitlyPrimary = activeSessions.find((s) => s.sessionType === 'primary' || s.type === 'primary');
-    if (explicitlyPrimary) {
-      return explicitlyPrimary.sessionId === sessionId;
-    }
-    return activeSessions[0]?.sessionId === sessionId;
-  }
-
   async function computeAccessState(fallback?: Partial<AgentAccessState>): Promise<AgentAccessState> {
-    const sessions = registry.listSessions() as Array<{ sessionId: string; state: string; sessionType?: string; type?: string }>;
-    const active = sessions.find((s) => s.state !== 'terminated' && (s.sessionType === 'primary' || s.type === 'primary'))
-      ?? sessions.find((s) => s.state !== 'terminated');
-    if (active) {
-      const agentSession = registry.getSession(active.sessionId);
-      if (agentSession?.agent) {
-        const status = await agentSession.agent.isReady();
-        return accessStateFromReadyState(status);
-      }
-    }
+    if (deps.getGlobalAccessState) return deps.getGlobalAccessState();
+    if (deps.runtimeState) return deps.runtimeState.getAccessState();
     return {
       status: fallback?.status ?? 'initializing',
       mode: fallback?.mode ?? 'none',
@@ -160,9 +136,6 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
       }
 
       const status = await agentSession.agent.isReady();
-      if (deps.runtimeState && isPrimarySessionId(sessionId)) {
-        await deps.runtimeState.setAccessFromReadyState(status);
-      }
       return { ...status as object, timestamp: Date.now() };
     },
 
@@ -196,7 +169,7 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
 
       const agentSession = registry.getSession(sessionId);
       if (!agentSession?.agent) {
-        throw new Error(`Session not found: ${sessionId}`);
+        return { success: true, status: 'not-running' };
       }
 
       const session = agentSession.agent.getSession();
@@ -204,7 +177,7 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
       // background sub-agents survive. interruptTask() encapsulates the
       // foreground-only logic.
       await session.interruptTask();
-      return { success: true };
+      return { success: true, status: 'interrupted' };
     },
 
     /**
@@ -223,26 +196,14 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
         useOwnApiKey?: boolean;
       };
 
-      if (!deps.createAuthManager || !deps.setAuthManager) {
+      if (!deps.createAuthManager || !deps.updateAuthContext) {
         throw new Error('Auth initialization not supported on this platform');
       }
 
       const shouldUseBackend = useOwnApiKey === false;
       const authManager = deps.createAuthManager(shouldUseBackend, shouldUseBackend ? (backendBaseUrl ?? null) : null);
 
-      deps.setAuthManager(authManager);
-
-      // Apply auth manager to all active sessions
-      const sessions = registry.listSessions() as Array<{ sessionId: string; state: string }>;
-      for (const s of sessions) {
-        if (s.state === 'terminated') continue;
-        const agentSession = registry.getSession(s.sessionId);
-        if (agentSession?.agent) {
-          const factory = agentSession.agent.getModelClientFactory();
-          factory.setAuthManager(authManager);
-          await agentSession.agent.refreshModelClient();
-        }
-      }
+      deps.updateAuthContext(authManager);
 
       const access = await publishAccessState({
         status: shouldUseBackend ? 'ready' : 'needs_api_key',

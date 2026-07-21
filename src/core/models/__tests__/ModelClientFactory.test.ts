@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { ModelClientFactory, type ModelProvider, type ModelClientConfig } from '../ModelClientFactory';
 import { ModelClientError } from '../ModelClient';
 import type { IAuthManager } from '../types/Auth';
+import { createMutableAuthContext, type MutableAuthContext } from '../../auth/AuthContext';
 
 // Mock ConfigStorageProvider for setDefaultProvider / getDefaultProvider
 const _providerStore = new Map<string, any>();
@@ -145,12 +146,24 @@ function createMockAuthManager(overrides: {
 
 // ===========================================================================
 describe('ModelClientFactory', () => {
-  let factory: ModelClientFactory;
+  let authContext: MutableAuthContext;
+  let factory: ModelClientFactory & {
+    updateAuthContext(authManager: IAuthManager | null): void;
+    getAuthManager(): IAuthManager | null;
+  };
 
   beforeEach(() => {
     setupClientMocks();
     _providerStore.clear();
-    factory = new ModelClientFactory();
+    authContext = createMutableAuthContext(null);
+    factory = new ModelClientFactory({ authContext }) as typeof factory;
+    // Compatibility façade for the pre-AuthContext test cases below. The
+    // production factory deliberately exposes no snapshot setter/getter.
+    factory.updateAuthContext = (authManager) => {
+      authContext.update(authManager, 'routing');
+      factory.clearCache();
+    };
+    factory.getAuthManager = () => authContext.current();
   });
 
   // =========================================================================
@@ -165,18 +178,18 @@ describe('ModelClientFactory', () => {
 
     it('should store, retrieve, and clear auth manager', () => {
       const auth = createMockAuthManager();
-      factory.setAuthManager(auth);
+      factory.updateAuthContext(auth);
       expect(factory.getAuthManager()).toBe(auth);
 
-      factory.setAuthManager(null);
+      factory.updateAuthContext(null);
       expect(factory.getAuthManager()).toBeNull();
     });
 
     it('should report backend routing based on auth manager', () => {
-      factory.setAuthManager(createMockAuthManager({ shouldUseBackend: false }));
+      factory.updateAuthContext(createMockAuthManager({ shouldUseBackend: false }));
       expect(factory.isBackendRouting()).toBe(false);
 
-      factory.setAuthManager(createMockAuthManager({ shouldUseBackend: true }));
+      factory.updateAuthContext(createMockAuthManager({ shouldUseBackend: true }));
       expect(factory.isBackendRouting()).toBe(true);
     });
 
@@ -185,7 +198,7 @@ describe('ModelClientFactory', () => {
       await factory.initialize(config);
       const client1 = await factory.createClient('openai');
 
-      factory.setAuthManager(createMockAuthManager());
+      factory.updateAuthContext(createMockAuthManager());
       const client2 = await factory.createClient('openai');
       expect(client1).not.toBe(client2);
     });
@@ -302,7 +315,7 @@ describe('ModelClientFactory', () => {
     it('should separate backend-routed and direct clients in cache', async () => {
       const directClient = await factory.createClient('openai');
 
-      factory.setAuthManager(createMockAuthManager({
+      factory.updateAuthContext(createMockAuthManager({
         shouldUseBackend: true,
         backendBaseUrl: 'https://backend.test.com',
       }));
@@ -318,6 +331,18 @@ describe('ModelClientFactory', () => {
     it('should create a client with null API key when not initialized', async () => {
       const client = await factory.createClient('openai');
       expect(client).toBeDefined();
+    });
+
+    it('should fail closed in gateway mode when routing metadata is unavailable', async () => {
+      factory.updateAuthContext(createMockAuthManager({
+        shouldUseBackend: true,
+        gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
+        accessToken: 'jwt-123',
+      }));
+
+      await expect(factory.createClient('openai')).rejects.toThrow(
+        'Gateway routing metadata is unavailable for openai',
+      );
     });
   });
 
@@ -411,7 +436,7 @@ describe('ModelClientFactory', () => {
   describe('createClient - backend routing', () => {
     it('should throw when backend URL is not available', async () => {
       await factory.initialize(createMockAgentConfig());
-      factory.setAuthManager(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: null }));
+      factory.updateAuthContext(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: null }));
       await expect(factory.createClient('openai')).rejects.toThrow('Backend URL not available');
     });
 
@@ -422,7 +447,7 @@ describe('ModelClientFactory', () => {
           provider: { id: 'openai', name: 'OpenAI', apiKey: '', timeout: 30000, models: [] },
         },
       }));
-      factory.setAuthManager(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com' }));
+      factory.updateAuthContext(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com' }));
 
       const client = await factory.createClient('openai');
       expect((client as any)._type).toBe('OpenAIResponsesClient');
@@ -437,7 +462,7 @@ describe('ModelClientFactory', () => {
           provider: { id: 'openai', name: 'OpenAI', apiKey: '', timeout: 30000, models: [] },
         },
       }));
-      factory.setAuthManager(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com' }));
+      factory.updateAuthContext(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com' }));
 
       const client = await factory.createClient('openai');
       expect((client as any)._type).toBe('OpenAIChatCompletionClient');
@@ -451,7 +476,7 @@ describe('ModelClientFactory', () => {
           provider: { id: 'google-ai-studio', name: 'Google', apiKey: '', timeout: 30000, models: [] },
         },
       }));
-      factory.setAuthManager(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com' }));
+      factory.updateAuthContext(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com' }));
 
       const client = await factory.createClient('google-ai-studio');
       expect((client as any)._type).toBe('GoogleCompletionClient');
@@ -465,7 +490,7 @@ describe('ModelClientFactory', () => {
           provider: { id: 'openai', name: 'OpenAI', apiKey: '', timeout: 30000, models: [] },
         },
       }));
-      factory.setAuthManager(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com' }));
+      factory.updateAuthContext(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com' }));
 
       const client = await factory.createClient('openai');
       expect((client as any)._type).toBe('OpenAIChatCompletionClient');
@@ -479,13 +504,13 @@ describe('ModelClientFactory', () => {
 
       // With token
       await factory.initialize(createMockAgentConfig({ modelData }));
-      factory.setAuthManager(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com', accessToken: 'jwt-123' }));
+      factory.updateAuthContext(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com', accessToken: 'jwt-123' }));
       const c1 = await factory.createClient('openai');
       expect((c1 as any)._opts.apiKey).toBe('jwt-123');
 
       // Without token
       factory.clearCache();
-      factory.setAuthManager(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com', accessToken: null }));
+      factory.updateAuthContext(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com', accessToken: null }));
       const c2 = await factory.createClient('openai');
       expect((c2 as any)._opts.apiKey).toBe('backend-routed');
     });
@@ -497,7 +522,7 @@ describe('ModelClientFactory', () => {
           provider: { id: 'openai', name: 'OpenAI', apiKey: '', timeout: 30000, models: [] },
         },
       }));
-      factory.setAuthManager(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com' }));
+      factory.updateAuthContext(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com' }));
 
       const client = await factory.createClient('openai');
       expect((client as any)._opts.reasoningEffort).toBe('medium');
@@ -507,11 +532,11 @@ describe('ModelClientFactory', () => {
     it('should create a Chat Completions client for gateway routing with dynamic session JWT bearer auth', async () => {
       await factory.initialize(createMockAgentConfig({
         modelData: {
-          model: { modelKey: 'gpt-5', name: 'GPT-5', supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'OpenAI' },
+          model: { modelKey: 'gpt-5', name: 'GPT-5', openHubRoute: { modelSlug: 'openai/gpt-5', providerSlug: 'azure' }, supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'OpenAI' },
           provider: { id: 'openai', name: 'OpenAI', apiKey: '', timeout: 30000, models: [] },
         },
       }));
-      factory.setAuthManager(createMockAuthManager({
+      factory.updateAuthContext(createMockAuthManager({
         shouldUseBackend: true,
         backendBaseUrl: 'https://legacy.example.com/api/llm',
         gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
@@ -530,6 +555,57 @@ describe('ModelClientFactory', () => {
       await expect((client as any)._opts.refreshAuthorizationToken()).resolves.toBe('jwt-456');
     });
 
+    it('should pass the catalog OpenHub provider pin to gateway-routed clients', async () => {
+      await factory.initialize(createMockAgentConfig({
+        modelData: {
+          model: { modelKey: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', openHubRoute: { modelSlug: 'deepseek/deepseek-v4-flash', providerSlug: 'deepseek' }, supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'DeepSeek' },
+          provider: { id: 'deepseek', name: 'DeepSeek', apiKey: '', timeout: 30000, models: [] },
+        },
+      }));
+      factory.updateAuthContext(createMockAuthManager({
+        shouldUseBackend: true,
+        gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
+        accessToken: 'jwt-123',
+      }));
+
+      const client = await factory.createClient('deepseek');
+
+      expect((client as any)._opts.modelFamily.family).toBe('deepseek/deepseek-v4-flash');
+      expect((client as any)._opts.providerRoutingSlug).toBe('deepseek');
+    });
+
+    it('should preserve the specific Google AI Studio OpenHub route', async () => {
+      await factory.initialize(createMockAgentConfig({
+        modelData: {
+          model: { modelKey: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro', openHubRoute: { modelSlug: 'google/gemini-3.1-pro', providerSlug: 'google-ai-studio' }, supportsReasoning: true, supportBackendMode: 3, contextWindow: 128000, maxOutputTokens: 8192, creator: 'Google' },
+          provider: { id: 'google-ai-studio', name: 'Google AI Studio', apiKey: '', timeout: 30000, models: [] },
+        },
+      }));
+      factory.updateAuthContext(createMockAuthManager({
+        shouldUseBackend: true,
+        gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
+        accessToken: 'jwt-123',
+      }));
+
+      const client = await factory.createClient('google-ai-studio');
+
+      expect((client as any)._opts.modelFamily.family).toBe('google/gemini-3.1-pro');
+      expect((client as any)._opts.providerRoutingSlug).toBe('google-ai-studio');
+    });
+
+    it('should fail closed when a gateway model has no explicit OpenHub route', async () => {
+      await factory.initialize(createMockAgentConfig());
+      factory.updateAuthContext(createMockAuthManager({
+        shouldUseBackend: true,
+        gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
+        accessToken: 'jwt-123',
+      }));
+
+      await expect(factory.createClient('openai')).rejects.toThrow(
+        'Gateway routing metadata is missing for openai:gpt-5',
+      );
+    });
+
     it('should cache backend-routed clients', async () => {
       await factory.initialize(createMockAgentConfig({
         modelData: {
@@ -537,7 +613,7 @@ describe('ModelClientFactory', () => {
           provider: { id: 'openai', name: 'OpenAI', apiKey: '', timeout: 30000, models: [] },
         },
       }));
-      factory.setAuthManager(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com' }));
+      factory.updateAuthContext(createMockAuthManager({ shouldUseBackend: true, backendBaseUrl: 'https://be.com' }));
 
       const c1 = await factory.createClient('openai');
       const c2 = await factory.createClient('openai');

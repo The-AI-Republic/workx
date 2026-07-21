@@ -6,6 +6,7 @@ import { pairingTrim } from '@/core/session/rewind';
 import type { ResponseItem } from '@/core/protocol/types';
 import type { RolloutItem } from '@/storage/rollout/types';
 import type { AgentType, SubAgentContextMode } from './agentTypes';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface ForkContextMetadata {
   runId: string;
@@ -30,10 +31,16 @@ export function buildForkedSubAgentInitialHistory(
   const sourceItems = parentSession.getConversationHistory().items as ResponseItem[];
   const rolloutItems = responseItemsToRolloutItems(sourceItems);
   const trimmed = pairingTrim(rolloutItems);
+  const workingDirectory = parentSession.getWorkingDirectory?.();
 
   return {
     mode: 'forked',
+    sessionId: uuidv4(),
     sourceConversationId: parentSession.getSessionId(),
+    ...(workingDirectory
+      ? { workspace: { workingDirectory } }
+      : {}),
+    historyAlreadyPersisted: false,
     rolloutItems: [
       ...trimmed,
       {

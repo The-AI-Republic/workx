@@ -27,6 +27,7 @@ const ADAPTER_STORES = [
   'token_usage_records',
   // Track 04
   'task_output_chunks',
+  'thread_index',
 ];
 
 export class NodeSQLiteAdapter implements StorageAdapter {
@@ -70,6 +71,7 @@ export class NodeSQLiteAdapter implements StorageAdapter {
       token_usage_records: ['by_session', 'by_timestamp', 'by_model'],
       // Track 04: delta-poll range scans + FIFO eviction
       task_output_chunks: ['by_task_id', 'by_task_seq', 'by_created_at'],
+      thread_index: ['by_last_active_at', 'by_deleted_at'],
     };
 
     // Create tables for all adapter stores

@@ -48,7 +48,7 @@ export interface NavItem {
 }
 
 /**
- * Canonical list of top-level navigation destinations.
+ * Primary navigation destinations rendered inline in the left panel.
  * Icons are inline SVG strings (24x24 viewBox, stroke-based, currentColor)
  * matching the style used in NavTab.svelte.
  */
@@ -83,13 +83,31 @@ export const NAV_ITEMS: NavItem[] = [
         },
       ]
     : []),
+];
+
+/**
+ * Secondary destinations shared by the OSS "More" menu and the hosted-auth
+ * user center. Keeping the collection independent from {@link NAV_ITEMS}
+ * guarantees each destination has exactly one navigation placement per build.
+ */
+export const FOLDED_NAV_ITEMS: NavItem[] = [
   {
     id: 'usage',
     label: 'Usage',
     route: '/usage',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9" rx="1"></rect><rect x="10" y="7" width="4" height="14" rx="1"></rect><rect x="17" y="3" width="4" height="18" rx="1"></rect></svg>',
   },
+  {
+    id: 'settings',
+    label: 'Settings',
+    route: '/settings',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>',
+  },
 ];
+
+const NAV_ROUTES = [...NAV_ITEMS, ...FOLDED_NAV_ITEMS]
+  .filter((item) => item.route !== '/')
+  .map((item) => item.route);
 
 // ---------------------------------------------------------------------------
 // Active route detection
@@ -100,16 +118,9 @@ export const NAV_ITEMS: NavItem[] = [
  * The root route ('/') is treated as a catch-all: it's active when the
  * location doesn't match any other known nav route.
  */
-/** Routes that are valid pages but not shown in NAV_ITEMS (e.g. Settings is in user center). */
-const HIDDEN_ROUTES = ['/settings'];
-
 export function isNavActive(route: string, currentLocation: string): boolean {
   if (route === '/') {
-    const allRoutes = [
-      ...NAV_ITEMS.filter((item) => item.route !== '/').map((item) => item.route),
-      ...HIDDEN_ROUTES,
-    ];
-    return !allRoutes.some((r) => currentLocation.startsWith(r));
+    return !NAV_ROUTES.some((knownRoute) => currentLocation.startsWith(knownRoute));
   }
   return currentLocation.startsWith(route);
 }

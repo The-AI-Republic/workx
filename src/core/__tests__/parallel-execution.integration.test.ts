@@ -5,8 +5,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AgentRegistry } from '@/core/registry/AgentRegistry';
+import { SessionManager } from '@/core/registry/SessionManager';
 import type { SessionConfig } from '@/core/registry/types';
+import { lifecycleTestRegistryConfig } from '@/__test-utils__/lifecycleTestAssembler';
+
+function getTestRegistry(overrides = {}) {
+  return SessionManager.getInstance(lifecycleTestRegistryConfig(overrides));
+}
 
 // Mock dependencies
 vi.mock('@/core/RepublicAgent', () => ({
@@ -66,7 +71,7 @@ describe('Parallel Execution Integration', () => {
   let mockConfig: any;
 
   beforeEach(() => {
-    AgentRegistry.resetInstance();
+    SessionManager.resetInstance();
     vi.clearAllMocks();
 
     // Re-set chrome mock after clearAllMocks
@@ -85,12 +90,12 @@ describe('Parallel Execution Integration', () => {
   });
 
   afterEach(() => {
-    AgentRegistry.resetInstance();
+    SessionManager.resetInstance();
   });
 
   describe('US1: Scheduled Task Runs Without Interrupting Active Session', () => {
     it('allows creating multiple sessions for parallel execution', async () => {
-      const registry = AgentRegistry.getInstance();
+      const registry = getTestRegistry();
       registry.initialize(mockConfig);
 
       // Create primary session (user's active conversation)
@@ -115,7 +120,7 @@ describe('Parallel Execution Integration', () => {
     });
 
     it('maintains session isolation during parallel operations', async () => {
-      const registry = AgentRegistry.getInstance();
+      const registry = getTestRegistry();
       registry.initialize(mockConfig);
 
       // Create both sessions
@@ -147,7 +152,7 @@ describe('Parallel Execution Integration', () => {
     });
 
     it('allows scheduled session termination without affecting primary', async () => {
-      const registry = AgentRegistry.getInstance();
+      const registry = getTestRegistry();
       registry.initialize(mockConfig);
 
       // Create both sessions
@@ -163,12 +168,12 @@ describe('Parallel Execution Integration', () => {
 
       // Primary session should still be active
       expect(registry.getActiveCount()).toBe(1);
-      expect(registry.getPrimarySession()).toBe(primarySession);
+      expect(registry.getSession(primarySession.sessionId)).toBe(primarySession);
       expect(primarySession.state).not.toBe('terminated');
     });
 
     it('reuses session letters after removal', async () => {
-      const registry = AgentRegistry.getInstance();
+      const registry = getTestRegistry();
       registry.initialize(mockConfig);
 
       // Create primary session (letter 'a')
@@ -192,7 +197,7 @@ describe('Parallel Execution Integration', () => {
     });
 
     it('tracks scheduled task sessions', async () => {
-      const registry = AgentRegistry.getInstance();
+      const registry = getTestRegistry();
       registry.initialize(mockConfig);
 
       // Create multiple scheduled task sessions
@@ -213,7 +218,7 @@ describe('Parallel Execution Integration', () => {
     });
 
     it('emits proper events for session lifecycle', async () => {
-      const registry = AgentRegistry.getInstance();
+      const registry = getTestRegistry();
       registry.initialize(mockConfig);
 
       const events: any[] = [];
@@ -249,7 +254,7 @@ describe('Parallel Execution Integration', () => {
 
   describe('Concurrent Limits for Scheduled Tasks', () => {
     it('respects max concurrent sessions for scheduled tasks', async () => {
-      const registry = AgentRegistry.getInstance({ maxConcurrent: 3 });
+      const registry = getTestRegistry({ maxConcurrent: 3 });
       registry.initialize(mockConfig);
 
       // Create primary session
@@ -270,7 +275,7 @@ describe('Parallel Execution Integration', () => {
     });
 
     it('allows new scheduled tasks after existing ones complete', async () => {
-      const registry = AgentRegistry.getInstance({ maxConcurrent: 2 });
+      const registry = getTestRegistry({ maxConcurrent: 2 });
       registry.initialize(mockConfig);
 
       // Fill to capacity

@@ -6,6 +6,7 @@
   import { onDestroy } from 'svelte';
   import type { ProcessedEvent } from '@/types/ui';
   import { t, _t } from '../../lib/i18n';
+  import { uiTheme } from '../../stores/themeStore';
 
   let { event }: {
     event: ProcessedEvent;
@@ -162,11 +163,25 @@
 
   let riskLevel = $derived(event.requiresApproval?.riskLevel);
   let borderClass = $derived(getBorderClass(riskLevel));
+
+  // Theme-aware "caution" text for the approval body (was a hardcoded
+  // text-yellow-400 that is illegible on the modern-light background) and the
+  // alternative/plan editor inputs (were hardcoded dark gray). Action buttons
+  // and risk badges keep their semantic colors, which read well in both themes.
+  let warnText = $derived($uiTheme === 'modern'
+    ? 'text-chat-status-warning dark:text-chat-status-warning-dark'
+    : 'text-term-yellow');
+  let bgClass = $derived($uiTheme === 'modern'
+    ? 'bg-chat-status-warning/10 dark:bg-chat-status-warning-dark/10'
+    : 'bg-term-yellow/10');
+  let inputClass = $derived($uiTheme === 'modern'
+    ? 'bg-chat-input dark:bg-chat-input-dark border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark placeholder:text-chat-text-muted dark:placeholder:text-chat-text-muted-dark focus:border-chat-primary dark:focus:border-chat-primary-dark'
+    : 'bg-term-bg border-term-dim-green text-term-green placeholder:text-term-dim-green focus:border-term-green');
 </script>
 
-<div class="approval-event border {borderClass} bg-yellow-500/10 rounded p-3">
+<div class="approval-event border {borderClass} {bgClass} rounded p-3">
   <div class="flex items-center gap-2 mb-2">
-    <div class="text-yellow-400 font-semibold">
+    <div class="font-semibold {warnText}">
       {event.title}
     </div>
     {#if riskLevel}
@@ -175,19 +190,19 @@
       </span>
     {/if}
     {#if event.requiresApproval?.riskScore !== undefined}
-      <span class="text-yellow-400">
+      <span class={warnText}>
         {$_t("Risk Score:")} {event.requiresApproval.riskScore}/100
       </span>
     {/if}
     {#if hasCountdown && !timedOut}
-      <span class="text-yellow-400">{timeRemaining}s {$_t("remaining")}</span>
+      <span class={warnText}>{timeRemaining}s {$_t("remaining")}</span>
     {:else if !hasCountdown}
-      <span class="text-yellow-400">{$_t("Waiting for approval")}</span>
+      <span class={warnText}>{$_t("Waiting for approval")}</span>
     {/if}
   </div>
 
   {#if event.requiresApproval}
-    <div class="text-yellow-400 mb-3">
+    <div class="mb-3 {warnText}">
       {#if event.requiresApproval.type === 'exec'}
         <div class="mb-2">{$_t("Tool name:")} {event.requiresApproval.command}</div>
       {:else if event.requiresApproval.type === 'tool' && event.requiresApproval.toolName}
@@ -202,10 +217,10 @@
       {/if}
 
       {#if event.requiresApproval.riskFactors && event.requiresApproval.riskFactors.length > 0}
-        <div class="text-yellow-400 mb-2">
+        <div class="mb-2 {warnText}">
           {#each event.requiresApproval.riskFactors as factor}
             <div class="flex items-start gap-1">
-              <span class="text-yellow-400 mt-0.5">-</span>
+              <span class="mt-0.5 {warnText}">-</span>
               <span>{factor}</span>
             </div>
           {/each}
@@ -213,7 +228,7 @@
       {/if}
 
       {#if event.requiresApproval.explanation}
-        <div class="text-yellow-400 italic">
+        <div class="italic {warnText}">
           {event.requiresApproval.explanation}
         </div>
       {/if}
@@ -280,11 +295,11 @@
             bind:value={planDraft}
             rows="12"
             spellcheck="false"
-            class="w-full px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-gray-200 focus:outline-none focus:border-indigo-500"
+            class="w-full px-2 py-1.5 border rounded text-sm font-mono focus:outline-none {inputClass}"
             disabled={processing}
           ></textarea>
           {#if planEditError}
-            <div class="text-red-400 text-xs">{planEditError}</div>
+            <div class="text-red-400 text-meta font-normal">{planEditError}</div>
           {/if}
           <div>
             <button
@@ -305,7 +320,7 @@
             bind:value={alternativeText}
             onkeydown={handleAlternativeKeydown}
             placeholder={t("Type alternative instructions...")}
-            class="flex-1 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            class="flex-1 px-2 py-1.5 border rounded text-sm focus:outline-none {inputClass}"
             disabled={processing}
           />
           <button

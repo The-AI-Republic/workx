@@ -382,7 +382,7 @@ describe('M5.2: createChildEngine creates working engine', () => {
     await childEngine.initialize();
 
     const childSession = childEngine.getSession() as any;
-    expect(childSession.setTabId).toHaveBeenCalledWith(321);
+    expect(childSession.setTabId).not.toHaveBeenCalled();
     expect(vi.mocked(TurnContext)).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({

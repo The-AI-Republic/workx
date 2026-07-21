@@ -1,11 +1,16 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
   import { push } from 'svelte-spa-router';
   import { getInitializedUIClient } from '@/core/messaging';
   import type { UIChannelClient } from '@/core/messaging';
+  import type { ChannelEvent } from '@/core/channels/types';
   import type { JobStatusChangedEvent } from '@/core/models/types/SchedulerContracts';
   import type { Event, InputItem } from '@/core/protocol/types';
+  import type { HistoryPage } from '@/storage/rollout';
   import type { AgentAccessState } from '@/core/services/runtime-state';
+  import type { SessionRuntimeView, SubmitAck, ThreadListItem } from '@/core/registry/types';
+  import type { ThreadIndexEntry } from '@/core/thread/ThreadIndexStore';
   import type { ProcessedEvent } from '@/types/ui';
   import { STYLE_PRESETS } from '@/types/ui';
 
@@ -14,9 +19,18 @@
   import MessageSelector from '../../components/chat/MessageSelector.svelte';
   import EventDisplay from '../../components/event_display/EventDisplay.svelte';
   import { EventProcessor } from '../../components/event_display/EventProcessor';
+  import PreviewPanel from '../../components/preview/PreviewPanel.svelte';
+  import PreviewResizeHandle from '../../components/preview/PreviewResizeHandle.svelte';
+  import {
+    DEFAULT_CHAT_SPLIT_PERCENT,
+    clampChatSplitPercent,
+  } from '../../components/preview/splitModel';
   import { welcomeAsciiLines } from '../../constants/welcomeAscii';
   // Platform store
   import { platform } from '../../stores/platformStore';
+  // Layout store — used to indent the status-line title clear of the
+  // narrow-mode menu button (rendered by AppShell) so they don't overlap.
+  import { isWideMode } from '../../stores/layoutStore';
   // Theme store
   import { uiTheme, themePreference, type UITheme } from '../../stores/themeStore';
   // Token usage visibility store
@@ -32,20 +46,39 @@
   import { t, _t } from '../../lib/i18n';
   // Multi-thread support
   import { get } from 'svelte/store';
-  import ThreadBar from '../../components/threads/ThreadBar.svelte';
   import BackgroundTasksBadge from '../../components/BackgroundTasksBadge.svelte';
-  import { threadStore, activeThread } from '../../stores/threadStore';
-  import { MODES, DEFAULT_MODE, type AgentMode } from '@/prompts/PromptComposer';
+  import {
+    threadStore,
+    activeThread,
+    documentSurfaceId,
+    type ThreadConversationState,
+  } from '../../stores/threadStore';
   import { ThreadEventRouter } from '../../routing/ThreadEventRouter';
   import { handleBackgroundTaskEvent, startBackgroundTaskPolling, stopBackgroundTaskPolling } from '../../stores/backgroundTaskStore';
-  // Resume-request bridge from the left-panel Chat History section.
-  import { resumeRequest, clearResumeRequest } from '../../stores/chatHistoryStore';
+  import { projectReplay } from '../../lib/rolloutProjection';
+  import {
+    consumeAttachMessageDuplicate,
+    createAttachMessageDedupeBudget,
+    emptyTimeline,
+    historyPageToEvents,
+    noteDelivery,
+    prependHistoryPage,
+    reconcileAttachedTimeline,
+    timelineEvents,
+    upsertTimelineEvent,
+    type ConversationTimeline,
+    type MessageDedupeBudget,
+    type TimelineSource,
+  } from '../../lib/conversationTimeline';
+  import { LatestViewedSession } from '../../lib/latestViewedSession';
+  import { isWideMode } from '../../stores/layoutStore';
+  import { previewStore } from '../../stores/previewStore';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = $state(null);
   let unsubscribers: Array<() => void> = $state([]);
   let eventProcessor: EventProcessor;
-  let messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }> = $state([]);
-  let processedEvents: ProcessedEvent[] = $state([]);
+  let timeline: ConversationTimeline = $state(emptyTimeline());
+  let processedEvents = $derived(timelineEvents(timeline));
   let inputText: string = $state('');
   // Track 24.3: predicted next user message (bound into MessageInput).
   let nextSuggestion: string | null = $state(null);
@@ -53,42 +86,25 @@
   let showRewindSelector: boolean = $state(false);
   let isConnected: boolean = $state(false);
   let isProcessing: boolean = $state(false);
-  let showWelcome = $derived(!isProcessing && processedEvents.length === 0 && messages.length === 0);
+  let showWelcome = $derived(!isProcessing && processedEvents.length === 0);
   let scrollContainer: HTMLDivElement;
   let currentTabId: number = $state(-1); // Track current session's bound tab
+  let currentWorkingDirectory: string | undefined = $state(undefined);
+  let workingDirectoryError: string | null = $state(null);
+  let workingDirectoryErrorTimer: ReturnType<typeof setTimeout> | null = null;
   let agentReady: boolean = $state(false);
-  let healthStatus: { ready: boolean; message?: string; provider?: string; model?: string; authMode?: 'login' | 'api_key' | 'none' } = $state({ ready: false, authMode: 'none' });
+  let healthStatus: {
+    ready: boolean;
+    message?: string;
+    provider?: string;
+    model?: string;
+    authMode?: 'login' | 'api_key' | 'none';
+  } = $state({ ready: false, authMode: 'none' });
   let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
-
-  // Handle "resume this conversation" requests published by the left-panel
-  // Chat History section. The section can't call resumeConversation directly
-  // (separate component), so it sets a request in the store; we act on it once
-  // the client is ready. Tracking the nonce (and clearing the request) avoids
-  // re-resuming a stale conversation when this page remounts.
-  let lastResumeNonce = 0;
-  $effect(() => {
-    const req = $resumeRequest;
-    if (!req || req.nonce === lastResumeNonce) return;
-    // `client` is a dependency: when it becomes ready this effect re-runs and
-    // processes a request that arrived before initialization finished.
-    if (!client) return;
-    lastResumeNonce = req.nonce;
-    clearResumeRequest();
-
-    // Switch the active thread to the requested session *before* resuming, the
-    // same way handleRewound does for a session swap. resumeConversation ->
-    // restoreConversationHistory only renders into the UI when the restored
-    // session is the active one, so without this the resumed conversation would
-    // load into threadStates but never appear on screen.
-    if (!threadStore.getThread(req.sessionId)) {
-      threadStore.createThread(req.sessionId, 'New Thread');
-    }
-    activeSessionId = req.sessionId;
-    threadStore.setActiveThread(req.sessionId);
-    threadRouter.setActiveSession(req.sessionId);
-
-    void resumeConversation(req.sessionId);
-  });
+  let loadingOlderHistory = $state(false);
+  let previewDrawer: HTMLDivElement | null = $state(null);
+  let previewToggleButton: HTMLButtonElement | null = $state(null);
+  let chatSplitPercent = $state(DEFAULT_CHAT_SPLIT_PERCENT);
 
   // Guards the auto-relogin so an expired desktop session opens the login flow
   // exactly once per expiry (reset when access returns to ready), rather than
@@ -130,10 +146,12 @@
     document.documentElement.style.fontSize = '100%';
     zoomLevel = 100;
     window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 100 }));
-    AgentConfig.getInstance().then((config) => {
-      const agentConfig = config.getConfig();
-      config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
-    }).catch(() => {});
+    AgentConfig.getInstance()
+      .then((config) => {
+        const agentConfig = config.getConfig();
+        config.updateConfig({ preferences: { ...agentConfig.preferences, zoomLevel: 100 } });
+      })
+      .catch(() => {});
   }
 
   function requestLogin() {
@@ -146,7 +164,12 @@
       window.open(loginUrl, '_blank', 'noopener,noreferrer');
     }
   }
-  let compactionNotification: { show: boolean; tokensSaved: number; compactionCount: number; isWarning: boolean } = $state({
+  let compactionNotification: {
+    show: boolean;
+    tokensSaved: number;
+    compactionCount: number;
+    isWarning: boolean;
+  } = $state({
     show: false,
     tokensSaved: 0,
     compactionCount: 0,
@@ -159,29 +182,150 @@
   let scheduledSessionId: string | null = $state(null);
   let isScheduledJobMode: boolean = $state(false);
 
-  // Multi-thread state
-  interface ThreadConversationState {
-    messages: Array<{ type: 'user' | 'agent'; content: string; timestamp: number }>;
-    processedEvents: ProcessedEvent[];
-    inputText: string;
-    isProcessing: boolean;
-    currentTabId: number;
-    eventProcessor: EventProcessor;
-  }
-  let threadStates: Map<string, ThreadConversationState> = new Map();
-  let activeSessionId: string | null = null;
-  const threadRouter = new ThreadEventRouter();
-  let canCreateThread: boolean = true;
-  let maxSessionsReached: boolean = false;
+  let activeSessionId: string | null = $state(null);
+  let activePreviewState = $derived(
+    activeSessionId ? $previewStore.bySession[activeSessionId] : undefined,
+  );
+  let showWidePreview = $derived(
+    platform.platformName === 'desktop'
+      && $isWideMode
+      && !!activeSessionId
+      && !!activePreviewState?.open,
+  );
 
+  function setChatSplitPercent(value: number): void {
+    chatSplitPercent = clampChatSplitPercent(value);
+  }
+  const threadRouter = new ThreadEventRouter();
+  const surfaceId = documentSurfaceId;
+  let surfaceLease: { leaseId: string; sessionId: string } | null = null;
+  let surfaceHeartbeat: ReturnType<typeof setInterval> | null = null;
+  let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
+  const unknownThreadFlights = new Map<string, Promise<void>>();
+  const attachFlights = new Map<string, Promise<void>>();
+  const attachBuffers = new Map<string, ChannelEvent[]>();
+  const attachBufferOverflow = new Set<string>();
+  const MAX_ATTACH_BUFFER_EVENTS = 1024;
+  const viewedSession = new LatestViewedSession({
+    acquireLease: async (sessionId) => {
+      const c = await getInitializedUIClient();
+      const response = await c.serviceRequest<{
+        lease: { leaseId: string; sessionId: string };
+      }>('session.setViewed', { surfaceId, sessionId });
+      return { leaseId: response.lease.leaseId, sessionId };
+    },
+    releaseLease: async (lease) => {
+      if (!client) return;
+      await client.serviceRequest('session.releaseSurface', {
+        surfaceId,
+        leaseId: lease.leaseId,
+      });
+    },
+    attachSession: (sessionId) => restoreConversationHistory(sessionId),
+    onLeaseChange: (lease) => {
+      surfaceLease = lease;
+      if (lease) startSurfaceHeartbeat();
+      else stopSurfaceHeartbeat();
+    },
+  });
+
+  function appendProcessedEvent(
+    event: ProcessedEvent,
+    source: TimelineSource = 'live',
+  ): void {
+    timeline = upsertTimelineEvent(timeline, event, source);
+  }
+
+  function createStatusMessage(content: string): ProcessedEvent {
+    return {
+      id: `local_${crypto.randomUUID()}`,
+      category: 'message',
+      timestamp: new Date(),
+      title: 'workx',
+      content,
+      style: content.toLowerCase().startsWith('error:')
+        ? STYLE_PRESETS.error
+        : STYLE_PRESETS.agent_message,
+      streaming: false,
+      collapsible: false,
+    };
+  }
+
+  function appendStatusMessage(content: string): void {
+    appendProcessedEvent(createStatusMessage(content), 'local');
+  }
+
+  function appendStatusMessageForSession(sessionId: string, content: string): void {
+    const event = createStatusMessage(content);
+    if (sessionId === activeSessionId) {
+      appendProcessedEvent(event, 'local');
+      return;
+    }
+    const thread = threadStore.getThread(sessionId);
+    if (!thread) return;
+    threadStore.patchConversation(sessionId, {
+      timeline: upsertTimelineEvent(thread.conversation.timeline, event, 'local'),
+    });
+  }
+
+  // The left history list is the only navigation control. React to its
+  // selection without a second resume-request bridge.
+  $effect(() => {
+    const selected = $activeThread?.sessionId;
+    if (client && selected && selected !== activeSessionId) void switchToThread(selected);
+  });
+
+  $effect(() => {
+    if (!$isWideMode && activePreviewState?.open) {
+      void tick().then(() => {
+        previewDrawer
+          ?.querySelector<HTMLButtonElement>('[data-preview-close]')
+          ?.focus();
+      });
+    }
+  });
+
+  function closeActivePreview(): void {
+    if (activeSessionId) previewStore.closeSession(activeSessionId);
+    void tick().then(() => previewToggleButton?.focus());
+  }
+
+  function toggleActivePreview(): void {
+    if (activeSessionId) previewStore.toggleSession(activeSessionId);
+  }
+
+  function handlePreviewKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && !$isWideMode && activePreviewState?.open) {
+      closeActivePreview();
+    }
+  }
+
+  function handleProcessedEventClick(event: ProcessedEvent): void {
+    const previewItemId = event.metadata?.previewItemId;
+    if (activeSessionId && previewItemId) {
+      previewStore.revealItem(activeSessionId, previewItemId);
+    }
+  }
+
+  function projectPreviewEvent(
+    sessionId: string,
+    event: Event,
+    context: { isActive: boolean; isWide: boolean; isReplay: boolean },
+  ): void {
+    if (platform.platformName !== 'desktop') return;
+    try {
+      previewStore.projectEvent(sessionId, event, context);
+    } catch (error) {
+      console.warn('[App] Preview projection failed:', error);
+    }
+  }
 
   onMount(async () => {
     // Listen for zoom level changes
     window.addEventListener('zoom-changed', onZoomChanged);
 
-    // Clear messages from previous session
-    messages = [];
-    processedEvents = [];
+    // Start with one normalized visible timeline for this surface.
+    timeline = emptyTimeline();
 
     // Check if returning from a successful scheduling
     const scheduledResult = schedulerStore.getAndClearResult();
@@ -204,7 +348,7 @@
         streaming: false,
         collapsible: false,
       };
-      processedEvents = [confirmEvent];
+      appendProcessedEvent(confirmEvent, 'local');
     }
 
     // Initialize EventProcessor
@@ -231,33 +375,24 @@
       // Configure thread event router
       threadRouter.setActiveSession(activeSessionId);
 
-      threadRouter.onActiveThread((channelEvent) => {
-        if (channelEvent.msg.type.startsWith('BackgroundTask')) {
-          handleBackgroundTaskEvent(channelEvent.msg);
-          return;
-        }
-        const event: Event = { id: `evt_${Date.now()}`, msg: channelEvent.msg };
-        handleEvent(event);
-      });
-
-      threadRouter.onBackgroundThread((channelEvent) => {
-        if (channelEvent.msg.type.startsWith('BackgroundTask')) {
-          handleBackgroundTaskEvent(channelEvent.msg);
-          return;
-        }
-        const event: Event = { id: `evt_${Date.now()}`, msg: channelEvent.msg };
-        handleEventForSession(event, channelEvent.sessionId!);
-      });
+      threadRouter.onActiveThread(processThreadChannelEvent);
+      threadRouter.onBackgroundThread(processThreadChannelEvent);
 
       threadRouter.onChannel((channelEvent) => {
         const { msg } = channelEvent;
         if (msg.type === 'StateUpdate' && 'data' in msg) {
           const data = msg.data;
-          if (data?.scope === 'desktop-runtime' && data.kind === 'agent.accessChanged' && data.access) {
+          if (
+            data?.scope === 'desktop-runtime' &&
+            data.kind === 'agent.accessChanged' &&
+            data.access
+          ) {
             applyAccessState(data.access as AgentAccessState);
           } else if (data && 'tabId' in data) {
             currentTabId = data.tabId!;
           }
+        } else if (msg.type === 'session_index_changed' && 'data' in msg) {
+          handleIndexChanged(msg.data);
         } else if (msg.type === 'ModeChanged' && 'data' in msg) {
           // Backend is the source of truth — commit on applied, show pending
           // otherwise. Never flip optimistically on click.
@@ -284,24 +419,20 @@
       });
 
       // Single wildcard handler feeds the router
-      unsubscribers.push(
-        client.onEvent('*', (channelEvent) => threadRouter.route(channelEvent))
-      );
+      unsubscribers.push(client.onEvent('*', (channelEvent) => threadRouter.route(channelEvent)));
       startBackgroundTaskPolling(() => {
         if (!client || !activeSessionId) return null;
         return {
           async listTaskStates() {
-            const response = await client!.serviceRequest<{ tasks?: import('@/core/tasks/types').TaskState[] }>(
-              'session.listTaskStates',
-              { sessionId: activeSessionId },
-            );
+            const response = await client!.serviceRequest<{
+              tasks?: import('@/core/tasks/types').TaskState[];
+            }>('session.listTaskStates', { sessionId: activeSessionId });
             return response.tasks ?? [];
           },
           async getTaskOutput(taskId: string, fromSeq = 0) {
-            const response = await client!.serviceRequest<{ chunks?: import('@/core/tasks/TaskOutputStore').TaskOutputChunk[] }>(
-              'session.getTaskOutput',
-              { sessionId: activeSessionId, taskId, fromSeq },
-            );
+            const response = await client!.serviceRequest<{
+              chunks?: import('@/core/tasks/TaskOutputStore').TaskOutputChunk[];
+            }>('session.getTaskOutput', { sessionId: activeSessionId, taskId, fromSeq });
             return response.chunks ?? [];
           },
           retainTask(taskId: string, retain: boolean) {
@@ -316,6 +447,8 @@
     } catch (error) {
       console.error('[App] UIChannelClient initialization failed:', error);
     }
+
+    await threadStore.restoreThreads();
 
     // Check if this is a scheduled job execution (US3: T022)
     // Extension: detected via URL params from chrome.tabs.create
@@ -335,21 +468,20 @@
       return; // Skip normal initialization for scheduled job mode
     }
 
-    // Sync thread store with backend sessions (also restores history per thread)
+    // Load only the first index page and attach the selected conversation.
     await syncThreadsWithSessions();
 
     // Check connection (after sync so activeSessionId is set)
     checkConnection();
 
-    // Fetch current session's tabId (after sync so activeSessionId is set)
     await fetchCurrentTabId();
+    document.addEventListener('visibilitychange', handleSurfaceVisibility);
 
     // ========================================================================
     // KEEP-ALIVE: Send periodic pings to prevent service worker termination
     // ========================================================================
     // Keep-alive ping for Chrome extension (service worker stays awake)
     // Only needed for extension mode - Tauri doesn't have this limitation
-    let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
     if (platform.platformName === 'extension' && client) {
       keepAliveInterval = setInterval(async () => {
         try {
@@ -361,18 +493,6 @@
       }, 25000); // Every 25 seconds
     }
 
-    return () => {
-      // Clean up keep-alive interval
-      if (keepAliveInterval) {
-        clearInterval(keepAliveInterval);
-      }
-      // Clean up event subscriptions
-      for (const unsub of unsubscribers) {
-        unsub();
-      }
-      unsubscribers = [];
-      stopBackgroundTaskPolling();
-    };
   });
 
   // T035: Handle scheduled job cancellation events
@@ -400,207 +520,229 @@
         streaming: false,
         collapsible: false,
       };
-      processedEvents = [...processedEvents, cancelNotice];
+      appendProcessedEvent(cancelNotice, 'local');
 
       // Request agent to abort via message service
       if (client && activeSessionId) {
-        getInitializedUIClient().then(c => c.serviceRequest('agent.interrupt', { sessionId: activeSessionId })).catch((err) => {
-          console.warn('[App] Failed to send interrupt on cancel:', err);
-        });
+        getInitializedUIClient()
+          .then((c) => c.serviceRequest('agent.interrupt', { sessionId: activeSessionId }))
+          .catch((err) => {
+            console.warn('[App] Failed to send interrupt on cancel:', err);
+          });
       }
     }
   }
 
   onDestroy(() => {
-    // Save active thread state so it can be restored if component remounts
-    // (Note: threadStates is in-memory and won't survive remount, but the backend
-    // is the source of truth — restoreAllThreadHistories() handles remount recovery)
     if (activeSessionId) {
       saveThreadState(activeSessionId);
     }
+    if (keepAliveInterval) clearInterval(keepAliveInterval);
+    if (workingDirectoryErrorTimer) clearTimeout(workingDirectoryErrorTimer);
+    stopSurfaceHeartbeat();
+    void releaseSurface();
+    document.removeEventListener('visibilitychange', handleSurfaceVisibility);
+    for (const unsubscribe of unsubscribers) unsubscribe();
+    unsubscribers = [];
+    stopBackgroundTaskPolling();
     window.removeEventListener('zoom-changed', onZoomChanged);
   });
 
-  /**
-   * Fetch the current session's tabId from BrowserAgent session
-   * US3: Get tabId from session on mount
-   * If tabId is -1, automatically bind to the current active tab (extension only)
-   * Note: Conversation history restoration is handled by restoreAllThreadHistories()
-   */
+  /** The browser selector is surface-local; it must not hydrate a session. */
   async function fetchCurrentTabId() {
-    if (!client) {
-      console.warn('[App] Service not available for fetchCurrentTabId');
+    if (!platform.hasTabSelection) {
       currentTabId = -1;
       return;
     }
-
     try {
-      // Request current session state from backend (uses active session if available)
-      const response = await (await getInitializedUIClient()).serviceRequest<{ tabId?: number }>(
-        'session.getState',
-        activeSessionId ? { sessionId: activeSessionId } : undefined
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      currentTabId = activeTab?.id ?? -1;
+    } catch {
+      currentTabId = -1;
+    }
+  }
+
+  /** Attach one thread from its immutable snapshot plus bounded live replay. */
+  function restoreConversationHistory(sessionId: string): Promise<void> {
+    const existingFlight = attachFlights.get(sessionId);
+    if (existingFlight) return existingFlight;
+    const flight = restoreConversationHistoryOnce(sessionId);
+    attachFlights.set(sessionId, flight);
+    const clearFlight = () => {
+      if (attachFlights.get(sessionId) !== flight) return;
+      attachFlights.delete(sessionId);
+      const thread = threadStore.getThread(sessionId);
+      // A terminal runtime event can arrive in the attach buffer. Wait until
+      // this single-flight is gone, then fetch the freshly committed snapshot
+      // that clears a truncation warning.
+      if (thread?.runtime.state === 'idle' && thread.attach.replayTruncated) {
+        void restoreConversationHistory(sessionId).catch((error) => {
+          console.warn('[App] Committed snapshot refresh failed:', error);
+        });
+      }
+    };
+    void flight.then(clearFlight, clearFlight);
+    return flight;
+  }
+
+  async function restoreConversationHistoryOnce(sessionId: string): Promise<void> {
+    const c = await getInitializedUIClient();
+    const existing = threadStore.getThread(sessionId);
+    attachBuffers.set(sessionId, []);
+    attachBufferOverflow.delete(sessionId);
+    threadStore.setAttach(sessionId, { attaching: true, error: null, historyError: null });
+    try {
+      const response = await c.serviceRequest<{
+        entry: ThreadIndexEntry;
+        historyPage: HistoryPage;
+        snapshot: { revision: number; items: unknown[] };
+        runtime: SessionRuntimeView;
+        replay: {
+          runtimeEpoch: string;
+          baseRolloutRevision: number;
+          throughSeq: number;
+          truncated: boolean;
+          events: Array<{ runtimeEpoch: string; eventSeq: number; event: Event }>;
+        } | null;
+      }>('session.attach', {
+        sessionId,
+        after: existing?.attach.cursor ?? undefined,
+      });
+      const buffered = attachBuffers.get(sessionId) ?? [];
+      const bufferTruncated = attachBufferOverflow.has(sessionId);
+      threadStore.mergeThread({ ...response.entry, runtime: response.runtime });
+      if (
+        response.replay
+        && response.historyPage.revision < response.replay.baseRolloutRevision
+      ) {
+        throw new Error('History changed across the attach boundary; retrying is required');
+      }
+      const processor = existing?.conversation.eventProcessor ?? new EventProcessor(sessionId);
+      const replay = projectReplay({
+        previousCursor: existing?.attach.cursor,
+        replay: response.replay,
+        observedEventIds: new Set(existing?.conversation.timeline.observedDeliveryIds ?? []),
+      });
+      for (const event of replay.events) {
+        projectPreviewEvent(sessionId, event, {
+          isActive: sessionId === activeSessionId,
+          isWide: get(isWideMode),
+          isReplay: true,
+        });
+      }
+      const replayEvents = replay.events
+        .map((event) => processor.processEvent(event))
+        .filter((event): event is ProcessedEvent => event !== null);
+      const pendingIds = new Set(
+        existing?.pendingSubmissions
+          .filter((item) => item.status !== 'failed')
+          .map((item) => item.clientMessageId) ?? [],
       );
-
-      const stateData = response || {};
-
-      if (stateData && typeof stateData.tabId === 'number') {
-        const fetchedTabId = stateData.tabId;
-        console.log(`[App] Fetched session tabId: ${fetchedTabId}`);
-
-        // If no tab is bound (tabId === -1), get the current active tab ID
-        // Only applicable for extension mode - desktop doesn't have tabs
-        if (fetchedTabId === -1 && platform.hasTabSelection) {
-          try {
-            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-            const activeTab = tabs[0];
-            if (activeTab?.id) {
-              console.log(`[App] Session has no tab, will suggest active tab ${activeTab.id} to agent`);
-              currentTabId = activeTab.id;
-            } else {
-              console.warn('[App] No active tab found');
-              currentTabId = -1;
-            }
-          } catch (tabError) {
-            console.warn('[App] Failed to query tabs:', tabError);
-            currentTabId = -1;
-          }
-        } else {
-          currentTabId = fetchedTabId;
-        }
+      const persistedEvents = historyPageToEvents(response.historyPage);
+      let attachedTimeline = reconcileAttachedTimeline(
+        existing?.conversation.timeline ?? emptyTimeline(),
+        persistedEvents,
+        replayEvents,
+        pendingIds,
+      );
+      const attachDedupeBudget = createAttachMessageDedupeBudget(
+        persistedEvents,
+        replayEvents,
+      );
+      for (const event of replay.events) attachedTimeline = noteDelivery(attachedTimeline, event.id);
+      threadStore.setConversation(sessionId, {
+        timeline: attachedTimeline,
+        inputText: existing?.conversation.inputText ?? '',
+        isProcessing: response.runtime.state === 'running',
+        currentTabId: existing?.conversation.currentTabId ?? -1,
+        eventProcessor: processor,
+      });
+      threadStore.setAttach(sessionId, {
+        attaching: false,
+        cursor: replay.cursor,
+        snapshotRevision: response.historyPage.revision,
+        historyCursor: response.historyPage.nextCursor,
+        replayTruncated: replay.truncated || bufferTruncated,
+        error: null,
+        historyError: null,
+      });
+      threadStore.reconcileSubmissions(
+        sessionId,
+        new Set(response.historyPage.turns.flatMap((turn) => turn.clientMessageId ?? [])),
+        new Set(response.historyPage.turns.flatMap((turn) =>
+          turn.clientMessageId && turn.status !== 'in_progress' ? [turn.clientMessageId] : [])),
+        replay.epochChanged,
+      );
+      attachBuffers.delete(sessionId);
+      attachBufferOverflow.delete(sessionId);
+      if (sessionId === activeSessionId) loadThreadState(sessionId);
+      const replayEpoch = response.replay?.runtimeEpoch;
+      const throughSeq = response.replay?.throughSeq ?? -1;
+      for (const event of buffered) {
+        if (
+          replayEpoch
+          && event.runtimeEpoch === replayEpoch
+          && event.eventSeq !== undefined
+          && event.eventSeq <= throughSeq
+        ) continue;
+        processThreadChannelEvent(event, attachDedupeBudget);
       }
     } catch (error) {
-      console.error('[App] Failed to fetch current tabId from session:', error);
-
-      // Fallback: get current active tab to send as suggestion (extension only)
-      if (platform.hasTabSelection) {
-        try {
-          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-          const activeTab = tabs[0];
-          if (activeTab?.id) {
-            console.log(`[App] Using active tab ${activeTab.id} as fallback`);
-            currentTabId = activeTab.id;
-          } else {
-            currentTabId = -1;
-          }
-        } catch (tabError) {
-          console.warn('[App] Failed to get active tab:', tabError);
-          currentTabId = -1;
-        }
-      } else {
-        currentTabId = -1;
-      }
+      const buffered = attachBuffers.get(sessionId) ?? [];
+      const bufferTruncated = attachBufferOverflow.has(sessionId);
+      attachBuffers.delete(sessionId);
+      attachBufferOverflow.delete(sessionId);
+      threadStore.setAttach(sessionId, {
+        attaching: false,
+        replayTruncated: bufferTruncated
+          || threadStore.getThread(sessionId)?.attach.replayTruncated
+          || false,
+        error: {
+          message: error instanceof Error ? error.message : 'Failed to attach conversation',
+          retryable: true,
+        },
+      });
+      for (const event of buffered) processThreadChannelEvent(event);
+      throw error;
     }
   }
 
-  /**
-   * Parse history items into processedEvents and messages for display.
-   * Shared by restoreConversationHistory (single-thread) and
-   * restoreAllThreadHistories (multi-thread).
-   */
-  function parseHistoryItems(historyItems: any[], idPrefix: string = 'restored'): {
-    events: ProcessedEvent[];
-    firstUserMessage: string | null;
-  } {
-    const events: ProcessedEvent[] = [];
-    let firstUserMessage: string | null = null;
-
-    for (let i = 0; i < historyItems.length; i++) {
-      const item = historyItems[i];
-      if (item.type !== 'message') continue;
-
-      const isUser = item.role === 'user';
-      let text = '';
-
-      // Extract text from content items
-      if (Array.isArray(item.content)) {
-        for (const content of item.content) {
-          if (content.type === 'input_text' || content.type === 'output_text' || content.type === 'text') {
-            let contentText = content.text || '';
-
-            // Handle JSON-stringified input items (e.g., '{"type":"text","text":"actual message"}')
-            if (contentText.startsWith('{') && contentText.includes('"text"')) {
-              try {
-                const parsed = JSON.parse(contentText);
-                if (parsed.text) {
-                  contentText = parsed.text;
-                }
-              } catch {
-                // Not valid JSON, use as-is
-              }
-            }
-
-            text += contentText;
-          }
-        }
-      } else if (typeof item.content === 'string') {
-        text = item.content;
-      }
-
-      if (!text.trim()) continue;
-
-      const event: ProcessedEvent = {
-        id: `${idPrefix}_${i}_${Date.now()}`,
-        category: 'message',
-        timestamp: new Date(),
-        title: isUser ? 'user' : 'workx',
-        content: text,
-        style: isUser ? { textColor: 'text-cyan-400' } : STYLE_PRESETS.agent_message,
-        streaming: false,
-        collapsible: false,
-      };
-
-      // Carry modelKey from assistant messages for model indicator display
-      if (!isUser && item.modelKey) {
-        event.modelKey = item.modelKey;
-      }
-
-      events.push(event);
-
-      if (isUser && firstUserMessage === null) {
-        firstUserMessage = text;
-      }
-    }
-
-    return { events, firstUserMessage };
-  }
-
-  /**
-   * Fetch and restore conversation history for a single session.
-   * Stores the result in threadStates and optionally loads it into the active UI.
-   */
-  async function restoreConversationHistory(sessionId: string): Promise<void> {
-    const c = await getInitializedUIClient();
-    const response = await c.serviceRequest<{
-      sessionId?: string;
-      tabId?: number;
-      history?: unknown[];
-    }>('session.getState', { sessionId });
-    const historyItems = response?.history as any[] | undefined;
-    const tabId = response?.tabId ?? -1;
-
-    const { events, firstUserMessage } = historyItems && Array.isArray(historyItems)
-      ? parseHistoryItems(historyItems, `restored_${sessionId}`)
-      : { events: [], firstUserMessage: null };
-
-    // Update thread title from first user message if still default
-    const thread = get(threadStore).threads.find(t => t.sessionId === sessionId);
-    if (thread?.title === 'New Thread' && firstUserMessage) {
-      const title = firstUserMessage.length > 30 ? firstUserMessage.substring(0, 30) + '...' : firstUserMessage;
-      threadStore.updateThreadTitle(sessionId, title);
-    }
-
-    threadStates.set(sessionId, {
-      messages: [],
-      processedEvents: events,
-      inputText: '',
-      isProcessing: false,
-      currentTabId: tabId,
-      eventProcessor: new EventProcessor(sessionId),
-    });
-
-    // If this is the active thread, load into the UI
-    if (sessionId === activeSessionId) {
-      loadThreadState(sessionId);
+  async function loadOlderHistory(): Promise<void> {
+    if (!client || !activeSessionId || loadingOlderHistory) return;
+    const sessionId = activeSessionId;
+    const thread = threadStore.getThread(sessionId);
+    const beforeSequence = thread?.attach.historyCursor;
+    if (beforeSequence == null) return;
+    loadingOlderHistory = true;
+    threadStore.setAttach(sessionId, { historyError: null });
+    try {
+      const page = await client.serviceRequest<HistoryPage>('session.history', {
+        sessionId,
+        limit: 10,
+        beforeSequence,
+      });
+      const current = threadStore.getThread(sessionId);
+      if (!current) return;
+      const nextTimeline = prependHistoryPage(
+        current.conversation.timeline,
+        historyPageToEvents(page),
+      );
+      threadStore.patchConversation(sessionId, { timeline: nextTimeline });
+      threadStore.setAttach(sessionId, {
+        historyCursor: page.nextCursor,
+        snapshotRevision: Math.max(current.attach.snapshotRevision, page.revision),
+      });
+      if (sessionId === activeSessionId) timeline = nextTimeline;
+    } catch (error) {
+      console.error('[App] Failed to load earlier history:', error);
+      threadStore.setAttach(sessionId, {
+        historyError: {
+          message: error instanceof Error ? error.message : 'Failed to load earlier history',
+          retryable: true,
+        },
+      });
+    } finally {
+      loadingOlderHistory = false;
     }
   }
 
@@ -642,53 +784,16 @@
         console.warn('[App] checkConnection: no client available');
         isConnected = false;
         agentReady = false;
-        healthStatus = { ready: false, message: t('Message service not available'), authMode: 'none' };
-        return;
-      }
-
-      if (platform.platformName === 'desktop') {
-        console.log('[App] Sending agent.getAccessState serviceRequest...');
-        const access = await (await getInitializedUIClient()).serviceRequest<AgentAccessState>('agent.getAccessState');
-        applyAccessState(access);
-        return;
-      }
-
-      console.log('[App] Sending agent.healthCheck serviceRequest...');
-      const response = await (await getInitializedUIClient()).serviceRequest<{
-        type?: string;
-        ready?: boolean;
-        message?: string;
-        provider?: string;
-        model?: string;
-        authMode?: 'login' | 'api_key' | 'none';
-      }>('agent.healthCheck', activeSessionId ? { sessionId: activeSessionId } : undefined);
-
-      console.log('[App] healthCheck response:', JSON.stringify(response));
-      isConnected = response?.ready !== undefined;
-
-      if (response?.ready !== undefined) {
-        agentReady = response.ready === true;
         healthStatus = {
-          ready: response.ready === true,
-          message: response.message,
-          provider: response.provider,
-          model: response.model,
-          authMode: response.authMode || 'none',
+          ready: false,
+          message: t('Message service not available'),
+          authMode: 'none',
         };
-
-        // Update agent store with health status
-        agentStore.updateFromHealthCheck({
-          ready: response.ready === true,
-          message: response.message,
-          provider: response.provider,
-          model: response.model,
-          authMode: response.authMode || 'none',
-        });
-      } else {
-        agentReady = false;
-        healthStatus = { ready: false, message: t('Unable to check agent status'), authMode: 'none' };
-        agentStore.setNoAccess(t('Unable to check agent status'));
+        return;
       }
+
+      const access = await (await getInitializedUIClient()).serviceRequest<AgentAccessState>('agent.getAccessState');
+      applyAccessState(access);
     } catch (error) {
       console.error('[App] Health check failed:', error);
 
@@ -715,14 +820,17 @@
     // and the service-worker will detect the context.tabId change and rebind then.
   }
 
-  function handleEvent(event: Event) {
+  function handleEvent(event: Event, attachDedupeBudget?: MessageDedupeBudget) {
     const msg = event.msg;
 
     // Process event through EventProcessor
     const processed = eventProcessor.processEvent(event);
 
     if (processed) {
-      processedEvents = [...processedEvents, processed];
+      if (!consumeAttachMessageDuplicate(attachDedupeBudget, processed)) {
+        appendProcessedEvent(processed);
+      }
+      timeline = noteDelivery(timeline, event.id);
 
       // Auto-scroll to bottom if user is at bottom
       if (scrollContainer) {
@@ -734,7 +842,7 @@
           setTimeout(() => {
             scrollContainer.scrollTo({
               top: scrollContainer.scrollHeight,
-              behavior: 'smooth'
+              behavior: 'smooth',
             });
           }, 100);
         }
@@ -768,11 +876,7 @@
         break;
       case 'Error':
         if ('data' in msg && msg.data && 'message' in msg.data) {
-          messages = [...messages, {
-            type: 'agent',
-            content: `Error: ${msg.data.message}`,
-            timestamp: Date.now(),
-          }];
+          appendStatusMessage(`Error: ${msg.data.message}`);
         }
         break;
 
@@ -813,42 +917,46 @@
     // Track 13: allow image-only submissions (text may be empty when the
     // user pastes a screenshot and sends without typing).
     if (!text && !(attachments && attachments.length)) return;
+    if (!activeSessionId) return;
+    const sessionId = activeSessionId;
 
     // Check if connected
     if (!isConnected) {
-      messages = [...messages, {
-        type: 'agent',
-        content: t('Error: Not connected to agent. Please refresh the page.'),
-        timestamp: Date.now(),
-      }];
+      appendStatusMessage(t('Error: Not connected to agent. Please refresh the page.'));
       return;
     }
 
     // Check if agent is ready (has API key)
     if (!agentReady) {
       const providerName = healthStatus.provider || 'the selected provider';
-      messages = [...messages, {
-        type: 'agent',
-        content: t('Cannot send message: No API key configured for $1$. Please click the Settings button and configure your API key.', { substitutions: [providerName] }),
-        timestamp: Date.now(),
-      }];
+      appendStatusMessage(t('Cannot send message: No API key configured for $1$. Please click the Settings button and configure your API key.', { substitutions: [providerName] }));
       return;
     }
 
     inputText = '';
 
     // Add user message to processedEvents for chronological ordering
+    const clientMessageId = crypto.randomUUID();
+    const responseLatencyStartedAtMs = Date.now();
     const userEvent: ProcessedEvent = {
-      id: `user_${Date.now()}`,
+      id: `user:${clientMessageId}`,
       category: 'message',
       timestamp: new Date(),
       title: 'user',
-      content: text || (attachments && attachments.length ? `[${attachments.length} image(s)]` : ''),
+      content:
+        text || (attachments && attachments.length ? `[${attachments.length} image(s)]` : ''),
       style: { textColor: 'text-cyan-400' },
       streaming: false,
       collapsible: false,
     };
-    processedEvents = [...processedEvents, userEvent];
+    appendProcessedEvent(userEvent, 'optimistic');
+    threadStore.beginSubmission(sessionId, {
+      clientMessageId,
+      status: 'sending',
+      text,
+      createdAt: responseLatencyStartedAtMs,
+    });
+    saveThreadState(sessionId);
 
     // Send to agent with tab context
     try {
@@ -856,30 +964,31 @@
       const items: InputItem[] = [];
       if (text) items.push({ type: 'text', text });
       if (attachments && attachments.length) items.push(...attachments);
-      await client.submitOp(
-        {
-          type: 'UserInput',
-          items,
-        },
-        {
-          tabId: currentTabId, // Include current tab selection in context
-          sessionId: activeSessionId, // Route to correct agent session
-        },
-      );
+      const ack = await client.serviceRequest<SubmitAck>('session.submit', {
+        sessionId,
+        clientMessageId,
+        items,
+        tabId: currentTabId,
+        responseLatencyStartedAtMs,
+      });
+      threadStore.applySubmitAck(sessionId, ack);
+      if (ack.status === 'rejected') {
+        throw new Error(ack.reason === 'queue-full'
+          ? 'The send queue is full. Retry when another conversation finishes.'
+          : `Message rejected: ${ack.reason}`);
+      }
 
     } catch (error) {
       console.error('Failed to send message:', error);
+      threadStore.settleSubmission(sessionId, clientMessageId, 'failed', undefined,
+        error instanceof Error ? error.message : 'submit-failed');
 
       let errorMessage = t('Failed to send message. Please try again.');
       if (error instanceof Error && error.message.includes('not available')) {
         errorMessage = t('Backend not available. Please wait a moment and try again.');
       }
 
-      messages = [...messages, {
-        type: 'agent',
-        content: errorMessage,
-        timestamp: Date.now(),
-      }];
+      appendStatusMessageForSession(sessionId, errorMessage);
     }
   }
 
@@ -888,21 +997,6 @@
       e.preventDefault();
       sendMessage();
     }
-  }
-
-  function formatTime(timestamp: number): string {
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  }
-
-  function getMessageType(message: { type: 'user' | 'agent'; content: string }): 'default' | 'warning' | 'error' | 'input' | 'system' {
-    if (message.type === 'user') return 'input';
-    if (message.content.toLowerCase().startsWith('error:')) return 'error';
-    if (message.content.toLowerCase().includes('warning')) return 'warning';
-    if (message.content.toLowerCase().includes('system')) return 'system';
-    return 'default';
   }
 
   /**
@@ -921,40 +1015,20 @@
       streaming: false,
       collapsible: false,
     };
-    processedEvents = [...processedEvents, cmdEvent];
+    appendProcessedEvent(cmdEvent, 'local');
   }
 
   async function startNewConversation() {
-    // Clear UI state
-    messages = [];
-    processedEvents = [];
-    inputText = '';
-    isProcessing = false;
-
-    // Reset tab context
-    currentTabId = -1;
-
-    // Reset event processor
-    eventProcessor.reset();
-
-    // Request session reset from backend
     try {
       if (!client) throw new Error('Message service not available');
-      await (await getInitializedUIClient()).serviceRequest('session.reset', { sessionId: activeSessionId });
-
-      // After session reset, auto-bind to the active tab
-      // This ensures the new conversation starts with the current tab
-      await bindToActiveTab();
+      if (activeSessionId) saveThreadState(activeSessionId);
+      await createNewThread();
     } catch (error) {
-      console.error('Failed to reset session:', error);
+      console.error('Failed to open conversation:', error);
 
       let errorMessage = t('Failed to start new conversation. Please try again.');
 
-      messages = [...messages, {
-        type: 'agent',
-        content: errorMessage,
-        timestamp: Date.now(),
-      }];
+      appendStatusMessage(errorMessage);
     }
   }
 
@@ -968,17 +1042,15 @@
     try {
       if (!client) throw new Error('Message service not available');
       // Send stop message to backend
-      await (await getInitializedUIClient()).serviceRequest('agent.interrupt', { sessionId: activeSessionId });
+      await (
+        await getInitializedUIClient()
+      ).serviceRequest('agent.interrupt', { sessionId: activeSessionId });
       isProcessing = false;
       console.log('[App] Agent session stopped');
     } catch (error) {
       console.error('[App] Failed to stop agent:', error);
 
-      messages = [...messages, {
-        type: 'agent',
-        content: t('Failed to stop the task. Please try again.'),
-        timestamp: Date.now(),
-      }];
+      appendStatusMessage(t('Failed to stop the task. Please try again.'));
     }
   }
 
@@ -987,34 +1059,17 @@
    * Loads the selected conversation and restores its state
    */
   async function resumeConversation(sessionId: string) {
-    console.log('[App] Resuming conversation:', sessionId);
-
-    // Clear current UI state
-    messages = [];
-    processedEvents = [];
-    inputText = '';
-    isProcessing = false;
-
-    // Reset event processor
-    eventProcessor.reset();
-
     try {
       if (!client) throw new Error('Message service not available');
-      // Request session resume from backend
-      const response = await (await getInitializedUIClient()).serviceRequest<{ history?: unknown[] }>('session.resume', { sessionId });
-
-      console.log('[App] Conversation resumed:', sessionId);
-
-      // Restore history to UI
-      await restoreConversationHistory(sessionId);
+      if (!threadStore.getThread(sessionId)) {
+        const response = await client.serviceRequest<{ entry: ThreadIndexEntry }>('session.get', { sessionId });
+        threadStore.mergeThread(response.entry);
+      }
+      await switchToThread(sessionId);
     } catch (error) {
       console.error('[App] Failed to resume conversation:', error);
 
-      messages = [...messages, {
-        type: 'agent',
-        content: t('Failed to load conversation. Please try again.'),
-        timestamp: Date.now(),
-      }];
+      appendStatusMessage(t('Failed to load conversation. Please try again.'));
     }
   }
 
@@ -1033,21 +1088,13 @@
     const newId = result?.sessionId;
     if (!newId) return;
 
-    // Clear current UI state.
-    messages = [];
-    processedEvents = [];
-    inputText = '';
-    isProcessing = false;
-    eventProcessor.reset();
-
     // Id swap: register a thread for the forked conversation and switch to it
     // (the source conversation remains in history, untouched).
     if (!threadStore.getThread(newId)) {
       threadStore.createThread(newId, 'New Thread');
     }
-    threadStates.set(newId, {
-      messages: [],
-      processedEvents: [],
+    threadStore.setConversation(newId, {
+      timeline: emptyTimeline(),
       inputText: '',
       isProcessing: false,
       currentTabId: -1,
@@ -1058,7 +1105,7 @@
     threadRouter.setActiveSession(newId);
 
     try {
-      await restoreConversationHistory(newId);
+      await setViewedAndAttach(newId);
     } catch (error) {
       console.error('[App] Failed to restore rewound conversation:', error);
     }
@@ -1079,10 +1126,12 @@
     try {
       if (success) {
         // Extract result summary from the processed events
-        const lastAgentEvent = processedEvents.filter(e => e.title === 'workx').pop();
+        const lastAgentEvent = processedEvents.filter((e) => e.title === 'workx').pop();
         const resultSummary = lastAgentEvent?.content?.slice(0, 500) || 'Job completed';
 
-        await (await getInitializedUIClient()).serviceRequest('scheduler.complete', {
+        await (
+          await getInitializedUIClient()
+        ).serviceRequest('scheduler.complete', {
           jobId: scheduledJobId,
           result: {
             summary: resultSummary,
@@ -1092,7 +1141,9 @@
         console.log('[App] Notified scheduler of job completion:', scheduledJobId);
       } else {
         const errorMessage = msg?.data?.message || 'Job failed';
-        await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
+        await (
+          await getInitializedUIClient()
+        ).serviceRequest('scheduler.fail', {
           jobId: scheduledJobId,
           error: errorMessage,
         });
@@ -1113,7 +1164,9 @@
     try {
       if (!client) throw new Error('Message service not available');
       // Fetch job details from scheduler
-      const response = await (await getInitializedUIClient()).serviceRequest<{ job?: { input: string; scheduledTime?: number } }>(
+      const response = await (
+        await getInitializedUIClient()
+      ).serviceRequest<{ job?: { input: string; scheduledTime?: number } }>(
         'scheduler.getJobDetails',
         { jobId }
       );
@@ -1137,7 +1190,7 @@
         streaming: false,
         collapsible: false,
       };
-      processedEvents = [userEvent];
+      timeline = upsertTimelineEvent(emptyTimeline(), userEvent, 'optimistic');
 
       // Add a system notification showing this is a scheduled job
       const scheduleNotification: ProcessedEvent = {
@@ -1150,7 +1203,7 @@
         streaming: false,
         collapsible: false,
       };
-      processedEvents = [...processedEvents, scheduleNotification];
+      appendProcessedEvent(scheduleNotification, 'local');
 
       // Wait for agent to be ready
       await checkConnection();
@@ -1158,19 +1211,18 @@
         throw new Error('Agent is not ready. Please configure your API key.');
       }
 
-      // Execute the job via the agent
-      // Feature 015: Include sessionId in context for multi-agent routing
+      // Scheduled jobs use the same correlated lifecycle path as foreground
+      // chat so they cannot bypass admission, dedupe, or recovery markers.
       isProcessing = true;
-      await client!.submitOp(
-        {
-          type: 'UserInput',
-          items: [{ type: 'text', text: job.input }],
-        },
-        {
-          tabId: currentTabId,
-          sessionId: sessionId, // Feature 015: Route to correct agent session
-        },
-      );
+      const ack = await client!.serviceRequest<SubmitAck>('session.submit', {
+        sessionId,
+        clientMessageId: crypto.randomUUID(),
+        items: [{ type: 'text', text: job.input }],
+        tabId: currentTabId,
+      });
+      if (ack.status === 'rejected') {
+        throw new Error(`Scheduled job submission rejected: ${ack.reason}`);
+      }
 
     } catch (error) {
       console.error('[App] Failed to execute scheduled job:', error);
@@ -1178,7 +1230,9 @@
       // Notify scheduler of failure
       try {
         if (client) {
-          await (await getInitializedUIClient()).serviceRequest('scheduler.fail', {
+          await (
+            await getInitializedUIClient()
+          ).serviceRequest('scheduler.fail', {
             jobId,
             error: error instanceof Error ? error.message : 'Unknown error',
           });
@@ -1198,7 +1252,7 @@
         streaming: false,
         collapsible: false,
       };
-      processedEvents = [...processedEvents, errorEvent];
+      appendProcessedEvent(errorEvent, 'local');
       isProcessing = false;
     }
   }
@@ -1207,198 +1261,106 @@
   // Multi-thread functions
   // =========================================================================
 
-  /**
-   * Sync thread store with backend sessions on startup.
-   * Ensures every backend session has a corresponding thread,
-   * and the primary session always has a thread entry.
-   */
+  /** Load one bounded index page, then attach only the selected conversation. */
   async function syncThreadsWithSessions() {
     try {
       const c = await getInitializedUIClient();
-
-      // Try to get session list from registry
       const listResponse = await c.serviceRequest<{
-        sessions: Array<{ sessionId: string; type: string; state: string }>;
-        maxConcurrent: number;
-        activeCount: number;
-      }>('session.list');
+        entries: ThreadListItem[];
+        nextCursor: string | null;
+      }>('session.list', { limit: 10 });
+      const persistedSelection = get(threadStore).activeSessionId;
+      threadStore.mergePage(listResponse?.entries ?? [], listResponse?.nextCursor ?? null, { reset: true });
 
-      const backendSessions = listResponse?.sessions?.filter(s => s.state !== 'terminated' && s.type !== 'scheduled') ?? [];
-
-      if (backendSessions.length > 0) {
-        // Create threads for backend sessions that don't have one
-        const currentState = get(threadStore);
-        const existingSessionIds = new Set(currentState.threads.map(t => t.sessionId));
-
-        // Also remove threads whose sessions no longer exist in the backend
-        const backendSessionIds = new Set(backendSessions.map(s => s.sessionId));
-        for (const thread of currentState.threads) {
-          if (!backendSessionIds.has(thread.sessionId)) {
-            threadStore.closeThread(thread.sessionId);
-          }
+      let selected = persistedSelection;
+      if (selected && !threadStore.getThread(selected)) {
+        try {
+          const response = await c.serviceRequest<{ entry: ThreadIndexEntry }>('session.get', { sessionId: selected });
+          threadStore.mergeThread(response.entry);
+        } catch {
+          selected = null;
         }
-
-        for (const session of backendSessions) {
-          if (!existingSessionIds.has(session.sessionId)) {
-            threadStore.createThread(session.sessionId, 'New Thread');
-          }
-        }
-      } else {
-        // No active sessions — create one
-        console.log('[App] No active sessions found, creating initial session');
+      }
+      selected ??= get(threadStore).threads[0]?.sessionId ?? null;
+      if (!selected) {
         await createNewThread();
+        return;
       }
-
-      // Ensure we have an active thread
-      const finalState = get(threadStore);
-      if (finalState.threads.length > 0 && !finalState.activeSessionId) {
-        threadStore.setActiveThread(finalState.threads[0].sessionId);
-      }
-
-      // Set active session ID for event routing
-      const activeThread = threadStore.getActiveThread();
-      if (activeThread) {
-        activeSessionId = activeThread.sessionId;
-        threadRouter.setActiveSession(activeSessionId);
-      }
-
-      // Restore conversation history for each thread from backend
-      await restoreAllThreadHistories();
-
-      // Update session limits
-      await updateSessionLimits();
-
-      console.log(`[App] Thread sync complete: ${get(threadStore).threads.length} thread(s)`);
+      await switchToThread(selected);
     } catch (error) {
       console.error('[App] Failed to sync threads with sessions:', error);
     }
   }
 
-  /**
-   * Fetch and restore conversation history for all threads from the backend.
-   */
-  async function restoreAllThreadHistories() {
-    const allThreads = get(threadStore).threads;
-
-    await Promise.all(
-      allThreads.map(async (thread) => {
-        try {
-          await restoreConversationHistory(thread.sessionId);
-        } catch (error) {
-          console.warn(`[App] Failed to restore history for thread ${thread.sessionId}:`, error);
-        }
-      })
-    );
-  }
-
-  /**
-   * Create a new thread with a new session
-   */
+  /** Create an index-only chat. No agent graph is assembled here. */
   async function createNewThread() {
     try {
-      const c = await getInitializedUIClient();
-      const response = await c.serviceRequest<{ success: boolean; sessionId?: string; error?: string }>('session.create');
-
-      if (!response?.success) {
-        console.error('[App] Failed to create session:', response?.error);
-        maxSessionsReached = response?.error?.includes('Maximum') ?? false;
+      const reusable = threadStore.reuseActiveEmptyDraft();
+      if (reusable) {
+        await switchToThread(reusable.sessionId);
         return;
       }
-
+      const c = await getInitializedUIClient();
+      const response = await c.serviceRequest<{
+        sessionId: string;
+        state: 'SUSPENDED' | 'IDLE';
+        entry?: ThreadIndexEntry;
+      }>('session.open', { surfaceId });
       const { sessionId } = response;
-      if (!sessionId) return;
-
-      // Create thread in store
-      const newThread = threadStore.createThread(sessionId, 'New Thread');
-
-      // Initialize state for new thread
+      if (response.entry) threadStore.mergeThread(response.entry);
+      else threadStore.createThread(sessionId);
       const newState: ThreadConversationState = {
-        messages: [],
-        processedEvents: [],
+        timeline: emptyTimeline(),
         inputText: '',
         isProcessing: false,
         currentTabId: -1,
         eventProcessor: new EventProcessor(sessionId),
       };
-      threadStates.set(sessionId, newState);
-
-      // Switch to the new thread
-      activeSessionId = sessionId;
-      threadRouter.setActiveSession(sessionId);
-      loadThreadState(sessionId);
-
-      // Update session limits
-      await updateSessionLimits();
-
-      // Auto-bind to active browser tab
-      await bindToActiveTab();
-
-      console.log(`[App] Created new thread with session: ${sessionId}`);
+      threadStore.setConversation(sessionId, newState);
+      await switchToThread(sessionId);
+      await fetchCurrentTabId();
     } catch (error) {
       console.error('[App] Failed to create new thread:', error);
+      throw error;
     }
   }
 
-  /**
-   * Handle thread selection from ThreadBar
-   */
-  function handleThreadSelect(event: CustomEvent<{ sessionId: string }>) {
-    const { sessionId } = event.detail;
-    switchToThread(sessionId);
-  }
-
-  /**
-   * Switch to a specific thread by sessionId
-   */
-  function switchToThread(sessionId: string) {
-    // Save current thread state before switching
+  async function switchToThread(sessionId: string) {
+    if (sessionId === activeSessionId && surfaceLease?.sessionId === sessionId) return;
     if (activeSessionId) {
       saveThreadState(activeSessionId);
     }
-
-    // Set new active thread
     threadStore.setActiveThread(sessionId);
-
-    // Update active session ID and router BEFORE loading state so that events
-    // arriving during the transition are routed to the correct thread
     activeSessionId = sessionId;
     threadRouter.setActiveSession(sessionId);
-
-    // Load state for new thread
     loadThreadState(sessionId);
+    await setViewedAndAttach(sessionId);
   }
 
-  /**
-   * Save current UI state to thread state map
-   */
   function saveThreadState(sessionId: string) {
     const state: ThreadConversationState = {
-      messages: [...messages],
-      processedEvents: [...processedEvents],
+      timeline,
       inputText,
       isProcessing,
       currentTabId,
       eventProcessor: eventProcessor,
     };
-    threadStates.set(sessionId, state);
+    threadStore.setConversation(sessionId, state);
   }
 
-  /**
-   * Load thread state from map to UI
-   */
   function loadThreadState(sessionId: string) {
-    const state = threadStates.get(sessionId);
+    const thread = threadStore.getThread(sessionId);
+    const state = thread?.conversation;
+    currentWorkingDirectory = thread?.workspace?.workingDirectory;
     if (state) {
-      messages = [...state.messages];
-      processedEvents = [...state.processedEvents];
+      timeline = state.timeline;
       inputText = state.inputText;
       isProcessing = state.isProcessing;
       currentTabId = state.currentTabId;
-      eventProcessor = state.eventProcessor;
+      eventProcessor = state.eventProcessor ?? new EventProcessor(sessionId);
     } else {
       // Initialize fresh state
-      messages = [];
-      processedEvents = [];
+      timeline = emptyTimeline();
       inputText = '';
       isProcessing = false;
       currentTabId = -1;
@@ -1408,7 +1370,7 @@
     // Reset scroll position after loading new thread state
     if (scrollContainer) {
       setTimeout(() => {
-        if (messages.length === 0 && processedEvents.length === 0) {
+        if (processedEvents.length === 0) {
           scrollContainer.scrollTop = 0;
         } else {
           scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -1417,116 +1379,84 @@
     }
   }
 
-  /**
-   * Handle thread close from ThreadBar
-   */
-  async function handleThreadClose(event: CustomEvent<{ sessionId: string }>) {
-    const { sessionId } = event.detail;
-    await closeThread(sessionId);
-  }
-
-  /**
-   * Close a thread and terminate its session
-   */
-  async function closeThread(sessionId: string) {
-    const state = get(threadStore);
-    const threadToClose = state.threads.find(t => t.sessionId === sessionId);
-
-    if (!threadToClose) return;
-
-    // If this is the last thread, create a new one first
-    if (state.threads.length <= 1) {
-      const countBefore = get(threadStore).threads.length;
-      await createNewThread();
-      const countAfter = get(threadStore).threads.length;
-      if (countAfter <= countBefore) {
-        console.error('[App] Failed to create replacement thread, aborting close');
-        return;
-      }
-    }
-
-    // Terminate the session in backend
+  async function chooseWorkingDirectory(): Promise<void> {
+    if (platform.platformName !== 'desktop' || !activeSessionId || isProcessing) return;
+    const targetSessionId = activeSessionId;
+    const previousWorkingDirectory = currentWorkingDirectory;
+    workingDirectoryError = null;
     try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        defaultPath: currentWorkingDirectory,
+      });
+      if (typeof selected !== 'string' || !selected) return;
+
       const c = await getInitializedUIClient();
-      await c.serviceRequest('session.close', { sessionId });
+      const response = await c.serviceRequest<{
+        success: boolean;
+        workingDirectory?: string;
+        entry?: ThreadIndexEntry;
+      }>('session.setWorkingDirectory', {
+        sessionId: targetSessionId,
+        workingDirectory: selected,
+      });
+      if (response.entry) threadStore.mergeThread(response.entry);
+      if (
+        response.workingDirectory
+        && response.workingDirectory !== previousWorkingDirectory
+      ) {
+        previewStore.clearSession(targetSessionId);
+      }
+      if (response.workingDirectory && activeSessionId === targetSessionId) {
+        currentWorkingDirectory = response.workingDirectory;
+      }
     } catch (error) {
-      console.error(`[App] Failed to close session ${sessionId}:`, error);
+      console.error('[App] Failed to change working folder:', error);
+      const detail = error instanceof Error ? error.message : String(error);
+      workingDirectoryError = `${t('Failed to change working folder')}: ${detail}`;
+      if (workingDirectoryErrorTimer) clearTimeout(workingDirectoryErrorTimer);
+      workingDirectoryErrorTimer = setTimeout(() => {
+        workingDirectoryError = null;
+        workingDirectoryErrorTimer = null;
+      }, 5000);
     }
+  }
 
-    // Remove thread state
-    threadStates.delete(sessionId);
-
-    // Close thread in store (this handles switching to another thread)
+  /** Soft-delete a thread and retain its durable history for Undo. */
+  async function closeThread(sessionId: string) {
+    const c = await getInitializedUIClient();
+    const result = await c.serviceRequest<{ status: 'deleted' | 'requires-confirmation' }>(
+      'session.delete', { sessionId },
+    );
+    if (result.status === 'requires-confirmation') {
+      throw new Error('This conversation is running. Stop it before deleting.');
+    }
     threadStore.closeThread(sessionId);
-
-    // Update active session
-    const newActiveThread = threadStore.getActiveThread();
-    if (newActiveThread) {
-      activeSessionId = newActiveThread.sessionId;
-      threadRouter.setActiveSession(activeSessionId);
-      loadThreadState(newActiveThread.sessionId);
-    }
-
-    // Update session limits
-    await updateSessionLimits();
-
-    console.log(`[App] Closed thread: ${sessionId}`);
+    previewStore.removeSession(sessionId);
+    const next = threadStore.getActiveThread();
+    if (next) await switchToThread(next.sessionId);
+    else await createNewThread();
   }
 
-  /**
-   * Request a per-session persona mode switch for the active thread.
-   * Backend is the source of truth — we do NOT flip the UI optimistically.
-   * The tab commits its mode only when a ModeChanged{applied:true} event
-   * arrives (see threadRouter.onChannel). Deferred switches surface as a
-   * pending state until the running task completes.
-   */
-  async function setSessionMode(mode: AgentMode) {
-    if (!activeSessionId || !client) return;
-    if (($activeThread?.mode ?? DEFAULT_MODE) === mode && !$activeThread?.pendingMode) return;
-    try {
-      await client.submitOp(
-        { type: 'SetSessionMode', mode },
-        { sessionId: activeSessionId },
-      );
-    } catch (error) {
-      console.error('Failed to set session mode:', error);
-    }
-  }
-
-  /**
-   * Handle new thread button click from ThreadBar
-   */
-  async function handleNewThread() {
-    if (activeSessionId) {
-      saveThreadState(activeSessionId);
-    }
-    await createNewThread();
-  }
-
-  /**
-   * Handle event for a specific session (background thread)
-   */
-  function handleEventForSession(event: Event, sessionId: string) {
+  function handleEventForSession(
+    event: Event,
+    sessionId: string,
+    attachDedupeBudget?: MessageDedupeBudget,
+  ) {
     const thread = threadStore.getThread(sessionId);
     if (!thread) return;
 
-    let state = threadStates.get(sessionId);
-    if (!state) {
-      state = {
-        messages: [],
-        processedEvents: [],
-        inputText: '',
-        isProcessing: false,
-        currentTabId: -1,
-        eventProcessor: new EventProcessor(sessionId),
-      };
-      threadStates.set(sessionId, state);
-    }
+    const state = thread.conversation;
+    const processor = state.eventProcessor ?? new EventProcessor(sessionId);
 
-    // Process event for this thread's state
-    const processed = state.eventProcessor.processEvent(event);
+    const processed = processor.processEvent(event);
     if (processed) {
-      state.processedEvents = [...state.processedEvents, processed];
+      if (!consumeAttachMessageDuplicate(attachDedupeBudget, processed)) {
+        state.timeline = upsertTimelineEvent(state.timeline, processed, 'live');
+      }
+      state.timeline = noteDelivery(state.timeline, event.id);
     }
 
     // Update processing state
@@ -1537,117 +1467,256 @@
       state.isProcessing = false;
     }
 
-    threadStates.set(sessionId, state);
+    threadStore.setConversation(sessionId, { ...state, eventProcessor: processor });
   }
 
-  /**
-   * Handle session terminated event
-   */
   function handleSessionTerminated(sessionId: string) {
     const thread = threadStore.getThread(sessionId);
-    if (thread) {
-      console.log(`[App] Session ${sessionId} terminated, removing thread`);
-      threadStates.delete(sessionId);
-      threadStore.closeThread(sessionId);
-
-      const newActiveThread = threadStore.getActiveThread();
-      if (newActiveThread) {
-        activeSessionId = newActiveThread.sessionId;
-        threadRouter.setActiveSession(activeSessionId);
-        loadThreadState(newActiveThread.sessionId);
-      } else {
-        createNewThread();
-      }
-    }
-
-    updateSessionLimits();
+    if (thread) threadStore.setRuntime(sessionId, { ...thread.runtime, state: 'suspended' });
   }
 
-  /**
-   * Update session limit state
-   */
-  async function updateSessionLimits() {
+  async function setViewedAndAttach(sessionId: string): Promise<void> {
+    await viewedSession.select(sessionId);
+  }
+
+  async function retryHydration(): Promise<void> {
+    if (!activeSessionId) return;
+    const c = await getInitializedUIClient();
     try {
-      const c = await getInitializedUIClient();
-      const response = await c.serviceRequest<{ canCreateSession?: boolean }>('session.getActiveCount');
-      canCreateThread = response?.canCreateSession ?? true;
-      maxSessionsReached = !canCreateThread;
+      await c.serviceRequest('session.hydrate', { sessionId: activeSessionId });
+      await setViewedAndAttach(activeSessionId);
     } catch (error) {
-      console.error('[App] Failed to update session limits:', error);
+      console.error('[App] Hydration retry failed:', error);
+    }
+  }
+
+  function resendUnknown(clientMessageId: string, text: string): void {
+    if (!activeSessionId) return;
+    threadStore.dismissSubmission(activeSessionId, clientMessageId);
+    void sendMessage(text);
+  }
+
+  function startSurfaceHeartbeat(): void {
+    stopSurfaceHeartbeat();
+    if (document.visibilityState !== 'visible') return;
+    surfaceHeartbeat = setInterval(() => {
+      if (!surfaceLease || !client) return;
+      void client.serviceRequest('session.heartbeat', {
+        surfaceId,
+        leaseId: surfaceLease.leaseId,
+      }).catch(() => stopSurfaceHeartbeat());
+    }, 20_000);
+  }
+
+  function stopSurfaceHeartbeat(): void {
+    if (surfaceHeartbeat) clearInterval(surfaceHeartbeat);
+    surfaceHeartbeat = null;
+  }
+
+  async function releaseSurface(): Promise<void> {
+    await viewedSession.clear();
+  }
+
+  function handleSurfaceVisibility(): void {
+    if (document.visibilityState === 'visible' && activeSessionId) {
+      void setViewedAndAttach(activeSessionId);
+    } else {
+      void releaseSurface();
     }
   }
 
   /**
-   * Update thread title based on first user message
+   * Preserve every thread event that arrives across the attach request's
+   * snapshot/replay boundary. Once attach commits, replay-covered events are
+   * discarded by cursor and the remaining live tail is applied in arrival
+   * order. This is deliberately the one path used for active and background
+   * conversations.
    */
-  function updateThreadTitleFromMessage(message: string) {
-    const activeThread = threadStore.getActiveThread();
-    if (activeThread && activeThread.title === 'New Thread') {
-      const title = message.length > 30 ? message.substring(0, 30) + '...' : message;
-      threadStore.updateThreadTitle(activeThread.sessionId, title);
+  function processThreadChannelEvent(
+    channelEvent: ChannelEvent,
+    attachDedupeBudget?: MessageDedupeBudget,
+  ): void {
+    const sessionId = channelEvent.sessionId;
+    if (!sessionId) return;
+    const buffer = attachBuffers.get(sessionId);
+    if (buffer) {
+      if (buffer.length >= MAX_ATTACH_BUFFER_EVENTS) {
+        buffer.shift();
+        attachBufferOverflow.add(sessionId);
+      }
+      buffer.push(channelEvent);
+      return;
     }
+    if (handleThreadLifecycleEvent(channelEvent)) return;
+    if (channelEvent.msg.type.startsWith('BackgroundTask')) {
+      handleBackgroundTaskEvent(channelEvent.msg);
+      return;
+    }
+    const event: Event = {
+      id: `evt_${channelEvent.runtimeEpoch ?? 'live'}_${channelEvent.eventSeq ?? Date.now()}`,
+      msg: channelEvent.msg,
+      runtimeEpoch: channelEvent.runtimeEpoch,
+      eventSeq: channelEvent.eventSeq,
+    };
+    projectPreviewEvent(sessionId, event, {
+      isActive: sessionId === activeSessionId,
+      isWide: get(isWideMode),
+      isReplay: false,
+    });
+    if (sessionId === activeSessionId) handleEvent(event, attachDedupeBudget);
+    else handleEventForSession(event, sessionId, attachDedupeBudget);
+    updateAttachCursor(channelEvent);
+  }
+
+  function updateAttachCursor(event: ChannelEvent): void {
+    if (!event.sessionId || !event.runtimeEpoch || event.eventSeq === undefined) return;
+    threadStore.setAttach(event.sessionId, {
+      cursor: { runtimeEpoch: event.runtimeEpoch, eventSeq: event.eventSeq },
+    });
+  }
+
+  function handleThreadLifecycleEvent(event: ChannelEvent): boolean {
+    const sessionId = event.sessionId;
+    if (!sessionId) return false;
+    if (event.msg.type === 'session_runtime_state') {
+      const data = event.msg.data;
+      const current = threadStore.getThread(sessionId);
+      const runtime: SessionRuntimeView = {
+        state: data.state,
+        awaitingInputCount: data.awaitingInputCount,
+        awaitingInputKinds: data.awaitingInputKinds,
+        durability: data.durability,
+        durabilityReason: data.durabilityReason,
+        lastFailure: data.lastFailure,
+      };
+      if (current) {
+        threadStore.setRuntime(sessionId, runtime);
+      } else {
+        void loadUnknownThread(sessionId, runtime);
+      }
+      if (sessionId === activeSessionId) isProcessing = data.state === 'running';
+      if (data.state === 'idle' && threadStore.getThread(sessionId)?.attach.replayTruncated) {
+        void restoreConversationHistory(sessionId);
+      }
+      updateAttachCursor(event);
+      return true;
+    }
+    if (event.msg.type === 'session_submission_state') {
+      const data = event.msg.data;
+      threadStore.settleSubmission(sessionId, data.clientMessageId, data.state,
+        data.submissionId, data.reason);
+      updateAttachCursor(event);
+      return true;
+    }
+    if (event.msg.type === 'browser_attention_required') {
+      if (threadStore.getThread(sessionId)) {
+        threadStore.setAttention(sessionId, event.msg.data);
+      } else {
+        void loadUnknownThread(sessionId).then(() => threadStore.setAttention(sessionId, event.msg.data));
+      }
+      updateAttachCursor(event);
+      return true;
+    }
+    return false;
+  }
+
+  function loadUnknownThread(sessionId: string, runtime?: SessionRuntimeView): Promise<void> {
+    const existing = unknownThreadFlights.get(sessionId);
+    if (existing) return existing;
+    const flight = (async () => {
+      if (!client) return;
+      try {
+        const response = await client.serviceRequest<{ entry: ThreadIndexEntry }>(
+          'session.get', { sessionId },
+        );
+        threadStore.mergeThread({ ...response.entry, ...(runtime ? { runtime } : {}) });
+      } catch {
+        threadStore.closeThread(sessionId);
+        previewStore.removeSession(sessionId);
+      }
+    })();
+    unknownThreadFlights.set(sessionId, flight);
+    void flight.finally(() => {
+      if (unknownThreadFlights.get(sessionId) === flight) unknownThreadFlights.delete(sessionId);
+    });
+    return flight;
+  }
+
+  function handleIndexChanged(data: Extract<import('@/core/protocol/events').EventMsg,
+    { type: 'session_index_changed' }>['data']): void {
+    if (data.change === 'soft-deleted' || data.change === 'purged') {
+      threadStore.closeThread(data.sessionId);
+      previewStore.removeSession(data.sessionId);
+      return;
+    }
+    if (data.entry) {
+      const known = threadStore.getThread(data.sessionId);
+      const workspaceChanged = known?.workspace?.workingDirectory
+        !== data.entry.workspace?.workingDirectory;
+      if (known || data.entry.pinned || data.sessionId === activeSessionId) {
+        threadStore.mergeThread(data.entry);
+        if (known && workspaceChanged) previewStore.clearSession(data.sessionId);
+        if (data.sessionId === activeSessionId) {
+          currentWorkingDirectory = data.entry.workspace?.workingDirectory;
+        }
+      } else {
+        threadStore.markPageDirty();
+      }
+      return;
+    }
+    if (!threadStore.getThread(data.sessionId)) void loadUnknownThread(data.sessionId);
   }
 </script>
 
-<!-- Single UI with theme-aware styling -->
-<div class="flex flex-col overflow-hidden p-4 {currentTheme}
-    {currentTheme === 'modern'
-      ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
-      : 'font-terminal bg-term-bg text-term-green'}"
-  role="log"
-  aria-label="Terminal output"
->
-        <!-- Multi-Thread Bar -->
-        {#if !isScheduledJobMode}
-          <ThreadBar
-            {canCreateThread}
-            {maxSessionsReached}
-            on:threadSelect={handleThreadSelect}
-            on:threadClose={handleThreadClose}
-            on:newThread={handleNewThread}
-          />
-        {/if}
+<svelte:window onkeydown={handlePreviewKey} />
 
+<!-- Single UI with theme-aware styling -->
+<div
+  class="relative flex min-h-0 flex-1 overflow-hidden {currentTheme}
+    {currentTheme === 'modern'
+    ? 'font-chat bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark'
+    : 'font-terminal bg-term-bg text-term-green'}"
+>
+  <div
+    class="flex min-w-0 basis-0 flex-col overflow-hidden p-4"
+    style:flex-grow={showWidePreview ? chatSplitPercent : 1}
+    role="log"
+    aria-label="Terminal output"
+  >
     <div class="flex flex-col flex-1 min-h-0 max-w-[1500px] mx-auto w-full">
         <!-- Status Line -->
         <div class="shrink-0 flex justify-between mb-2">
-          <div class="flex items-center space-x-2">
+          <!-- In narrow mode AppShell renders a floating menu button at the
+               top-left; pad the title so it sits to the right of that button
+               instead of underneath it. -->
+          <div class="flex items-center space-x-2 {!$isWideMode ? 'pl-10' : ''}">
             <TerminalMessage type="system" content={platform.platformName === 'extension' ? $_t("WorkX (Alpha)") : $_t("WorkX: Your personal AI (Alpha)")} />
             {#if zoomLevel !== 100}
-              <button onclick={resetZoom} class="text-sm leading-relaxed font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
+              <button onclick={resetZoom} class="text-sm leading-ui font-[inherit] opacity-70 hover:opacity-100 cursor-pointer {currentTheme === 'modern' ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}" title="Reset zoom to 100%">
                 [{zoomLevel}%] ✕
               </button>
             {/if}
           </div>
           <div class="flex items-center space-x-2">
-            <BackgroundTasksBadge />
-            {#if platform.platformName !== 'extension' && activeSessionId}
-              {@const activeMode = $activeThread?.mode ?? DEFAULT_MODE}
-              {@const pendingMode = $activeThread?.pendingMode ?? null}
-              <div class="flex items-center gap-1" role="group" aria-label={$_t("Agent mode")}>
-                {#each Object.values(MODES).filter((m) => !m.agentTypes || m.agentTypes.includes('workx') || m.agentTypes.includes('workx-server')) as modeSpec (modeSpec.id)}
-                  {@const isActive = activeMode === modeSpec.id && !pendingMode}
-                  {@const isPending = pendingMode === modeSpec.id}
-                  <button
-                    type="button"
-                    onclick={() => setSessionMode(modeSpec.id)}
-                    title={isPending ? $_t("Switching after current task…") : $_t("Switch agent mode")}
-                    aria-pressed={isActive}
-                    class="text-xs px-2 py-0.5 rounded font-[inherit] cursor-pointer transition-opacity
-                      {isActive
-                        ? (currentTheme === 'modern'
-                            ? 'bg-chat-accent/15 text-chat-accent dark:text-chat-accent-dark font-semibold'
-                            : 'bg-[rgba(34,197,94,0.15)] border border-term-dim-green text-term-bright-green')
-                        : (currentTheme === 'modern'
-                            ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:opacity-100 opacity-70'
-                            : 'text-term-dim-green hover:text-term-green opacity-70 hover:opacity-100')}
-                      {isPending ? 'animate-pulse' : ''}"
-                  >
-                    {modeSpec.label}{#if isPending}…{/if}
-                  </button>
-                {/each}
-              </div>
+            {#if platform.platformName === 'desktop' && activePreviewState?.items.length}
+              <button
+                bind:this={previewToggleButton}
+                type="button"
+                class="relative rounded border px-2 py-1 text-sm opacity-80 hover:opacity-100
+                  {currentTheme === 'modern'
+                    ? 'border-chat-border dark:border-chat-border-dark hover:bg-chat-card-hover dark:hover:bg-chat-card-hover-dark'
+                    : 'border-term-dim-green hover:bg-term-green/10'}"
+                onclick={toggleActivePreview}
+                aria-expanded={activePreviewState.open}
+                aria-label="Toggle local file preview"
+              >
+                Preview ({activePreviewState.items.length})
+                {#if activePreviewState.unread}
+                  <span class="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-blue-500" aria-label="New preview"></span>
+                {/if}
+              </button>
             {/if}
+            <BackgroundTasksBadge />
             {#if isProcessing}
               <TerminalMessage type="warning" content={$_t("[PROCESSING]")} />
             {/if}
@@ -1720,8 +1789,94 @@
           </div>
         {/if}
 
+        {#if $activeThread?.runtime.lastFailure?.kind === 'hydration'}
+          <div class="mb-2 rounded px-3 py-2 text-sm flex items-center justify-between gap-3 bg-red-500/10 text-red-600 dark:text-red-300" role="alert">
+            <span>{$_t("This conversation could not be started. Its saved history is unchanged.")}</span>
+            <button class="shrink-0 underline border-none bg-transparent text-inherit cursor-pointer" onclick={() => void retryHydration()}>
+              {$_t("Retry")}
+            </button>
+          </div>
+        {/if}
+
+        {#if $activeThread?.attach.error}
+          <div class="mb-2 rounded px-3 py-2 text-sm flex items-center justify-between gap-3 bg-red-500/10 text-red-600 dark:text-red-300" role="alert">
+            <span>{$activeThread.attach.error.message}</span>
+            {#if $activeThread.attach.error.retryable}
+              <button class="shrink-0 underline border-none bg-transparent text-inherit cursor-pointer" onclick={() => activeSessionId && void setViewedAndAttach(activeSessionId)}>
+                {$_t("Retry")}
+              </button>
+            {/if}
+          </div>
+        {/if}
+
+        {#if $activeThread?.attach.replayTruncated}
+          <div class="mb-2 rounded px-3 py-2 text-sm flex items-center justify-between gap-3 bg-amber-500/10 text-amber-700 dark:text-amber-300" role="status">
+            <span>{$_t("Some live updates were too old to replay. Reload from the saved conversation snapshot.")}</span>
+            <button class="shrink-0 underline border-none bg-transparent text-inherit cursor-pointer" onclick={() => activeSessionId && void restoreConversationHistory(activeSessionId)}>
+              {$_t("Reload")}
+            </button>
+          </div>
+        {/if}
+
+        {#if $activeThread?.runtime.durability === 'degraded'}
+          <div class="mb-2 rounded px-3 py-2 text-sm bg-amber-500/10 text-amber-700 dark:text-amber-300" role="status">
+            {$_t("The task result is available, but its final recovery marker could not be saved. Check storage before restarting.")}
+          </div>
+        {/if}
+
+        {#each $activeThread?.pendingSubmissions ?? [] as pending (pending.clientMessageId)}
+          {#if pending.status === 'queued'}
+            <div class="mb-2 rounded px-3 py-2 text-sm bg-blue-500/10 text-blue-700 dark:text-blue-300" role="status">
+              {pending.phase === 'capacity'
+                ? $_t("Waiting for another conversation to release runtime capacity…")
+                : $_t("Message queued while this conversation starts…")}
+              {#if pending.position} <span class="opacity-70">#{pending.position}</span>{/if}
+            </div>
+          {:else if pending.status === 'delivery-unknown'}
+            <div class="mb-2 rounded px-3 py-2 text-sm flex items-center justify-between gap-3 bg-amber-500/10 text-amber-700 dark:text-amber-300" role="alert">
+              <span>{$_t("Delivery is uncertain after reconnecting. Resending may run the request twice.")}</span>
+              {#if pending.text}
+                <button class="shrink-0 underline border-none bg-transparent text-inherit cursor-pointer" onclick={() => resendUnknown(pending.clientMessageId, pending.text)}>
+                  {$_t("Resend anyway")}
+                </button>
+              {/if}
+            </div>
+          {:else if pending.status === 'failed'}
+            <div class="mb-2 rounded px-3 py-2 text-sm flex items-center justify-between gap-3 bg-red-500/10 text-red-600 dark:text-red-300" role="alert">
+              <span>{pending.reason ?? $_t("Message failed before it was accepted.")}</span>
+              {#if pending.text}
+                <button class="shrink-0 underline border-none bg-transparent text-inherit cursor-pointer" onclick={() => resendUnknown(pending.clientMessageId, pending.text)}>
+                  {$_t("Retry")}
+                </button>
+              {/if}
+            </div>
+          {/if}
+        {/each}
+
         <!-- Messages - scrollable area -->
         <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4" bind:this={scrollContainer}>
+          {#if $activeThread?.attach.historyError}
+            <div class="mx-3 mt-2 rounded px-3 py-2 text-sm flex items-center justify-between gap-3 bg-red-500/10 text-red-600 dark:text-red-300" role="alert">
+              <span>{$activeThread.attach.historyError.message}</span>
+              {#if $activeThread.attach.historyError.retryable}
+                <button class="shrink-0 underline border-none bg-transparent text-inherit cursor-pointer" onclick={loadOlderHistory}>
+                  {$_t("Retry")}
+                </button>
+              {/if}
+            </div>
+          {/if}
+          {#if activeSessionId && $activeThread?.attach.historyCursor != null}
+            <div class="flex justify-center py-2">
+              <button
+                type="button"
+                class="text-sm opacity-70 hover:opacity-100 underline"
+                disabled={loadingOlderHistory}
+                onclick={loadOlderHistory}
+              >
+                {loadingOlderHistory ? $_t('Loading history...') : $_t('Load earlier messages')}
+              </button>
+            </div>
+          {/if}
           {#if showWelcome}
             <div class="welcome-screen mb-6 max-w-full
               {currentTheme === 'modern'
@@ -1733,11 +1888,11 @@
                 <p class="m-0 mb-2 font-semibold text-lg
                   {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark text-xl' : 'text-term-bright-green'}">{$_t("Hello $NAME$", { substitutions: [$userStore.userName || $userStore.userEmail] })}</p>
               {/if}
-              <pre class="welcome-ascii m-0 font-terminal text-[0.4rem] leading-none whitespace-pre">{#each welcomeAsciiLines as line, index (index)}<span class={line.color}>{line.text}</span>{/each}</pre>
-              <p class="m-0 text-[0.95rem] text-term-blue">
+              <pre class="welcome-ascii m-0 font-terminal text-ascii leading-none whitespace-pre">{#each welcomeAsciiLines as line, index (index)}<span class={line.color}>{line.text}</span>{/each}</pre>
+              <p class="m-0 text-base text-term-blue">
                 {platform.platformName === 'extension' ? $_t("General in-browser AI agent for work tasks") : $_t("Your personal AI assistant")}
               </p>
-              <p class="m-0 text-[0.95rem] text-term-dim-green">
+              <p class="m-0 text-base text-term-dim-green">
                 {$_t("Developed and supported by AI Republic")}
               </p>
               <a
@@ -1751,12 +1906,8 @@
             </div>
           {/if}
 
-          {#each messages as message (message.timestamp)}
-            <TerminalMessage type={message.type === 'user' ? 'input' : getMessageType(message)} content={message.content} />
-          {/each}
-
           {#each processedEvents as event (event.id)}
-            <EventDisplay {event} />
+            <EventDisplay {event} onClick={handleProcessedEventClick} />
           {/each}
         </div>
 
@@ -1764,6 +1915,15 @@
         <div class="shrink-0 border-t {currentTheme === 'modern' ? 'border-chat-border dark:border-chat-border-dark' : 'border-term-dim-green'}">
           <!-- Input area -->
           <div class="pr-2 py-2 pl-0">
+            {#if workingDirectoryError}
+              <div
+                class="mb-2 ml-2 rounded-lg border px-3 py-2 text-sm
+                  {currentTheme === 'modern'
+                    ? 'border-chat-status-error/30 bg-chat-status-error/10 text-chat-status-error dark:border-chat-status-error-dark/30 dark:bg-chat-status-error-dark/10 dark:text-chat-status-error-dark'
+                    : 'border-term-red bg-[rgba(40,0,0,0.95)] text-term-red'}"
+                role="alert"
+              >{workingDirectoryError}</div>
+            {/if}
             <MessageInput
               bind:value={inputText}
               bind:suggestion={nextSuggestion}
@@ -1777,6 +1937,10 @@
               onTabSelected={handleTabSelected}
               onCommandOutput={handleCommandOutput}
               onOpenRewindSelector={() => showRewindSelector = true}
+              workingDirectory={currentWorkingDirectory}
+              onChooseWorkingDirectory={platform.platformName === 'desktop'
+                ? chooseWorkingDirectory
+                : undefined}
             />
           </div>
 
@@ -1784,12 +1948,62 @@
       </div>
   </div>
 
+  {#if showWidePreview && activeSessionId && activePreviewState}
+    <PreviewResizeHandle
+      value={chatSplitPercent}
+      theme={currentTheme}
+      onChange={setChatSplitPercent}
+    />
+    <aside
+      class="min-w-0 basis-0 shrink-0 shadow-xl"
+      style:flex-grow={100 - chatSplitPercent}
+    >
+      <PreviewPanel
+        state={activePreviewState}
+        theme={currentTheme}
+        onClose={closeActivePreview}
+        onSelectItem={(itemId) => previewStore.selectItem(activeSessionId!, itemId)}
+        onSelectView={(view) => previewStore.selectView(activeSessionId!, view)}
+      />
+    </aside>
+  {/if}
+</div>
+
   <!-- Track 15: rewind turn-selector overlay (command-invoked) -->
   <MessageSelector
     show={showRewindSelector}
+    sessionId={activeSessionId ?? ''}
     onClose={() => showRewindSelector = false}
     onRewound={handleRewound}
   />
+
+  {#if platform.platformName === 'desktop' && !$isWideMode && activeSessionId && activePreviewState?.open}
+    <button
+      type="button"
+      class="fixed inset-0 z-40 bg-black/50"
+      transition:fade={{ duration: 150 }}
+      onclick={closeActivePreview}
+      aria-label="Close preview"
+    ></button>
+    <div
+      bind:this={previewDrawer}
+      class="fixed inset-y-0 right-0 z-50 max-w-[720px] shadow-2xl outline-none"
+      style="width: min(92vw, 720px)"
+      transition:fly={{ x: 760, duration: 200 }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Local file preview"
+      tabindex="-1"
+    >
+      <PreviewPanel
+        state={activePreviewState}
+        theme={currentTheme}
+        onClose={closeActivePreview}
+        onSelectItem={(itemId) => previewStore.selectItem(activeSessionId!, itemId)}
+        onSelectView={(view) => previewStore.selectView(activeSessionId!, view)}
+      />
+    </div>
+  {/if}
 
 <style>
   /* Animations - kept as they use @keyframes */

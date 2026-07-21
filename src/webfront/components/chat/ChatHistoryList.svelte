@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { type ConversationItem, type Cursor } from '@/storage/rollout';
-  import { listConversations as listConversationsPlatform } from '../../lib/conversationList';
+  import type { ThreadListItem } from '@/core/registry/types';
+  import { getInitializedUIClient } from '@/core/messaging';
   import { uiTheme } from '../../stores/themeStore';
   import { _t } from '../../lib/i18n';
 
@@ -9,7 +9,7 @@
   let {
     onSelectConversation = () => {},
     onClose = () => {},
-    initialPageSize = 50,
+    initialPageSize = 10,
     morePageSize = 10,
   }: {
     onSelectConversation?: (sessionId: string) => void;
@@ -21,10 +21,10 @@
   } = $props();
 
   // State
-  let conversations: ConversationItem[] = $state([]);
+  let conversations: ThreadListItem[] = $state([]);
   let isLoading = $state(true);
   let error: string | null = $state(null);
-  let nextCursor: Cursor | undefined = $state(undefined);
+  let nextCursor: string | null = $state(null);
   let hasMoreOlder = $state(false);
   let isLoadingMore = $state(false);
 
@@ -36,11 +36,11 @@
 
   // Categorized conversations
   interface CategorizedConversations {
-    today: ConversationItem[];
-    yesterday: ConversationItem[];
-    pastWeek: ConversationItem[];
-    pastMonth: ConversationItem[];
-    older: ConversationItem[];
+    today: ThreadListItem[];
+    yesterday: ThreadListItem[];
+    pastWeek: ThreadListItem[];
+    pastMonth: ThreadListItem[];
+    older: ThreadListItem[];
   }
 
   let categorized = $derived(categorizeConversations(conversations));
@@ -54,40 +54,18 @@
     error = null;
 
     try {
-      console.log('[ChatHistoryList] Starting to load conversations...');
-
-      // Add timeout to prevent infinite loading
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout loading conversations')), 5000);
-      });
-
-      // Load conversations with timeout
-      const page = await Promise.race([
-        listConversationsPlatform(initialPageSize),
-        timeoutPromise,
-      ]);
-
-      conversations = page.items || [];
-      nextCursor = page.nextCursor;
-
-      // Check if there are potentially more older conversations
-      const thirtyDaysAgo = Date.now() - (30 * MS_PER_DAY);
-      const hasOlderConversations = conversations.some(c => c.updated < thirtyDaysAgo);
-      hasMoreOlder = page.nextCursor !== undefined || hasOlderConversations;
-
-      console.log('[ChatHistoryList] Loaded', conversations.length, 'conversations');
+      const client = await getInitializedUIClient();
+      const page = await client.serviceRequest<{
+        entries: ThreadListItem[];
+        nextCursor: string | null;
+      }>('session.list', { limit: initialPageSize });
+      conversations = page.entries ?? [];
+      nextCursor = page.nextCursor ?? null;
+      hasMoreOlder = nextCursor !== null;
     } catch (err) {
       console.error('[ChatHistoryList] Failed to load conversations:', err);
       const errMsg = err instanceof Error ? err.message : String(err);
-      if (errMsg.includes('Timeout')) {
-        error = 'Loading timed out';
-      } else if (errMsg.includes('provider') || errMsg.includes('tauri') || errMsg.includes('invoke')) {
-        error = 'Storage not available';
-      } else if (errMsg.includes('database') || errMsg.includes('Database') || errMsg.includes('IDB') || errMsg.includes('SQL')) {
-        error = 'Database error';
-      } else {
-        error = 'Failed to load';
-      }
+      error = errMsg || 'Failed to load';
       conversations = [];
     } finally {
       isLoading = false;
@@ -100,10 +78,15 @@
     isLoadingMore = true;
 
     try {
-      const page = await listConversationsPlatform(morePageSize, nextCursor);
-      conversations = [...conversations, ...page.items];
-      nextCursor = page.nextCursor;
-      hasMoreOlder = page.nextCursor !== undefined;
+      const client = await getInitializedUIClient();
+      const page = await client.serviceRequest<{
+        entries: ThreadListItem[];
+        nextCursor: string | null;
+      }>('session.list', { limit: morePageSize, cursor: nextCursor });
+      const known = new Set(conversations.map((item) => item.sessionId));
+      conversations = [...conversations, ...page.entries.filter((item) => !known.has(item.sessionId))];
+      nextCursor = page.nextCursor ?? null;
+      hasMoreOlder = nextCursor !== null;
     } catch (err) {
       console.error('[ChatHistoryList] Failed to load more conversations:', err);
     } finally {
@@ -111,7 +94,7 @@
     }
   }
 
-  function categorizeConversations(items: ConversationItem[]): CategorizedConversations {
+  function categorizeConversations(items: ThreadListItem[]): CategorizedConversations {
     const now = Date.now();
     const todayStart = getStartOfDay(now);
     const yesterdayStart = todayStart - MS_PER_DAY;
@@ -127,7 +110,7 @@
     };
 
     for (const item of items) {
-      const updated = item.updated;
+      const updated = item.lastActiveAt;
 
       if (updated >= todayStart) {
         result.today.push(item);
@@ -151,19 +134,8 @@
     return date.getTime();
   }
 
-  function getDisplayTitle(item: ConversationItem): string {
-    // Use title from sessionMeta if available
-    if (item.sessionMeta?.title) {
-      return item.sessionMeta.title;
-    }
-
-    // Fallback: generate random 3-letter suffix
-    const chars = 'abcdefghijklmnopqrstuvwxyz';
-    const randomSuffix = Array.from({ length: 3 }, () =>
-      chars.charAt(Math.floor(Math.random() * chars.length))
-    ).join('');
-
-    return `conversation_${randomSuffix}`;
+  function getDisplayTitle(item: ThreadListItem): string {
+    return item.title || $_t('Untitled conversation');
   }
 
   function formatTimeAgo(timestamp: number): string {
@@ -189,6 +161,18 @@
     onClose();
   }
 </script>
+
+{#snippet runtimeBadge(item: ThreadListItem)}
+  {#if item.runtime.awaitingInputCount > 0}
+    <span class="w-4 h-4 shrink-0 rounded-full inline-flex items-center justify-center bg-amber-400 text-black text-2xs font-bold"
+      title={$_t('Waiting for your input')} aria-label={$_t('Waiting for your input')}>!</span>
+  {:else}
+    <span class="w-2 h-2 shrink-0 rounded-full
+      {item.runtime.state === 'running' ? 'bg-emerald-400 animate-pulse'
+        : item.runtime.lastFailure ? 'bg-red-400' : 'bg-slate-400/40'}"
+      title={item.runtime.state === 'running' ? $_t('Running') : undefined}></span>
+  {/if}
+{/snippet}
 
 <div class="max-h-[400px] overflow-y-auto min-w-[250px]
   {currentTheme === 'modern' ? 'bg-chat-tooltip dark:bg-chat-tooltip-dark' : ''}">
@@ -224,22 +208,23 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
               : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Today")}</div>
-          {#each categorized.today as item (item.id)}
+          {#each categorized.today as item (item.sessionId)}
             <button
               class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
                 {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
-              onclick={() => handleSelectConversation(item.id)}
+              onclick={() => handleSelectConversation(item.sessionId)}
             >
+              {@render runtimeBadge(item)}
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
                 {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
-              <span class="shrink-0 text-sm opacity-70
+              <span class="shrink-0 text-meta font-normal opacity-70
                 {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
-                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
+                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.lastActiveAt)}</span>
             </button>
           {/each}
         </div>
@@ -252,22 +237,23 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
               : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Yesterday")}</div>
-          {#each categorized.yesterday as item (item.id)}
+          {#each categorized.yesterday as item (item.sessionId)}
             <button
               class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
                 {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
-              onclick={() => handleSelectConversation(item.id)}
+              onclick={() => handleSelectConversation(item.sessionId)}
             >
+              {@render runtimeBadge(item)}
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
                 {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
-              <span class="shrink-0 text-sm opacity-70
+              <span class="shrink-0 text-meta font-normal opacity-70
                 {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
-                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
+                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.lastActiveAt)}</span>
             </button>
           {/each}
         </div>
@@ -280,22 +266,23 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
               : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Past Week")}</div>
-          {#each categorized.pastWeek as item (item.id)}
+          {#each categorized.pastWeek as item (item.sessionId)}
             <button
               class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
                 {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
-              onclick={() => handleSelectConversation(item.id)}
+              onclick={() => handleSelectConversation(item.sessionId)}
             >
+              {@render runtimeBadge(item)}
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
                 {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
-              <span class="shrink-0 text-sm opacity-70
+              <span class="shrink-0 text-meta font-normal opacity-70
                 {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
-                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
+                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.lastActiveAt)}</span>
             </button>
           {/each}
         </div>
@@ -308,22 +295,23 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
               : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Past Month")}</div>
-          {#each categorized.pastMonth as item (item.id)}
+          {#each categorized.pastMonth as item (item.sessionId)}
             <button
               class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
                 {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
-              onclick={() => handleSelectConversation(item.id)}
+              onclick={() => handleSelectConversation(item.sessionId)}
             >
+              {@render runtimeBadge(item)}
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
                 {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
-              <span class="shrink-0 text-sm opacity-70
+              <span class="shrink-0 text-meta font-normal opacity-70
                 {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
-                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
+                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.lastActiveAt)}</span>
             </button>
           {/each}
         </div>
@@ -336,22 +324,23 @@
             {currentTheme === 'modern'
               ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark bg-white/[0.03] border-b border-white/10'
               : 'text-term-dim-green bg-term-dim-green/5 border-b border-term-dim-green/20'}">{$_t("Older")}</div>
-          {#each categorized.older as item (item.id)}
+          {#each categorized.older as item (item.sessionId)}
             <button
               class="flex items-center justify-between gap-3 py-2.5 px-3 bg-transparent border-none cursor-pointer text-left w-full transition-colors duration-150
                 {currentTheme === 'modern'
                   ? 'border-b border-white/5 hover:bg-white/[0.08] active:bg-white/[0.12]'
                   : 'border-b border-term-dim-green/10 hover:bg-term-green/[0.08] active:bg-term-green/[0.12]'}"
-              onclick={() => handleSelectConversation(item.id)}
+              onclick={() => handleSelectConversation(item.sessionId)}
             >
+              {@render runtimeBadge(item)}
               <span class="flex-1 text-sm whitespace-nowrap overflow-hidden text-ellipsis
                 {currentTheme === 'modern'
                   ? 'text-chat-tooltip-text dark:text-chat-tooltip-text-dark font-chat'
                   : 'text-term-bright-green font-terminal'}">{getDisplayTitle(item)}</span>
-              <span class="shrink-0 text-sm opacity-70
+              <span class="shrink-0 text-meta font-normal opacity-70
                 {currentTheme === 'modern'
                   ? 'text-chat-text-secondary dark:text-chat-text-secondary-dark font-chat'
-                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.updated)}</span>
+                  : 'text-term-dim-green font-terminal'}">{formatTimeAgo(item.lastActiveAt)}</span>
             </button>
           {/each}
 

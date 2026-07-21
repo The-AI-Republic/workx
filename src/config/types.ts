@@ -167,6 +167,17 @@ export interface IModelConfig {
   modelKey: string;
 
   /**
+   * Deterministic OpenHub route for this model. `modelSlug` identifies the
+   * canonical model owner while `providerSlug` selects the serving endpoint;
+   * these are intentionally independent (for example, an Anthropic model may
+   * be served by Amazon Bedrock).
+   */
+  openHubRoute?: {
+    modelSlug: string;
+    providerSlug: string;
+  };
+
+  /**
    * Model creator/developer
    * The company that developed/trained the model
    * DISTINCT from the provider hosting the model API
@@ -441,11 +452,9 @@ export interface IUserPreferences {
    */
   defaultMode?: AgentMode;
   /**
-   * Absolute path to the user-selected project directory ("workspace root")
-   * for code mode (desktop only). All read/edit/write/grep/glob file tools
-   * operate inside this directory and treat it as the security jail anchor.
-   * Unset ⇒ code-mode file/search tools are disabled (never default to the
-   * app's own cwd). Selected via a folder picker; persisted here.
+   * Default working folder copied into each new desktop session. Existing
+   * sessions retain their own folder when this preference changes. If unset,
+   * new sessions start without a selected working folder.
    */
   workspaceRoot?: string;
   /**
@@ -568,6 +577,8 @@ export interface IToolsConfig {
   // Agent execution tool toggles
   execCommand?: boolean;
   webSearch?: boolean;
+  /** Enable desktop data-source analysis tools. Management UI remains available when false. */
+  dataSources?: boolean;
   /**
    * Whether to use native provider web search when the model supports it.
    * - When true (default): Uses provider-side web search for capable models,
@@ -709,6 +720,7 @@ export interface IConfigService {
   // Core operations
   getConfig(): IAgentConfig;
   updateConfig(config: Partial<IAgentConfig>): IAgentConfig;
+  updateConfigAndPersist(config: Partial<IAgentConfig>): Promise<IAgentConfig>;
   resetConfig(preserveApiKeys?: boolean): IAgentConfig;
 
   // Model operations
@@ -745,10 +757,25 @@ export interface IExportData {
 // Event interfaces for config changes
 export interface IConfigChangeEvent {
   type: 'config-changed';
-  section: 'model' | 'efficientModel' | 'provider' | 'profile' | 'preferences' | 'cache' | 'extension' | 'security' | 'approval' | 'hooks' | 'tools' | 'policy' | 'enabledPlugins' | 'appServer';
+  section:
+    | 'model'
+    | 'efficientModel'
+    | 'provider'
+    | 'profile'
+    | 'preferences'
+    | 'cache'
+    | 'extension'
+    | 'security'
+    | 'approval'
+    | 'hooks'
+    | 'tools'
+    | 'policy'
+    | 'enabledPlugins'
+    | 'appServer';
   oldValue?: any;
   newValue: any;
   timestamp: number;
+  generation: number;
 }
 
 export interface IConfigEventEmitter {

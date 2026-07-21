@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Введите корректную команду"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Пожалуйста, обновите план, чтобы разблокировать самые передовые модели мира"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Порт 1455 занят. Пожалуйста, закройте все приложения, использующие этот порт, и попробуйте снова."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Обновить до Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Обновите, чтобы исследовать самые мощные модели в мире"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Обновите подписку, чтобы использовать самые мощные модели в мире"
   },
   "Use_Context_Menu": {
     "message": "Использовать контекстное меню:"

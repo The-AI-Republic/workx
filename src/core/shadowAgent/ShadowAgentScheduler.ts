@@ -31,6 +31,8 @@ export class ShadowAgentScheduler {
   private timeoutCount = 0;
   private fallbackCount = 0;
   private stopped = false;
+  private readonly pendingListeners = new Set<(pending: boolean) => void>();
+  private lastPending = false;
 
   constructor(options: {
     parentEngine: RepublicAgentEngine;
@@ -53,7 +55,17 @@ export class ShadowAgentScheduler {
     const job = this.createJob(resolved);
     this.applyQueuePolicy(job);
     this.pump();
+    this.notifyPendingBoundary();
     return job.promise;
+  }
+
+  hasPending(): boolean {
+    return this.active.size > 0 || this.queued.length > 0;
+  }
+
+  subscribePendingChanged(listener: (pending: boolean) => void): () => void {
+    this.pendingListeners.add(listener);
+    return () => this.pendingListeners.delete(listener);
   }
 
   shutdown(): void {
@@ -64,6 +76,7 @@ export class ShadowAgentScheduler {
     for (const job of this.active.values()) {
       job.abortController.abort();
     }
+    this.notifyPendingBoundary();
   }
 
   diagnostics(): ShadowAgentDiagnostics {
@@ -164,6 +177,7 @@ export class ShadowAgentScheduler {
         this.recordResult(result);
         job.resolve(result);
         this.pump();
+        this.notifyPendingBoundary();
       },
       (error) => {
         this.active.delete(job.request.runId);
@@ -171,6 +185,7 @@ export class ShadowAgentScheduler {
         this.recordResult(result);
         job.reject(error);
         this.pump();
+        this.notifyPendingBoundary();
       },
     );
   }
@@ -238,6 +253,19 @@ export class ShadowAgentScheduler {
       const byPriority = rank[a.request.priority] - rank[b.request.priority];
       return byPriority || a.queuedAt - b.queuedAt;
     });
+  }
+
+  private notifyPendingBoundary(): void {
+    const pending = this.hasPending();
+    if (pending === this.lastPending) return;
+    this.lastPending = pending;
+    for (const listener of this.pendingListeners) {
+      try {
+        listener(pending);
+      } catch (error) {
+        console.warn('[ShadowAgentScheduler] pending listener failed:', errorToMessage(error));
+      }
+    }
   }
 }
 

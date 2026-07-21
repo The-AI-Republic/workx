@@ -34,11 +34,11 @@
     {
       eyebrow: 'Step 3 of 3',
       title: 'Use desktop capabilities',
-      body: 'WorkX can run desktop-oriented workflows such as scheduled tasks, memory, skills, and code-mode workspaces when enabled.',
+      body: 'WorkX can run desktop-oriented workflows such as scheduled tasks, memory, skills, and local project work.',
       points: [
         'Use Scheduler for tasks that should run later.',
         'Enable Memory only when you want cross-conversation recall.',
-        'Set a workspace before using code-mode file tools.',
+        'Choose a working folder independently from General or Code mode.',
       ],
     },
   ];

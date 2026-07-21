@@ -123,10 +123,109 @@ describe.skipIf(!hasBetterSqlite3)('TSRolloutStorageProvider', () => {
       expect(result!.status).toBe('archived');
     });
 
+    it('updates metadata without deleting existing rollout items', async () => {
+      const initial = makeMetadata('r-title-update');
+      await provider.putMetadata(initial);
+      await provider.addItems('r-title-update', [
+        { timestamp: '2024-01-01T00:00:00Z', sequence: 0, type: 'response_item', payload: { text: 'question' } },
+        { timestamp: '2024-01-01T00:00:01Z', sequence: 1, type: 'response_item', payload: { text: 'answer' } },
+      ]);
+
+      await provider.putMetadata({
+        ...initial,
+        updated: initial.updated + 1,
+        sessionMeta: { ...initial.sessionMeta, title: 'Generated title' },
+      });
+
+      expect((await provider.getMetadata('r-title-update'))?.sessionMeta.title)
+        .toBe('Generated title');
+      expect((await provider.getMetadata('r-title-update'))?.itemCount).toBe(2);
+      expect((await provider.getItemsByRolloutId('r-title-update')).map((item) => item.sequence))
+        .toEqual([0, 1]);
+    });
+
     it('deletes metadata', async () => {
       await provider.putMetadata(makeMetadata('r-3'));
       await provider.deleteMetadata('r-3');
       expect(await provider.getMetadata('r-3')).toBeNull();
+    });
+
+    it('rejects deleting metadata while it still owns rollout items', async () => {
+      await provider.putMetadata(makeMetadata('r-restrict'));
+      await provider.addItems('r-restrict', [
+        { timestamp: '2024-01-01T00:00:00Z', sequence: 0, type: 'response_item', payload: {} },
+      ]);
+
+      await expect(provider.deleteMetadata('r-restrict')).rejects.toThrow(/FOREIGN KEY/);
+      expect(await provider.getMetadata('r-restrict')).not.toBeNull();
+      expect(await provider.getItemsByRolloutId('r-restrict')).toHaveLength(1);
+    });
+
+    it('atomically deletes complete rollouts', async () => {
+      await provider.putMetadata(makeMetadata('r-complete-delete'));
+      await provider.addItems('r-complete-delete', [
+        { timestamp: '2024-01-01T00:00:00Z', sequence: 0, type: 'response_item', payload: {} },
+      ]);
+
+      await provider.deleteRollouts(['r-complete-delete']);
+
+      expect(await provider.getMetadata('r-complete-delete')).toBeNull();
+      expect(await provider.getItemsByRolloutId('r-complete-delete')).toHaveLength(0);
+    });
+
+    it('migrates legacy cascade ownership without losing rollout items', async () => {
+      await provider.close();
+      const dbPath = path.join(tmpDir, 'rollouts', 'rollouts.db');
+      const { default: Database } = await import('better-sqlite3');
+      const legacyDb = new Database(dbPath);
+      legacyDb.exec(`
+        DROP TABLE rollout_items;
+        DROP TABLE rollout_metadata;
+        CREATE TABLE rollout_metadata (
+          id TEXT PRIMARY KEY,
+          created INTEGER NOT NULL,
+          updated INTEGER NOT NULL,
+          expires_at INTEGER,
+          session_meta TEXT NOT NULL,
+          item_count INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'active'
+        );
+        CREATE TABLE rollout_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          rollout_id TEXT NOT NULL REFERENCES rollout_metadata(id) ON DELETE CASCADE,
+          timestamp TEXT NOT NULL,
+          sequence INTEGER NOT NULL,
+          type TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          UNIQUE(rollout_id, sequence)
+        );
+      `);
+      const legacyMetadata = makeMetadata('legacy-cascade', { itemCount: 1 });
+      legacyDb.prepare(
+        `INSERT INTO rollout_metadata
+          (id, created, updated, expires_at, session_meta, item_count, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        legacyMetadata.id,
+        legacyMetadata.created,
+        legacyMetadata.updated,
+        null,
+        JSON.stringify(legacyMetadata.sessionMeta),
+        legacyMetadata.itemCount,
+        legacyMetadata.status,
+      );
+      legacyDb.prepare(
+        `INSERT INTO rollout_items (rollout_id, timestamp, sequence, type, payload)
+         VALUES (?, ?, ?, ?, ?)`,
+      ).run('legacy-cascade', '2024-01-01T00:00:00Z', 0, 'response_item', '{}');
+      legacyDb.close();
+
+      provider = new TSRolloutStorageProvider(tmpDir);
+      await provider.initialize();
+
+      expect(await provider.getItemsByRolloutId('legacy-cascade')).toHaveLength(1);
+      await expect(provider.deleteMetadata('legacy-cascade')).rejects.toThrow(/FOREIGN KEY/);
+      expect(await provider.getItemsByRolloutId('legacy-cascade')).toHaveLength(1);
     });
 
     it('getAllMetadata returns all entries', async () => {
@@ -152,6 +251,17 @@ describe.skipIf(!hasBetterSqlite3)('TSRolloutStorageProvider', () => {
   // ---------------------------------------------------------------------------
 
   describe('items', () => {
+    it('atomically creates metadata and an initial prefix exactly once', async () => {
+      const items = [
+        { timestamp: '2024-01-01T00:00:00Z', sequence: 0, type: 'response_item', payload: { text: 'first' } },
+        { timestamp: '2024-01-01T00:00:01Z', sequence: 1, type: 'response_item', payload: { text: 'second' } },
+      ];
+      await expect(provider.createRollout(makeMetadata('atomic'), items)).resolves.toBe(true);
+      await expect(provider.createRollout(makeMetadata('atomic'), [])).resolves.toBe(false);
+      expect((await provider.getMetadata('atomic'))?.itemCount).toBe(2);
+      expect(await provider.getItemsByRolloutId('atomic')).toHaveLength(2);
+    });
+
     it('add and get items', async () => {
       await provider.putMetadata(makeMetadata('r-items'));
       await provider.addItems('r-items', [
@@ -163,6 +273,27 @@ describe.skipIf(!hasBetterSqlite3)('TSRolloutStorageProvider', () => {
       expect(items).toHaveLength(2);
       expect(items[0].sequence).toBe(0);
       expect(items[1].sequence).toBe(1);
+    });
+
+    it('reads strict bounded sequence ranges in both directions', async () => {
+      await provider.putMetadata(makeMetadata('r-range'));
+      await provider.addItems('r-range', Array.from({ length: 6 }, (_, sequence) => ({
+        timestamp: new Date(sequence).toISOString(),
+        sequence,
+        type: 'response_item',
+        payload: { sequence },
+      })));
+      expect(await provider.getItemsByRolloutIdRange('r-range', {
+        afterSequence: 1,
+        beforeSequence: 5,
+        limit: 2,
+        direction: 'asc',
+      })).toMatchObject([{ sequence: 2 }, { sequence: 3 }]);
+      expect(await provider.getItemsByRolloutIdRange('r-range', {
+        beforeSequence: 5,
+        limit: 2,
+        direction: 'desc',
+      })).toMatchObject([{ sequence: 4 }, { sequence: 3 }]);
     });
 
     it('returns items in sequence order', async () => {
@@ -309,7 +440,7 @@ describe.skipIf(!hasBetterSqlite3)('TSRolloutStorageProvider', () => {
       expect(await provider.cleanupExpired()).toBe(0);
     });
 
-    it('cascade deletes items when metadata is deleted', async () => {
+    it('atomically deletes expired metadata and its items', async () => {
       const now = Date.now();
       await provider.putMetadata(makeMetadata('cascade', { expiresAt: now - 1000 }));
       await provider.addItems('cascade', [
@@ -317,7 +448,6 @@ describe.skipIf(!hasBetterSqlite3)('TSRolloutStorageProvider', () => {
       ]);
 
       await provider.cleanupExpired();
-      // Items should also be gone (via ON DELETE CASCADE)
       const items = await provider.getItemsByRolloutId('cascade');
       expect(items).toHaveLength(0);
     });

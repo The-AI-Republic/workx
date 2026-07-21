@@ -13,7 +13,7 @@ import { TogetherChatCompletionClient } from './client/TogetherChatCompletionCli
 import { AnthropicClient } from './client/AnthropicClient';
 import { AgentConfig } from '../../config/AgentConfig';
 import { getConfigStorage } from '../storage/ConfigStorageProvider';
-import type { IAuthManager } from './types/Auth';
+import { TestAuthContext, type AuthContext } from '../auth/AuthContext';
 
 /**
  * Supported model providers
@@ -37,6 +37,11 @@ export interface ModelClientConfig {
   };
 }
 
+export interface ModelClientFactoryOptions {
+  authContext?: AuthContext;
+  onMissingKey?: (providerId: string) => void;
+}
+
 /**
  * Storage keys for default provider persistence
  */
@@ -52,6 +57,10 @@ interface ClientConstructionSignature {
   providerBaseUrl: string | null;
   providerOrganization: string | null;
   gatewayLlmBaseUrl: string | null;
+  openHubRoute: {
+    modelSlug: string;
+    providerSlug: string;
+  } | null;
   model: {
     modelKey: string | null;
     supportsReasoning: boolean;
@@ -67,29 +76,13 @@ interface ClientConstructionSignature {
 export class ModelClientFactory {
   private clientCache: Map<string, ModelClient>;
   private config?: AgentConfig;
-  private authManager: IAuthManager | null = null;
+  private readonly auth: AuthContext;
+  private readonly onMissingKey?: (providerId: string) => void;
 
-  constructor() {
+  constructor(options: ModelClientFactoryOptions = {}) {
     this.clientCache = new Map();
-  }
-
-  /**
-   * Set the auth manager for routing decisions
-   * Clears client cache when auth changes to ensure fresh clients
-   * @param authManager - AuthManager instance or null
-   */
-  setAuthManager(authManager: IAuthManager | null): void {
-    this.authManager = authManager;
-    // Clear cache when auth changes to ensure new clients use correct routing
-    this.clientCache.clear();
-  }
-
-  /**
-   * Get current auth manager
-   * @returns Current auth manager or null
-   */
-  getAuthManager(): IAuthManager | null {
-    return this.authManager;
+    this.auth = options.authContext ?? TestAuthContext.none();
+    this.onMissingKey = options.onMissingKey;
   }
 
   private _chatGPTOAuth401Retries = 0;
@@ -101,7 +94,7 @@ export class ModelClientFactory {
    * Returns true if ChatGPT OAuth is active and retry is allowed (max 1 retry).
    */
   handleChatGPTOAuth401(): boolean {
-    if (this.authManager?.isChatGPTOAuthActive?.()) {
+    if (this.auth.current()?.isChatGPTOAuthActive?.()) {
       if (this._chatGPTOAuth401Retries >= ModelClientFactory.MAX_OAUTH_401_RETRIES) {
         this._chatGPTOAuth401Retries = 0;
         return false;
@@ -125,7 +118,7 @@ export class ModelClientFactory {
    * @returns true if requests should route through backend
    */
   isBackendRouting(): boolean {
-    return this.authManager?.shouldUseBackend() ?? false;
+    return this.auth.current()?.shouldUseBackend() ?? false;
   }
 
   /**
@@ -201,7 +194,7 @@ export class ModelClientFactory {
     const selectedModelKey = this.config?.getConfig().selectedModelKey || 'unknown';
 
     // Add routing type and OAuth status to cache key to separate clients
-    const oauthActive = this.authManager?.isChatGPTOAuthActive?.() ? 'oauth' : 'direct';
+    const oauthActive = this.auth.current()?.isChatGPTOAuthActive?.() ? 'oauth' : 'direct';
     const routingType = this.isBackendRouting() ? 'backend' : oauthActive;
     const constructionSignature = this.hashObject(this.getClientConstructionSignature(provider));
     const cacheKey = `${provider}-${selectedModelKey}-${routingType}-${constructionSignature}`;
@@ -242,7 +235,7 @@ export class ModelClientFactory {
 
     // If using backend routing (logged in), create backend-routed client
     if (!isCustomProvider && this.isBackendRouting()) {
-      const gatewayLlmBaseUrl = this.authManager?.getGatewayLlmBaseUrl?.();
+      const gatewayLlmBaseUrl = this.auth.current()?.getGatewayLlmBaseUrl?.();
       return gatewayLlmBaseUrl
         ? await this.createGatewayRoutedClient(provider, gatewayLlmBaseUrl, modelKeyOverride)
         : await this.createBackendRoutedClient(provider, modelKeyOverride);
@@ -359,13 +352,14 @@ export class ModelClientFactory {
    * @returns Model client configured for backend routing
    */
   private async createBackendRoutedClient(provider: ModelProvider, modelKeyOverride?: string): Promise<ModelClient> {
-    const backendUrl = this.authManager?.getBackendBaseUrl();
+    const authManager = this.auth.current();
+    const backendUrl = authManager?.getBackendBaseUrl();
     if (!backendUrl) {
       throw new ModelClientError('Backend URL not available for backend routing');
     }
 
     // Get access token from auth manager (desktop provides JWT, extension uses cookies)
-    const accessToken = await this.authManager?.getAccessToken();
+    const accessToken = await authManager?.getAccessToken();
     // Use real token if available (desktop), fall back to dummy key (extension uses cookies)
     const apiKey = accessToken || 'backend-routed';
 
@@ -479,30 +473,32 @@ export class ModelClientFactory {
    * is resolved per request so cached clients do not pin an expired session JWT.
    */
   private async createGatewayRoutedClient(provider: ModelProvider, gatewayLlmBaseUrl: string, modelKeyOverride?: string): Promise<ModelClient> {
-    const tokenProvider = async () => this.authManager?.getAccessToken() ?? null;
+    const tokenProvider = async () => this.auth.current()?.getAccessToken() ?? null;
     const accessToken = await tokenProvider();
     if (!accessToken) {
       throw new ModelClientError('Gateway routing requires a session access token');
     }
 
     const parallelToolCalls = this.resolveParallelToolCalls();
-    let modelConfig: any = undefined;
-    let supportsReasoning = false;
-    let supportsReasoningSummaries = false;
-    let selectedModel = DEFAULT_MODEL;
+    const selectedModelKey = modelKeyOverride ?? this.config?.getConfig().selectedModelKey;
+    const modelData = selectedModelKey
+      ? this.config?.getModelByKey(selectedModelKey)
+      : null;
+    if (!modelData?.model) {
+      throw new ModelClientError(
+        `Gateway routing metadata is unavailable for ${selectedModelKey ?? provider}`,
+      );
+    }
 
-    if (this.config) {
-      const configData = this.config.getConfig();
-      const modelData = this.config.getModelByKey(modelKeyOverride ?? configData.selectedModelKey);
-      if (modelData?.model) {
-        modelConfig = modelData.model;
-        supportsReasoning = modelData.model.supportsReasoning ?? false;
-        supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
-        // The Hub gateway resolves the canonical "<owner>/<model>" slug; for our
-        // first-party catalog the provider id is the owner. (A catalog-driven
-        // slug lookup would be the robust long-term form.)
-        selectedModel = `${modelData.provider.id}/${modelData.model.modelKey}`;
-      }
+    const modelConfig = modelData.model;
+    const supportsReasoning = modelConfig.supportsReasoning ?? false;
+    const supportsReasoningSummaries = modelConfig.supportsReasoningSummaries ?? false;
+    const selectedModel = modelConfig.openHubRoute?.modelSlug.trim();
+    const providerRoutingSlug = modelConfig.openHubRoute?.providerSlug.trim();
+    if (!selectedModel || !providerRoutingSlug) {
+      throw new ModelClientError(
+        `Gateway routing metadata is missing for ${modelData.provider.id}:${modelConfig.modelKey}`,
+      );
     }
 
     const modelFamily = {
@@ -530,7 +526,8 @@ export class ModelClientFactory {
       useCredentials: false,
       parallelToolCalls,
       getAuthorizationToken: tokenProvider,
-      refreshAuthorizationToken: async () => this.authManager?.refreshAccessToken?.() ?? null,
+      refreshAuthorizationToken: async () => this.auth.current()?.refreshAccessToken?.() ?? null,
+      providerRoutingSlug,
     });
   }
 
@@ -708,15 +705,20 @@ export class ModelClientFactory {
     }
 
     // ChatGPT OAuth: if OpenAI provider and OAuth is active, use the OAuth token
-    if (provider === 'openai' && this.authManager?.isChatGPTOAuthActive?.()) {
+    const authManager = this.auth.current();
+    if (provider === 'openai' && authManager?.isChatGPTOAuthActive?.()) {
       try {
-        const oauthToken = await this.authManager.getChatGPTAccessToken?.();
+        const oauthToken = await authManager.getChatGPTAccessToken?.();
         if (oauthToken) {
           apiKey = oauthToken;
         }
       } catch (error) {
         console.warn(`[ModelClientFactory] ChatGPT OAuth token retrieval failed: ${error}`);
       }
+    }
+
+    if (!apiKey && !(provider === 'openai' && authManager?.isChatGPTOAuthActive?.())) {
+      this.onMissingKey?.(provider);
     }
 
     // Don't throw error if API key is missing - allow model client to be created
@@ -980,7 +982,8 @@ export class ModelClientFactory {
       parallelToolCalls: this.resolveParallelToolCalls(),
       providerBaseUrl: providerConfig?.baseUrl ?? null,
       providerOrganization: providerConfig?.organization ?? null,
-      gatewayLlmBaseUrl: this.authManager?.getGatewayLlmBaseUrl?.() ?? null,
+      gatewayLlmBaseUrl: this.auth.current()?.getGatewayLlmBaseUrl?.() ?? null,
+      openHubRoute: model?.openHubRoute ?? null,
       model: {
         modelKey: model?.modelKey ?? null,
         supportsReasoning: model?.supportsReasoning ?? false,

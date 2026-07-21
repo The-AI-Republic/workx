@@ -161,6 +161,7 @@ describe('SubAgentRunner — Track 10 deferred-rebuild guard', () => {
       getSession: () => ({
         getTurnContext: () => ({ getApprovalPolicy: () => 'on-request' }),
         listActiveTasks: () => activeTasks,
+        hasLiveBackgroundWork: () => activeTasks.length > 0,
       }),
       onEvent: vi.fn(() => () => undefined),
     };

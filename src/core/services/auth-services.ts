@@ -45,7 +45,7 @@ export interface AuthServiceDeps {
    * matches the existing `agent.initAuth` contract.
    */
   createAuthManager?: (shouldUseBackend: boolean, backendBaseUrl: string | null) => IAuthManager;
-  setAuthManager?: (authManager: IAuthManager | null) => void;
+  updateAuthContext?: (authManager: IAuthManager | null) => void;
 
   /**
    * Resolve the runtime credential store. The desktop runtime returns the
@@ -111,27 +111,7 @@ export interface AuthServiceDeps {
   };
 }
 
-function applyAuthManagerToSessions(
-  registry: AuthServiceDeps['registry'],
-  authManager: IAuthManager | null,
-): Promise<void> {
-  const sessions = registry.listSessions() as Array<{ sessionId: string; state: string }>;
-  return Promise.all(
-    sessions
-      .filter((s) => s.state !== 'terminated')
-      .map(async (s) => {
-        const agentSession = registry.getSession(s.sessionId);
-        if (!agentSession?.agent) return;
-        const factory = agentSession.agent.getModelClientFactory();
-        factory.setAuthManager(authManager);
-        await agentSession.agent.refreshModelClient();
-      }),
-  ).then(() => undefined);
-}
-
 export function createAuthServices(deps: AuthServiceDeps): Record<string, ServiceHandler> {
-  const { registry } = deps;
-
   async function refreshProfile(accessToken: string): Promise<RuntimeUserProfileSnapshot | null> {
     const raw = deps.fetchUserProfile ? await deps.fetchUserProfile(accessToken) : null;
     return normalizeRuntimeProfile(raw);
@@ -194,10 +174,9 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
     // Switch the agent to backend routing exactly like `agent.initAuth`. Doing
     // it here in one round-trip removes a race window where the tokens are
     // persisted but the AuthManager still has no tokenGetter.
-    if (deps.createAuthManager && deps.setAuthManager) {
+    if (deps.createAuthManager && deps.updateAuthContext) {
       const authManager = deps.createAuthManager(true, backendBaseUrl ?? null);
-      deps.setAuthManager(authManager);
-      await applyAuthManagerToSessions(registry, authManager);
+      deps.updateAuthContext(authManager);
     }
 
     await deps.runtimeState?.setAuthState({
@@ -471,10 +450,9 @@ export function createAuthServices(deps: AuthServiceDeps): Record<string, Servic
           credentialStore.delete(AUTH_SERVICE, REFRESH_TOKEN_ACCOUNT).catch(() => undefined),
         ]);
       }
-      if (deps.createAuthManager && deps.setAuthManager) {
+      if (deps.createAuthManager && deps.updateAuthContext) {
         const authManager = deps.createAuthManager(false, null);
-        deps.setAuthManager(authManager);
-        await applyAuthManagerToSessions(registry, authManager);
+        deps.updateAuthContext(authManager);
       }
       const auth = deps.runtimeState
         ? await deps.runtimeState.setAuthState({

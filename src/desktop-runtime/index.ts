@@ -9,10 +9,7 @@ import {
   type DesktopRuntimeHost,
 } from './host';
 import { StdioFrameCarrier } from './protocol/stdioCarrier';
-import {
-  DESKTOP_RUNTIME_PROTOCOL_VERSION,
-  type DesktopRuntimeFrame,
-} from './protocol/frames';
+import { DESKTOP_RUNTIME_PROTOCOL_VERSION, type DesktopRuntimeFrame } from './protocol/frames';
 import {
   DesktopRuntimeControlBridge,
   setDesktopRuntimeControlBridge,
@@ -29,12 +26,21 @@ async function loadHost(): Promise<DesktopRuntimeHost> {
 
 async function main(): Promise<void> {
   setRuntimeProfile('desktop-runtime');
+  if (process.env.WORKX_DATA_SOURCE_PACKAGING_SELF_TEST === '1') {
+    const { runDataSourcePackagingSelfTest } = await import('./data-sources/packagingSelfTest');
+    await runDataSourcePackagingSelfTest();
+    console.error('[desktop-runtime] data-source-packaging-ok');
+    return;
+  }
   const host = await loadHost();
   setDesktopRuntimeHost(host);
 
   const carrier = new StdioFrameCarrier();
   const controlBridge = new DesktopRuntimeControlBridge(carrier);
   setDesktopRuntimeControlBridge(controlBridge);
+  // Attach the request-buffering listener before stdin starts flowing. The
+  // supervisor may send application requests immediately after hello-ok.
+  const channel = new StdioRuntimeChannel(carrier);
 
   let bootstrap: WorkXRuntimeBootstrap | null = null;
   let appServer: DesktopAppServerManager | null = null;
@@ -65,7 +71,7 @@ async function main(): Promise<void> {
         if (frame.protocolVersion !== DESKTOP_RUNTIME_PROTOCOL_VERSION) {
           console.error(
             `[desktop-runtime] unsupported protocol version ${frame.protocolVersion}, ` +
-            `expected ${DESKTOP_RUNTIME_PROTOCOL_VERSION}; exiting`,
+              `expected ${DESKTOP_RUNTIME_PROTOCOL_VERSION}; exiting`
           );
           process.exit(1);
         }
@@ -95,14 +101,16 @@ async function main(): Promise<void> {
   // stream, not silently papered over.
   setTimeout(() => {
     if (!helloAcked) {
-      console.error('[desktop-runtime] WARN: no hello received after 2s; sending unsolicited hello-ok. The Rust supervisor should have sent `hello` — this fallback exists for backward compatibility only and may mask a protocol regression.');
+      console.error(
+        '[desktop-runtime] WARN: no hello received after 2s; sending unsolicited hello-ok. The Rust supervisor should have sent `hello` — this fallback exists for backward compatibility only and may mask a protocol regression.'
+      );
       sendHelloOk(undefined);
     }
   }, 2_000);
 
-  const channel = new StdioRuntimeChannel(carrier);
   bootstrap = new WorkXRuntimeBootstrap({ channel });
   await bootstrap.initialize();
+  await channel.activate();
 
   // Bring up the desktop app-server (the loopback WS listener the browser
   // bridge connects to) and register its UI-facing status/control services.

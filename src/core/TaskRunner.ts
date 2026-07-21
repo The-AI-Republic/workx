@@ -28,6 +28,12 @@ import {
 } from './compact/tokenPressure';
 import { TokenUsageStore } from '@/storage/TokenUsageStore';
 import type { TokenUsageRecord } from '@/storage/types';
+import {
+  finishResponseLatencyTrace,
+  markResponseLatency,
+  type ResponseLatencyMetadata,
+  type ResponseLatencyPhase,
+} from './diagnostics/responseLatency';
 
 /**
  * Task state for tracking execution
@@ -90,6 +96,10 @@ export interface TaskOptions {
    * runId. Required when taskOutputStore is set; ignored otherwise.
    */
   taskId?: string;
+  /** Present for lifecycle-managed UserInput submissions. */
+  clientMessageId?: string;
+  /** Digest already computed by the manager; avoids a second canonicalization seam. */
+  inputDigest?: string;
 }
 
 interface LoopOutcome {
@@ -179,6 +189,7 @@ export class TaskRunner {
   private cancelPromise: Promise<void> | null = null;
   private cancelResolve: (() => void) | null = null;
   private state: TaskState;
+  private terminalMarkerWritten = false;
   private static readonly MAX_TURNS = 500;
 
   constructor(
@@ -262,7 +273,17 @@ export class TaskRunner {
       this.state.tokenUsageDetail = undefined;
       this.state.lastAgentMessage = undefined;
 
+      this.markResponseLatency('task_run_started');
+      let phaseStartedAt = Date.now();
+      await this.persistTurnStart();
+      this.markResponseLatency('turn_start_persisted', {
+        duration_ms: Date.now() - phaseStartedAt,
+      });
+      phaseStartedAt = Date.now();
       await this.emitTaskStarted();
+      this.markResponseLatency('task_started_emitted', {
+        duration_ms: Date.now() - phaseStartedAt,
+      });
 
       // Early exit for empty input tasks
       if (this.input.length === 0) {
@@ -273,9 +294,19 @@ export class TaskRunner {
           turnCount: 0,
           tokenUsage: {},
         });
+        this.finishResponseLatency('completed_without_visible_response');
         return { success: true };
       }
-      this.session.recordInputAndRolloutUsermsg(this.input);
+      // Await the durable user item before model execution so model memory and
+      // the canonical history projection cannot diverge on an accepted send.
+      phaseStartedAt = Date.now();
+      await this.session.recordInputAndRolloutUsermsg(
+        this.input,
+        this.options.clientMessageId,
+      );
+      this.markResponseLatency('user_message_persisted', {
+        duration_ms: Date.now() - phaseStartedAt,
+      });
 
       const outcome = await this.runLoop(signal);
 
@@ -298,6 +329,7 @@ export class TaskRunner {
           );
         }
         await this.emitAbortedEvent(outcome.abortedReason);
+        this.finishResponseLatency('submission_cancelled');
 
         // Fire-and-forget: persist partial token usage + cost for aborted tasks
         this.persistTokenUsage(
@@ -315,6 +347,7 @@ export class TaskRunner {
       }
 
       await this.emitTaskComplete(outcome);
+      this.finishResponseLatency('completed_without_visible_response');
 
       this.state.status = 'completed';
       return {
@@ -322,6 +355,7 @@ export class TaskRunner {
         lastAgentMessage: outcome.lastAgentMessage,
       };
     } catch (error) {
+      this.finishResponseLatency(this.cancelled ? 'submission_cancelled' : 'submission_failed');
       const err = error instanceof Error ? error : new Error(String(error));
       // A descriptive reason so the UI shows more than a bare "Task failed"
       // (covers errors thrown with an empty message — name/cause are surfaced).
@@ -422,11 +456,23 @@ export class TaskRunner {
 
       const pendingInput = (await this.session.getPendingInput()) as ResponseItem[];
 
+      const turnInputStartedAt = Date.now();
       let turnInput = await this.buildNormalTurnInput(pendingInput);
+      this.markResponseLatency('turn_input_ready', {
+        duration_ms: Date.now() - turnInputStartedAt,
+        history_item_count: turnInput.length,
+        pending_item_count: pendingInput.length,
+      });
 
       // Pre-request compaction check: estimate tokens and compact if needed
       if (this.options.autoCompact && this.shouldCompactBeforeRequest(turnInput)) {
+        const compactionStartedAt = Date.now();
+        this.markResponseLatency('pre_request_compaction_started');
         const compacted = await this.attemptAutoCompact(turnCount, totalTokenUsage);
+        this.markResponseLatency('pre_request_compaction_finished', {
+          duration_ms: Date.now() - compactionStartedAt,
+          compacted,
+        });
         if (compacted) {
           compactionPerformed = true;
           turnInput = await this.buildNormalTurnInput([]);
@@ -453,6 +499,7 @@ export class TaskRunner {
       }
 
       try {
+        this.markResponseLatency('model_turn_requested');
         const turnResult = await this.runTurnWithTimeout(turnInput, signal);
         const processResult = await this.processTurnResult(turnResult);
 
@@ -579,7 +626,9 @@ export class TaskRunner {
       submission_id: this.submissionId,
       model_context_window: contextWindow,
       model: this.turnContext.getModel(),
-      tabId: this.session.getTabId(), // Get tabId from session (stored in SessionState)
+      // Task lifecycle is browser-independent. Browser state is resolved only
+      // if the model later invokes a browser-dependent tool.
+      tabId: this.turnContext.getBrowserTabId?.() ?? -1,
       approval_policy: this.turnContext.getApprovalPolicy(),
       sandbox_policy: this.turnContext.getSandboxPolicy(),
       auto_compact: this.options.autoCompact !== false,
@@ -630,26 +679,15 @@ export class TaskRunner {
       data.cost_estimated = outcome.costEstimated ?? false;
     }
 
+    // Reserve detached continuation leases before consumers can observe the
+    // terminal event and decide the session is idle/suspendable.
+    this.session.schedulePostTurnContinuations?.();
+
+    await this.persistTerminalMarker('complete');
     await this.emitEvent({
       type: 'TaskComplete',
       data,
     });
-
-    // Track 24.3: predict the user's next message (ext/desktop only; the
-    // generator self-gates off on the server build). Strictly fire-and-forget
-    // — deferred into a microtask and fully swallowed so it can never block,
-    // delay, or fail task completion.
-    Promise.resolve()
-      .then(() => this.session.maybeGenerateSuggestion?.())
-      .catch((e) => console.debug('[TaskRunner] prompt suggestion error (ignored):', e));
-
-    // Title generation checkpoint at task completion: titles the conversation
-    // right after the first AI response (single-question chats would otherwise
-    // keep their placeholder title forever), and retries a generation that
-    // failed on the message-recording path. Fire-and-forget like above.
-    Promise.resolve()
-      .then(() => this.session.maybeGenerateTitle?.())
-      .catch((e) => console.debug('[TaskRunner] title generation error (ignored):', e));
 
     // Fire-and-forget: persist token usage record
     this.persistTokenUsage(
@@ -676,6 +714,7 @@ export class TaskRunner {
       error: message,
       message,
     };
+    await this.persistTerminalMarker('failed');
     await this.emitEvent({
       type: 'TaskFailed',
       data,
@@ -755,7 +794,7 @@ export class TaskRunner {
   private async runTurnWithTimeout(turnInput: ResponseItem[], signal?: AbortSignal): Promise<TurnRunResult> {
     const timeout = this.options.timeoutMs;
     const racers: Array<Promise<TurnRunResult>> = [
-      this.turnManager.runTurn(turnInput),
+      this.turnManager.runTurn(turnInput, this.options.clientMessageId),
     ];
 
     const cleanups: Array<() => void> = [];
@@ -802,9 +841,13 @@ export class TaskRunner {
    * Build turn input for normal mode
    */
   private async buildNormalTurnInput(pendingInput: ResponseItem[]): Promise<ResponseItem[]> {
-    const turnInput = await this.session.buildTurnInputWithHistory(pendingInput);
-    if (pendingInput.length > 0) {
-      await this.session.recordConversationItemsDual(pendingInput);
+    const workspaceContext = this.session.takeWorkspaceContextUpdate?.();
+    const effectivePendingInput = workspaceContext
+      ? [workspaceContext, ...pendingInput]
+      : pendingInput;
+    const turnInput = await this.session.buildTurnInputWithHistory(effectivePendingInput);
+    if (effectivePendingInput.length > 0) {
+      await this.session.recordConversationItemsDual(effectivePendingInput);
     }
     return turnInput as ResponseItem[];
   }
@@ -1079,7 +1122,10 @@ export class TaskRunner {
    */
   private async emitEvent(msg: EventMsg): Promise<void> {
     const event: Event = {
-      id: this.submissionId,
+      // Event identity is not turn identity. A task emits many snapshots and
+      // lifecycle events; reusing submissionId caused keyed UI rows to replace
+      // one another during replay and thread switches.
+      id: crypto.randomUUID(),
       msg,
     };
     await this.session.emitEvent(event);
@@ -1089,6 +1135,7 @@ export class TaskRunner {
    * Emit task aborted event
    */
   private async emitAbortedEvent(reason: TurnAbortReason): Promise<void> {
+    await this.persistTerminalMarker('aborted');
     await this.emitEvent({
       type: 'TurnAborted',
       data: {
@@ -1097,6 +1144,62 @@ export class TaskRunner {
         turn_count: this.state.currentTurnIndex,
       },
     });
+  }
+
+  private async persistTurnStart(): Promise<void> {
+    const inputDigest = this.options.inputDigest ?? await digestInput(this.input);
+    await this.session.persistRolloutItems(
+      [{
+        type: 'turn_start',
+        payload: {
+          markerVersion: 1,
+          submissionId: this.submissionId,
+          startedAt: Date.now(),
+          ...(this.options.clientMessageId
+            ? { clientMessageId: this.options.clientMessageId, inputDigest }
+            : {}),
+        },
+      }],
+      { required: true },
+    );
+  }
+
+  private markResponseLatency(
+    phase: ResponseLatencyPhase,
+    metadata: ResponseLatencyMetadata = {},
+  ): void {
+    markResponseLatency(this.options.clientMessageId, phase, metadata);
+  }
+
+  private finishResponseLatency(
+    phase: ResponseLatencyPhase,
+    metadata: ResponseLatencyMetadata = {},
+  ): void {
+    finishResponseLatencyTrace(this.options.clientMessageId, phase, metadata);
+  }
+
+  private async persistTerminalMarker(
+    outcome: 'complete' | 'failed' | 'aborted' | 'interrupted',
+  ): Promise<void> {
+    if (this.terminalMarkerWritten) return;
+    try {
+      await this.session.persistRolloutItems(
+        [{
+          type: 'turn_completion',
+          payload: {
+            markerVersion: 1,
+            submissionId: this.submissionId,
+            outcome,
+            completedAt: Date.now(),
+          },
+        }],
+        { required: true },
+      );
+      this.terminalMarkerWritten = true;
+    } catch (error) {
+      console.warn('[TaskRunner] terminal marker persistence failed:', error);
+      this.session.reportDurabilityDegraded?.('terminal-marker-write');
+    }
   }
 
   // ── Track 04: chunk emission helpers ─────────────────────────────────
@@ -1111,7 +1214,7 @@ export class TaskRunner {
     if (!store || !taskId) return;
     try {
       const fromSeq = await store.getLastSeq(taskId);
-      await store.appendChunk(taskId, 'event', JSON.stringify(payload));
+      await store.appendChunk(taskId, 'event', JSON.stringify(payload), this.session.sessionId);
       await this.emitTaskOutputDelta(taskId, fromSeq, await store.getLastSeq(taskId), 'event');
     } catch (err) {
       console.warn(`[TaskRunner] appendChunk(event) failed for ${taskId}:`, err);
@@ -1128,7 +1231,7 @@ export class TaskRunner {
     if (!store || !taskId || data.length === 0) return;
     try {
       const fromSeq = await store.getLastSeq(taskId);
-      await store.appendChunk(taskId, kind, data);
+      await store.appendChunk(taskId, kind, data, this.session.sessionId);
       await this.emitTaskOutputDelta(taskId, fromSeq, await store.getLastSeq(taskId), kind);
     } catch (err) {
       console.warn(`[TaskRunner] appendChunk(${kind}) failed for ${taskId}:`, err);
@@ -1192,4 +1295,14 @@ export class TaskRunner {
       ),
     };
   }
+}
+
+async function digestInput(input: readonly InputItem[]): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(JSON.stringify(input)),
+  );
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
 }

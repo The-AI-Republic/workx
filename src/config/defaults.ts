@@ -2,7 +2,18 @@
  * Default centralized agent configuration values
  */
 
-import type { IAgentConfig, IUserPreferences, ICacheSettings, IExtensionSettings, IPermissionSettings, IToolsConfig, IStorageConfig, IStoredConfig, IProviderConfig, IAppServerConfig } from './types';
+import type {
+  IAgentConfig,
+  IUserPreferences,
+  ICacheSettings,
+  IExtensionSettings,
+  IPermissionSettings,
+  IToolsConfig,
+  IStorageConfig,
+  IStoredConfig,
+  IProviderConfig,
+  IAppServerConfig,
+} from './types';
 import { DEFAULT_APPROVAL_CONFIG } from '../core/approval/types';
 import { DEFAULT_MODE } from '../prompts/PromptComposer';
 import defaultProviders from '../core/models/providers/default.json';
@@ -28,11 +39,11 @@ export const DEFAULT_CACHE_SETTINGS: ICacheSettings = {
   ttl: 3600, // 1 hour
   maxSize: 5242880, // 5MB
   compressionEnabled: false,
-  persistToStorage: false
+  persistToStorage: false,
 };
 
 export const DEFAULT_STORAGE_CONFIG: IStorageConfig = {
-  rolloutTTL: 60 // 60 days default
+  rolloutTTL: 60, // 60 days default
 };
 
 export const DEFAULT_PERMISSION_SETTINGS: IPermissionSettings = {
@@ -40,7 +51,7 @@ export const DEFAULT_PERMISSION_SETTINGS: IPermissionSettings = {
   storage: true, // Always required
   notifications: true,
   clipboardRead: true,
-  clipboardWrite: true
+  clipboardWrite: true,
 };
 
 export const DEFAULT_EXTENSION_SETTINGS: IExtensionSettings = {
@@ -49,7 +60,7 @@ export const DEFAULT_EXTENSION_SETTINGS: IExtensionSettings = {
   allowedOrigins: [],
   storageQuotaWarning: 0.8, // 80% warning threshold
   updateChannel: 'stable',
-  permissions: DEFAULT_PERMISSION_SETTINGS
+  permissions: DEFAULT_PERMISSION_SETTINGS,
 };
 
 // Default retry configuration
@@ -57,13 +68,13 @@ export const DEFAULT_RETRY_CONFIG = {
   maxRetries: 3,
   initialDelay: 1000,
   maxDelay: 10000,
-  backoffMultiplier: 2
+  backoffMultiplier: 2,
 };
 
 // Default timeout settings (ms)
 export const DEFAULT_TIMEOUTS = {
   API_REQUEST: 30000,
-  STORAGE_OPERATION: 5000
+  STORAGE_OPERATION: 5000,
 };
 
 export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
@@ -83,6 +94,7 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
   // Agent execution tool toggles
   execCommand: false,
   webSearch: true,
+  dataSources: true,
   fileOperations: false,
   mcpTools: false,
   customTools: {},
@@ -109,56 +121,56 @@ export const DEFAULT_TOOLS_CONFIG: IToolsConfig = {
     'tab_tool',
     'storage_tool',
     'page_action',
-    'page_vision'
+    'page_vision',
   ],
   disabled: [],
   timeout: 90000, // 90 seconds default
   sandboxPolicy: {
     mode: 'workspace-write',
     writable_roots: [],
-    network_access: true
+    network_access: true,
   },
   perToolConfig: {
-    'web_scraping': {
+    web_scraping: {
       enabled: true,
       timeout: 45000,
       options: {
         maxDepth: 3,
-        followLinks: false
-      }
+        followLinks: false,
+      },
     },
-    'form_automation': {
+    form_automation: {
       enabled: true,
       timeout: 30000,
       options: {
         validateInputs: true,
-        waitForNavigation: true
-      }
+        waitForNavigation: true,
+      },
     },
-    'network_intercept': {
+    network_intercept: {
       enabled: true,
       timeout: 60000,
       options: {
         captureHeaders: true,
-        captureBody: true
-      }
+        captureBody: true,
+      },
     },
-    'data_extraction': {
+    data_extraction: {
       enabled: true,
       timeout: 30000,
       options: {
-        maxRecords: 1000
-      }
+        maxRecords: 1000,
+      },
     },
-    'page_action': {
+    page_action: {
       enabled: true,
       timeout: 60000,
       options: {
         retryAttempts: 3,
-        retryDelay: 100
-      }
-    }
-  }
+        retryDelay: 100,
+      },
+    },
+  },
 };
 
 /**
@@ -206,7 +218,6 @@ export function getDefaultAgentConfig(): IAgentConfig {
   };
 }
 
-
 // Storage keys
 export const STORAGE_KEYS = {
   CONFIG: 'agent_config',
@@ -223,7 +234,7 @@ export const CONFIG_LIMITS = {
   MAX_PROFILES: 20,
   MAX_PROVIDERS: 10,
   MAX_SHORTCUTS: 50,
-  MAX_EXPERIMENTAL_FLAGS: 100
+  MAX_EXPERIMENTAL_FLAGS: 100,
 } as const;
 
 // Validation constants
@@ -262,8 +273,8 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
             // Model exists in both - merge default fields with stored values
             // Stored values take precedence (preserves user customizations)
             mergedModels.push({
-              ...defaultModel,      // Default fields (includes new fields like serviceTier)
-              ...storedModel        // Stored values (preserves user customizations)
+              ...defaultModel, // Default fields (includes new fields like serviceTier)
+              ...storedModel, // Stored values (preserves user customizations)
             });
           } else {
             // Model only exists in defaults - add it as new
@@ -274,7 +285,9 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
         // Add any models that exist in stored config but not in defaults
         // (e.g., user manually added models)
         for (const storedModel of storedModels) {
-          const existsInDefaults = defaultModels.some((m: any) => m.modelKey === storedModel.modelKey);
+          const existsInDefaults = defaultModels.some(
+            (m: any) => m.modelKey === storedModel.modelKey
+          );
           const alreadyMerged = mergedModels.some((m: any) => m.modelKey === storedModel.modelKey);
           if (!existsInDefaults && !alreadyMerged) {
             mergedModels.push({ ...storedModel });
@@ -285,7 +298,9 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
         const seenModelKeys = new Set<string>();
         const deduplicatedModels = mergedModels.filter((model: any) => {
           if (seenModelKeys.has(model.modelKey)) {
-            console.warn(`[mergeWithDefaults] Removing duplicate model: ${model.modelKey} from provider: ${id}`);
+            console.warn(
+              `[mergeWithDefaults] Removing duplicate model: ${model.modelKey} from provider: ${id}`
+            );
             return false;
           }
           seenModelKeys.add(model.modelKey);
@@ -296,7 +311,7 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
         mergedProviders[id] = {
           ...defaultProvider,
           ...storedProvider,
-          models: deduplicatedModels
+          models: deduplicatedModels,
         };
       } else {
         // Provider doesn't exist in defaults, keep it anyway
@@ -313,19 +328,19 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
     providers: mergedProviders,
     preferences: {
       ...DEFAULT_USER_PREFERENCES,
-      ...(partial.preferences || {})
+      ...(partial.preferences || {}),
     },
     cache: {
       ...DEFAULT_CACHE_SETTINGS,
-      ...(partial.cache || {})
+      ...(partial.cache || {}),
     },
     extension: {
       ...DEFAULT_EXTENSION_SETTINGS,
       ...(partial.extension || {}),
       permissions: {
         ...DEFAULT_PERMISSION_SETTINGS,
-        ...(partial.extension?.permissions || {})
-      }
+        ...(partial.extension?.permissions || {}),
+      },
     },
     tools: {
       ...DEFAULT_TOOLS_CONFIG,
@@ -333,24 +348,24 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
       sandboxPolicy: {
         mode: DEFAULT_TOOLS_CONFIG.sandboxPolicy!.mode,
         ...DEFAULT_TOOLS_CONFIG.sandboxPolicy,
-        ...(partial.tools?.sandboxPolicy || {})
+        ...(partial.tools?.sandboxPolicy || {}),
       },
       perToolConfig: {
         ...DEFAULT_TOOLS_CONFIG.perToolConfig,
-        ...(partial.tools?.perToolConfig || {})
-      }
+        ...(partial.tools?.perToolConfig || {}),
+      },
     },
     storage: {
       ...DEFAULT_STORAGE_CONFIG,
-      ...(partial.storage || {})
+      ...(partial.storage || {}),
     },
     approval: {
       ...DEFAULT_APPROVAL_CONFIG,
       ...(partial.approval || {}),
       timeouts: {
         ...DEFAULT_APPROVAL_CONFIG.timeouts,
-        ...(partial.approval?.timeouts || {})
-      }
+        ...(partial.approval?.timeouts || {}),
+      },
     },
     appServer: {
       ...DEFAULT_APP_SERVER_CONFIG,
@@ -366,11 +381,34 @@ export function mergeWithDefaults(partial: Partial<IAgentConfig>): IAgentConfig 
  */
 export function getDefaultProviders(): Record<string, IProviderConfig> {
   // Private builds may override the bundled catalog with one fetched from the
-  // backend at startup (see remoteCatalog + AgentConfig.initialize). When present
-  // it full-replaces default.json; otherwise we fall back to the bundled copy.
+  // backend at startup (see remoteCatalog + AgentConfig.initialize). Remote
+  // provider/model data replaces the bundled catalog, while WorkX-owned OpenHub
+  // routes remain sourced from matching default.json model entries so deployments
+  // cannot silently re-enable smart routing by omitting them from the remote payload.
   const remote = getRemoteProviders();
   if (remote) {
-    return remote;
+    const bundled = defaultProviders as Record<string, IProviderConfig>;
+    return Object.fromEntries(Object.entries(remote).map(([providerKey, provider]) => {
+      const bundledProvider = bundled[providerKey] ?? bundled[provider.id];
+      return [
+        providerKey,
+        {
+          ...provider,
+          models: (provider.models ?? []).map((model) => {
+            const bundledModel = bundledProvider?.models.find(
+              (candidate) => candidate.modelKey === model.modelKey,
+            );
+            const route = bundledModel?.openHubRoute;
+            return {
+              ...model,
+              openHubRoute: route
+                ? { ...route }
+                : undefined,
+            };
+          }),
+        },
+      ];
+    }));
   }
   // Return a deep copy to avoid mutation of the imported JSON
   return JSON.parse(JSON.stringify(defaultProviders));
@@ -445,13 +483,17 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
     if (colonIndex <= 0) return false;
     const providerId = key.slice(0, colonIndex);
     const modelKey = key.slice(colonIndex + 1);
-    return !!providers[providerId]?.models?.some((m: { modelKey: string }) => m.modelKey === modelKey);
+    return !!providers[providerId]?.models?.some(
+      (m: { modelKey: string }) => m.modelKey === modelKey
+    );
   };
 
   // Validate stored selectedModelKey exists in providers, fallback to default if not
   let selectedModelKey = stored.selectedModelKey || '';
   if (selectedModelKey && !modelKeyExists(selectedModelKey)) {
-    console.warn(`[buildRuntimeConfig] Stored selectedModelKey "${selectedModelKey}" not found, falling back to default`);
+    console.warn(
+      `[buildRuntimeConfig] Stored selectedModelKey "${selectedModelKey}" not found, falling back to default`
+    );
     selectedModelKey = defaults.selectedModelKey;
   }
   // The hardcoded default can itself be absent from a backend-replaced catalog
@@ -466,7 +508,9 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
         break;
       }
     }
-    console.warn(`[buildRuntimeConfig] Fallback selectedModelKey "${selectedModelKey}" not in catalog; using first available "${fallback || '(none)'}"`);
+    console.warn(
+      `[buildRuntimeConfig] Fallback selectedModelKey "${selectedModelKey}" not in catalog; using first available "${fallback || '(none)'}"`
+    );
     selectedModelKey = fallback;
   }
 
@@ -475,7 +519,9 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
   // "same as task model" (undefined) rather than breaking utility calls.
   let efficientModelKey = stored.efficientModelKey || stored.modelForTitleGenerate || undefined;
   if (efficientModelKey && !modelKeyExists(efficientModelKey)) {
-    console.warn(`[buildRuntimeConfig] Stored efficientModelKey "${efficientModelKey}" not found; using task model`);
+    console.warn(
+      `[buildRuntimeConfig] Stored efficientModelKey "${efficientModelKey}" not found; using task model`
+    );
     efficientModelKey = undefined;
   }
 
@@ -488,19 +534,19 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
     activeProfile: stored.activeProfile || null,
     preferences: {
       ...DEFAULT_USER_PREFERENCES,
-      ...(stored.preferences || {})
+      ...(stored.preferences || {}),
     },
     cache: {
       ...DEFAULT_CACHE_SETTINGS,
-      ...(stored.cache || {})
+      ...(stored.cache || {}),
     },
     extension: {
       ...DEFAULT_EXTENSION_SETTINGS,
       ...(stored.extension || {}),
       permissions: {
         ...DEFAULT_PERMISSION_SETTINGS,
-        ...(stored.extension?.permissions || {})
-      }
+        ...(stored.extension?.permissions || {}),
+      },
     },
     tools: {
       ...DEFAULT_TOOLS_CONFIG,
@@ -508,24 +554,24 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
       sandboxPolicy: {
         mode: DEFAULT_TOOLS_CONFIG.sandboxPolicy!.mode,
         ...DEFAULT_TOOLS_CONFIG.sandboxPolicy,
-        ...(stored.tools?.sandboxPolicy || {})
+        ...(stored.tools?.sandboxPolicy || {}),
       },
       perToolConfig: {
         ...DEFAULT_TOOLS_CONFIG.perToolConfig,
-        ...(stored.tools?.perToolConfig || {})
-      }
+        ...(stored.tools?.perToolConfig || {}),
+      },
     },
     storage: {
       ...DEFAULT_STORAGE_CONFIG,
-      ...(stored.storage || {})
+      ...(stored.storage || {}),
     },
     approval: {
       ...DEFAULT_APPROVAL_CONFIG,
       ...(stored.approval || {}),
       timeouts: {
         ...DEFAULT_APPROVAL_CONFIG.timeouts,
-        ...(stored.approval?.timeouts || {})
-      }
+        ...(stored.approval?.timeouts || {}),
+      },
     },
     // Track 10: per-plugin enable state round-trips verbatim
     enabledPlugins: stored.enabledPlugins ?? {},
@@ -547,7 +593,8 @@ export function buildRuntimeConfig(stored: IStoredConfig | null): IAgentConfig {
  */
 export function extractStoredConfig(config: IAgentConfig): IStoredConfig {
   // Extract only id, API keys and organization from providers
-  const providerKeys: Record<string, { id: string; apiKey: string; organization?: string | null }> = {};
+  const providerKeys: Record<string, { id: string; apiKey: string; organization?: string | null }> =
+    {};
   // User-defined custom providers are persisted in full (default.json has no
   // entry to rehydrate them from). Their secret lives in the CredentialStore;
   // the persisted apiKey field is just the secured marker.

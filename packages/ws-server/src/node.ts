@@ -49,10 +49,13 @@ export const NodeAdvertiseParamsSchema = z.object({
 /** Payload of a `node.invoke` event (server → node). */
 export const NodeInvokePayloadSchema = z.object({
   invokeId: z.string().min(1),
-  toolName: z.string().min(1),
+  operation: z.enum(['tool', 'release-session', 'browser-context']).default('tool'),
+  sessionId: z.string().min(1),
+  toolName: z.string().min(1).optional(),
   parameters: z.record(z.unknown()).default({}),
   /** Executor-side budget; the server keeps its own (slightly longer) timer. */
   timeoutMs: z.number().int().positive().optional(),
+  focusGrantId: z.string().min(1).optional(),
 });
 
 /** Params of a `node.result` request (node → server). */
