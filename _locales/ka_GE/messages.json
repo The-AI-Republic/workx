@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "გთხოვთ, აკრიფოთ სწორი ბრძანება"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "გთხოვთ, განაახლოთ გეგმა, რათა განბლოკოთ მსოფლიოს ყველაზე განვითარებული მოდელები"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "პორტი 1455 დაკავებულია. გთხოვთ დახუროთ ყველა აპლიკაცია, რომელიც იყენებს ამ პორტს, და სცადეთ თავიდან."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "პრემიუმზე გადასვლა"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "განახლეთ, რათა აღმოაჩინოთ მსოფლიოს ყველაზე ძლიერი მოდელები"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "განახლეთ თქვენი გამოწერა, რომ გამოიკვლიოთ მსოფლიოს ყველაზე ძლიერი მოდელები"
   },
   "Use_Context_Menu": {
     "message": "გამოიყენეთ კონტექსტური მენიუ:"

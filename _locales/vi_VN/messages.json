@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Vui lòng nhập lệnh hợp lệ"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Vui lòng nâng cấp gói để mở khóa các mô hình tiên tiến nhất thế giới"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Cổng 1455 đang được sử dụng. Vui lòng đóng bất kỳ ứng dụng nào đang dùng cổng này và thử lại."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Nâng cấp lên Gói Cao cấp"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Nâng cấp để khám phá các mô hình mạnh nhất của thế giới"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Nâng cấp gói đăng ký của bạn để khám phá các mô hình mạnh nhất thế giới"
   },
   "Use_Context_Menu": {
     "message": "Sử dụng menu ngữ cảnh:"

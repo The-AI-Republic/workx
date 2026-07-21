@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Tafadhali andika amri sahihi"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Tafadhali boresha mpango ili kufungua modeli za kisasa zaidi duniani"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Bandari 1455 inatumika. Tafadhali funga programu yoyote inayotumia bandari hii na ujaribu tena."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Boresha hadi Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Boresha ili uchunguze miundo yenye nguvu zaidi duniani"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Boresha usajili wako ili kugundua modeli zenye nguvu zaidi ulimwenguni"
   },
   "Use_Context_Menu": {
     "message": "Tumia Menyu ya muktadha:"

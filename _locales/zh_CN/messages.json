@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "请输入有效的命令"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "请升级套餐以解锁全球最先进的模型"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "端口 1455 正在使用中。请关闭占用该端口的任何应用程序，然后重试。"
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "升级至高级版"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "升级以探索全球最强大的模型"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "升级订阅以探索全球最强大的模型"
   },
   "Use_Context_Menu": {
     "message": "使用上下文菜单:"

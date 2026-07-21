@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Lütfen geçerli bir komut girin"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Dünyanın en gelişmiş modellerinin kilidini açmak için lütfen planı yükseltin"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Port 1455 kullanımda. Lütfen bu portu kullanan uygulamayı kapatın ve tekrar deneyin."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Premium'a Yükselt"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Dünyanın en güçlü modellerini keşfetmek için yükseltin"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Dünyanın en güçlü modellerini keşfetmek için aboneliğinizi yükseltin"
   },
   "Use_Context_Menu": {
     "message": "Bağlam Menüsünü Kullan:"

@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Моля, въведете валидна команда"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Моля, надстройте плана, за да отключите най-напредналите модели в света"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Порт 1455 е зает. Моля, затворете всяко приложение, което използва този порт, и опитайте отново."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Надстройте до Премиум"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Надстройте, за да изследвате най-мощните модели в света"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Надстройте абонамента си, за да изследвате най-мощните модели в света"
   },
   "Use_Context_Menu": {
     "message": "Използвайте контекстно меню:"

@@ -1405,9 +1405,6 @@
   "Please_type_a_valid_command": {
     "message": "Unesite ispravnu naredbu"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Nadogradite plan kako biste otključali najnaprednije modele na svijetu"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Port 1455 je u upotrebi. Zatvorite sve aplikacije koje koriste ovaj port i pokušajte ponovno."
   },
@@ -1973,12 +1970,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Nadogradi na Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Nadogradi kako bi istražio najmoćnije modele na svijetu"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Nadogradite pretplatu kako biste istražili najmoćnije modele na svijetu"
   },
   "Use_Context_Menu": {
     "message": "Koristi kontekstni izbornik:"

@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Įveskite galiojančią komandą"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Atnaujinkite planą, kad atrakintumėte pasaulio pažangiausius modelius"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Portas 1455 naudojamas. Prašome uždaryti bet kurią programą, naudojančią šį portą, ir bandyti dar kartą."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Perkelti į Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Atnaujinkite, kad išbandytumėte galingiausius pasaulio modelius"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Atnaujinkite savo prenumeratą, kad galėtumėte išbandyti galingiausius pasaulio modelius"
   },
   "Use_Context_Menu": {
     "message": "Naudoti kontekstinį meniu:"

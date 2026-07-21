@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "कृपया वैध कमांड टाइप करा"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "जगातील सर्वात प्रगत मॉडेल अनब्लॉक करण्यासाठी कृपया योजना अपग्रेड करा"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "पोर्ट 1455 वापरात आहे. कृपया हा पोर्ट वापरणारी कोणतीही अॅप्लिकेशन बंद करा आणि पुन्हा प्रयत्न करा."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "प्रीमियमला अपग्रेड करा"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "जगातील सर्वात शक्तिशाली मॉडेल्सचा शोध घेण्यासाठी अपग्रेड करा"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "जगातील सर्वात शक्तिशाली मॉडेल्सचा शोध घेण्यासाठी आपली सदस्यता अपग्रेड करा"
   },
   "Use_Context_Menu": {
     "message": "संदर्भ मेनू वापरा:"

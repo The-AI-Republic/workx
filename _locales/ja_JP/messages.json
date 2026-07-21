@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "有効なコマンドを入力してください"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "世界最先端のモデルを利用できるように、プランをアップグレードしてください"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "ポート1455は使用中です。このポートを使用しているアプリケーションを閉じて、再度お試しください。"
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "プレミアムへアップグレード"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "アップグレードして、世界で最も強力なモデルを体験しよう"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "最も強力なモデルを利用するにはプランをアップグレードしてください"
   },
   "Use_Context_Menu": {
     "message": "コンテキストメニューを使用:"

@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Proszę wpisać prawidłowe polecenie"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Proszę zaktualizować plan, aby odblokować najnowocześniejsze modele świata"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Port 1455 jest używany. Zamknij wszystkie aplikacje korzystające z tego portu i spróbuj ponownie."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Ulepsz do Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Ulepsz, aby odkrywać najpotężniejsze modele na świecie"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Ulepsz subskrypcję, aby korzystać z najpotężniejszych modeli na świecie"
   },
   "Use_Context_Menu": {
     "message": "Użyj menu kontekstowego:"

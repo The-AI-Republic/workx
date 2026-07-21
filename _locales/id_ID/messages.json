@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Silakan ketik perintah yang valid"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Upgrade paket untuk membuka model paling canggih di dunia"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Port 1455 sedang digunakan. Harap tutup aplikasi apa pun yang menggunakan port ini dan coba lagi."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Tingkatkan ke Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Upgrade untuk menjelajahi model paling kuat di dunia"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Tingkatkan langganan Anda untuk menjelajahi model paling kuat di dunia"
   },
   "Use_Context_Menu": {
     "message": "Gunakan Menu Konteks:"
