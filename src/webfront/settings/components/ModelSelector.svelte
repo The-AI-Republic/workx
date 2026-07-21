@@ -65,8 +65,6 @@
   // Group models by model name for UI display
   interface GroupedModel {
     modelName: string;
-    modelKey: string; // First provider's model key, supplied to the access policy
-    isCustom: boolean; // Whether every provider in the group is user-defined
     providers: Array<{
       modelId: string;
       modelKey: string;
@@ -75,12 +73,21 @@
       apiKey: string | null;
       contextWindow: number;
       maxOutputTokens: number;
+      isCustom: boolean;
       pricing?: {
         inputToken: string;
         outputToken: string;
         link: string;
       };
     }>;
+  }
+
+  function isProviderLocked(provider: GroupedModel['providers'][number]): boolean {
+    return isModelLocked(provider.modelKey, provider.isCustom);
+  }
+
+  function isGroupLocked(group: GroupedModel): boolean {
+    return group.providers.every(isProviderLocked);
   }
 
   // Computed: group models by name
@@ -90,10 +97,6 @@
     for (const item of modelSelectionItems) {
       const existing = groups.get(item.modelName);
       if (existing) {
-        // A group is "custom" only if EVERY provider in it is custom, so a name
-        // collision between a built-in and a BYOK endpoint must not cause the
-        // access policy to treat the built-in group as entirely custom.
-        existing.isCustom = existing.isCustom && (item.isCustom ?? false);
         // Check for duplicate provider before adding
         const isDuplicate = existing.providers.some((p) => p.providerId === item.providerId);
         if (isDuplicate) {
@@ -113,13 +116,12 @@
           apiKey: item.apiKey,
           contextWindow: item.contextWindow,
           maxOutputTokens: item.maxOutputTokens,
+          isCustom: item.isCustom ?? false,
           pricing: item.pricing,
         });
       } else {
         groups.set(item.modelName, {
           modelName: item.modelName,
-          modelKey: item.modelKey,
-          isCustom: item.isCustom ?? false,
           providers: [
             {
               modelId: item.modelId,
@@ -129,6 +131,7 @@
               apiKey: item.apiKey,
               contextWindow: item.contextWindow,
               maxOutputTokens: item.maxOutputTokens,
+              isCustom: item.isCustom ?? false,
               pricing: item.pricing,
             },
           ],
@@ -158,7 +161,7 @@
   function handleModelRowClick(group: GroupedModel) {
     if (disabled) return;
 
-    if (isModelLocked(group.modelKey, group.isCustom)) {
+    if (isGroupLocked(group)) {
       return;
     }
 
@@ -183,18 +186,16 @@
 
   function handleProviderClick(
     event: MouseEvent,
-    modelId: string,
     modelName: string,
-    modelKey: string,
-    isCustom = false
+    provider: GroupedModel['providers'][number],
   ) {
     if (disabled) {
       event.stopPropagation();
       return;
     }
 
-    if (isModelLocked(modelKey, isCustom)) {
-      // We don't stop propagation here so parent tooltip can catch the click
+    if (isProviderLocked(provider)) {
+      event.stopPropagation();
       return;
     }
 
@@ -205,11 +206,14 @@
     pendingProviderErrors = pendingProviderErrors;
     pendingSelectionModelName = null;
 
-    selectModel(modelId);
+    selectModel(provider.modelId);
   }
 
   function selectModel(modelId: string) {
     if (disabled) return;
+
+    const item = modelSelectionItems.find((model) => model.modelId === modelId);
+    if (!item || isModelLocked(item.modelKey, item.isCustom)) return;
 
     // Dispatch model change event
     onModelChange?.({ modelId });
@@ -398,7 +402,7 @@
         {@const hasMultipleProviders = group.providers.length > 1}
         {@const hasError = pendingProviderErrors.get(group.modelName)}
         {@const firstProvider = group.providers[0]}
-        {@const isLockedForAccount = isModelLocked(group.modelKey, group.isCustom)}
+        {@const isLockedForAccount = isGroupLocked(group)}
 
         <Tooltip
           content={$_t(modelAccessPolicy.lockedCopy.settingsTooltip)}
@@ -459,6 +463,7 @@
                   <div class="provider-buttons flex flex-wrap gap-1.5 items-center">
                     {#each group.providers as provider (provider.modelId)}
                       {@const isProviderSelected = provider.modelId === selectedModel}
+                      {@const isProviderLockedForAccount = isProviderLocked(provider)}
                       {@const tooltipText = provider.pricing
                         ? `Input: ${provider.pricing.inputToken}\nOutput: ${provider.pricing.outputToken}`
                         : `${provider.contextWindow.toLocaleString()} tokens context`}
@@ -466,25 +471,23 @@
                         <button
                           type="button"
                           class="provider-capsule px-2.5 py-0.5 text-sm rounded-full border transition-all"
-                          class:provider-selected={isProviderSelected && !isLockedForAccount}
-                          class:provider-unselected={!isProviderSelected && !isLockedForAccount}
-                          class:provider-locked={isLockedForAccount}
-                          aria-disabled={isLockedForAccount}
+                          class:provider-selected={isProviderSelected && !isProviderLockedForAccount}
+                          class:provider-unselected={!isProviderSelected && !isProviderLockedForAccount}
+                          class:provider-locked={isProviderLockedForAccount}
+                          aria-disabled={isProviderLockedForAccount}
                           onclick={(e) =>
                             handleProviderClick(
                               e,
-                              provider.modelId,
                               group.modelName,
-                              provider.modelKey,
-                              group.isCustom
+                              provider,
                             )}
                         >
                           <span class="provider-name">{provider.providerName}</span>
-                          {#if provider.apiKey && !isLockedForAccount}
+                          {#if provider.apiKey && !isProviderLockedForAccount}
                             <span class="ml-1 text-sm opacity-70">✓</span>
                           {/if}
                         </button>
-                        {#if !isLockedForAccount}
+                        {#if !isProviderLockedForAccount}
                           <div class="provider-tooltip">
                             {#if provider.pricing}
                               <div class="tooltip-line">{$_t('In:')} {provider.pricing.inputToken}</div>

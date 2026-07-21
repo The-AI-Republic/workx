@@ -69,14 +69,21 @@
   // Group models by name
   interface GroupedModel {
     modelName: string;
-    modelKey: string; // First provider's model key, supplied to the access policy
-    isCustom: boolean; // Whether every provider in the group is user-defined
     providers: Array<{
       modelId: string;
       modelKey: string;
       providerId: string;
       providerName: string;
+      isCustom: boolean;
     }>;
+  }
+
+  function isProviderLocked(provider: GroupedModel['providers'][number]): boolean {
+    return isModelLocked(provider.modelKey, provider.isCustom);
+  }
+
+  function isGroupLocked(group: GroupedModel): boolean {
+    return group.providers.every(isProviderLocked);
   }
 
   let groupedModels = $derived((() => {
@@ -85,10 +92,6 @@
     for (const item of filteredModelItems) {
       const existing = groups.get(item.modelName);
       if (existing) {
-        // A group is "custom" only if EVERY provider in it is custom. A name
-        // collision between a built-in and a BYOK endpoint must not cause the
-        // access policy to treat the built-in group as entirely custom.
-        existing.isCustom = existing.isCustom && (item.isCustom ?? false);
         // Check for duplicate provider before adding
         const isDuplicate = existing.providers.some(p => p.providerId === item.providerId);
         if (!isDuplicate) {
@@ -97,18 +100,18 @@
             modelKey: item.modelKey,
             providerId: item.providerId,
             providerName: item.providerName,
+            isCustom: item.isCustom ?? false,
           });
         }
       } else {
         groups.set(item.modelName, {
           modelName: item.modelName,
-          modelKey: item.modelKey,
-          isCustom: item.isCustom ?? false,
           providers: [{
             modelId: item.modelId,
             modelKey: item.modelKey,
             providerId: item.providerId,
             providerName: item.providerName,
+            isCustom: item.isCustom ?? false,
           }]
         });
       }
@@ -195,13 +198,14 @@
     isOpen = false;
   }
 
-  async function selectModel(modelId: string, modelName: string, modelKey: string, isCustom = false) {
+  async function selectModel(modelId: string, modelName: string) {
     if (modelId === selectedModelKey) {
       isOpen = false;
       return;
     }
 
-    if (isModelLocked(modelKey, isCustom)) {
+    const item = modelSelectionItems.find((model) => model.modelId === modelId);
+    if (!item || isModelLocked(item.modelKey, item.isCustom)) {
       return;
     }
 
@@ -275,7 +279,7 @@
       {#each groupedModels as group (group.modelName)}
         {@const isSelected = selectedGroup?.modelName === group.modelName}
         {@const hasMultipleProviders = group.providers.length > 1}
-        {@const isLockedForAccount = isModelLocked(group.modelKey, group.isCustom)}
+        {@const isLockedForAccount = isGroupLocked(group)}
 
         <div class="{currentTheme === 'modern'
           ? 'border-b border-white/10 last:border-b-0'
@@ -310,15 +314,20 @@
                   {currentTheme === 'modern' ? 'py-1.5 px-3.5 pb-2.5' : 'py-1 px-3 pb-2'}">
                   {#each group.providers as provider (provider.modelId)}
                     {@const isProviderSelected = provider.modelId === selectedModelKey}
+                    {@const isProviderLockedForAccount = isProviderLocked(provider)}
                     <button
                       type="button"
                       class="cursor-pointer transition-all duration-150 text-sm
                         {currentTheme === 'modern'
                           ? 'font-chat bg-white/10 border border-white/20 rounded-2xl text-white/80 py-1 px-2.5 hover:bg-white/15 hover:border-white/30 hover:text-chat-tooltip-text dark:hover:text-chat-tooltip-text-dark ' + (isProviderSelected ? 'bg-blue-400/25 border-chat-primary dark:border-chat-primary-dark text-chat-primary dark:text-chat-primary-dark' : '')
                           : 'font-terminal bg-transparent border border-term-dim-green/40 rounded py-1 px-2 text-term-dim-green hover:border-term-green hover:bg-term-green/10 ' + (isProviderSelected ? 'bg-term-green/20 border-term-bright-green text-term-bright-green' : '')}"
-                      onclick={() => selectModel(provider.modelId, group.modelName, provider.modelKey, group.isCustom)}
+                      class:opacity-50={isProviderLockedForAccount}
+                      class:cursor-not-allowed={isProviderLockedForAccount}
+                      onclick={() => selectModel(provider.modelId, group.modelName)}
+                      disabled={isProviderLockedForAccount}
                       role="option"
                       aria-selected={isProviderSelected}
+                      aria-disabled={isProviderLockedForAccount}
                     >
                       {provider.providerName}
                     </button>
@@ -355,7 +364,7 @@
                   {currentTheme === 'modern'
                     ? 'font-chat text-sm py-2.5 px-3.5 text-chat-tooltip-text dark:text-chat-tooltip-text-dark hover:bg-white/10 ' + (isSelected ? 'bg-blue-400/20 text-chat-primary dark:text-chat-primary-dark' : '')
                     : 'font-terminal text-sm py-2 px-3 text-term-dim-green hover:bg-term-green/10 hover:text-term-green ' + (isSelected ? 'bg-term-green/15 text-term-bright-green' : '')}"
-                onclick={() => selectModel(group.providers[0].modelId, group.modelName, group.providers[0].modelKey, group.isCustom)}
+                onclick={() => selectModel(group.providers[0].modelId, group.modelName)}
                 role="option"
                 aria-selected={isSelected}
               >
