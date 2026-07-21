@@ -23,6 +23,8 @@ name: Release desktop bundles (S3)
 #   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY - publisher IAM creds scoped to
 #       s3:PutObject on arn:aws:s3:::workx-desktop-releases/*
 #   VITE_VAULT_SECRET                   - credential-encryption vault secret (>=32 chars)
+# Optional repo variables (override the checked-in voice STT release pin):
+#   WORKX_VOICE_STT_MANIFEST_URL / WORKX_VOICE_STT_MANIFEST_SHA256
 
 on:
   # Primary path: publishing a stable GitHub Release builds + signs + pushes to
@@ -212,6 +214,8 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          WORKX_VOICE_STT_MANIFEST_URL: ${{ vars.WORKX_VOICE_STT_MANIFEST_URL || 'https://workx-voice-stt-assets.s3.us-west-2.amazonaws.com/stable.json' }}
+          WORKX_VOICE_STT_MANIFEST_SHA256: ${{ vars.WORKX_VOICE_STT_MANIFEST_SHA256 || '6394b00b4d2cce0730a01496da7c1e2f0089685e3725e3eb746577ea01a86bb0' }}
         # beforeBuildCommand (tauri.conf.json) builds the frontend + sidecars.
         run: cargo tauri build ${{ matrix.args }}
 

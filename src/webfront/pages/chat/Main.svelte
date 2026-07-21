@@ -71,7 +71,6 @@
     type TimelineSource,
   } from '../../lib/conversationTimeline';
   import { LatestViewedSession } from '../../lib/latestViewedSession';
-  import { isWideMode } from '../../stores/layoutStore';
   import { previewStore } from '../../stores/previewStore';
   // UI channel client (platform-agnostic)
   let client: UIChannelClient | null = $state(null);

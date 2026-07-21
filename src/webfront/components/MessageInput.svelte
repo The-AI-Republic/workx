@@ -18,6 +18,11 @@
   import { initBuiltinCommands, registerSkillCommands } from '../commands/builtinCommands';
   import type { InputItem } from '@/core/protocol/types';
   import { registerShortcut, registerShortcutContext } from '../shortcuts/useShortcut';
+  import {
+    canUseBrowserVoiceCapture,
+    getVoiceSttStatus,
+    transcribeAudioBlob,
+  } from '../lib/voice/stt';
 
   let {
     value = $bindable(''),
@@ -59,6 +64,23 @@
   } = $props();
 
   let isFocused = $state(false);
+  let voiceSupported = $state(false);
+  let isStartingVoice = $state(false);
+  let isRecordingVoice = $state(false);
+  let isTranscribingVoice = $state(false);
+  let voiceError: string | null = $state(null);
+  let voiceStream: MediaStream | null = null;
+  let voiceAudioContext: AudioContext | null = null;
+  let voiceSource: MediaStreamAudioSourceNode | null = null;
+  let voiceProcessor: ScriptProcessorNode | null = null;
+  let voicePcmChunks: Float32Array[] = [];
+  let voiceSampleCount = 0;
+  let voiceStopQueued = false;
+  let voiceSampleRate = 16000;
+  let voiceDisposed = false;
+  const MAX_VOICE_RECORDING_SECONDS = 300;
+  const MAX_VOICE_AUDIO_BYTES = 50 * 1024 * 1024;
+  const MAX_VOICE_PCM_SAMPLES = Math.floor((MAX_VOICE_AUDIO_BYTES - 44) / 2);
 
   // Track 13: screenshots captured from the web clipboard, sent alongside
   // the prompt as `image` InputItems (the core funnel disk-backs them).
@@ -184,6 +206,15 @@
         ? $_t('Please type a valid command')
         : $_t('Long press to schedule task')
   );
+  let voiceTooltipContent = $derived(
+    isTranscribingVoice
+      ? $_t('Transcribing voice')
+      : isStartingVoice
+        ? $_t('Starting voice input')
+        : isRecordingVoice
+          ? $_t('Stop recording')
+          : $_t('Voice input')
+  );
 
   function handleModelChanged(data: { modelId: string; modelName: string }) {
     onModelChanged?.(data);
@@ -214,12 +245,197 @@
     }, 60000);
   }
 
+  function stopVoiceTracks(): void {
+    voiceStream?.getTracks().forEach((track) => track.stop());
+    voiceStream = null;
+  }
+
+  function stopVoiceAudioGraph(): void {
+    voiceProcessor?.disconnect();
+    voiceSource?.disconnect();
+    void voiceAudioContext?.close().catch(() => {});
+    voiceProcessor = null;
+    voiceSource = null;
+    voiceAudioContext = null;
+  }
+
+  function encodeWav(chunks: Float32Array[], sampleRate: number): Blob {
+    const totalSamples = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const dataBytes = totalSamples * 2;
+    const buffer = new ArrayBuffer(44 + dataBytes);
+    const view = new DataView(buffer);
+
+    function writeString(offset: number, value: string): void {
+      for (let idx = 0; idx < value.length; idx++) {
+        view.setUint8(offset + idx, value.charCodeAt(idx));
+      }
+    }
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataBytes, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, dataBytes, true);
+
+    let offset = 44;
+    for (const chunk of chunks) {
+      for (const sample of chunk) {
+        const clamped = Math.max(-1, Math.min(1, sample));
+        view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
+        offset += 2;
+      }
+    }
+
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
+  function appendVoiceTranscript(text: string): void {
+    const transcript = text.trim();
+    if (!transcript) return;
+    value = value.trim()
+      ? `${value.trimEnd()} ${transcript}`
+      : transcript;
+    handleInput();
+  }
+
+  async function initializeVoiceSupport(): Promise<void> {
+    if (!canUseBrowserVoiceCapture()) return;
+    try {
+      const status = await getVoiceSttStatus();
+      if (!voiceDisposed) voiceSupported = status.available;
+    } catch {
+      if (!voiceDisposed) voiceSupported = false;
+    }
+  }
+
+  async function startVoiceRecording(): Promise<void> {
+    if (!voiceSupported || isStartingVoice || isRecordingVoice || isTranscribingVoice) return;
+    isStartingVoice = true;
+    voiceError = null;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (voiceDisposed) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      voiceStream = stream;
+      const AudioContextCtor = window.AudioContext
+        || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) {
+        throw new Error('Audio recording is not supported in this desktop webview.');
+      }
+      voiceAudioContext = new AudioContextCtor();
+      voiceSampleRate = voiceAudioContext.sampleRate;
+      voicePcmChunks = [];
+      voiceSampleCount = 0;
+      voiceStopQueued = false;
+      voiceSource = voiceAudioContext.createMediaStreamSource(stream);
+      voiceProcessor = voiceAudioContext.createScriptProcessor(4096, 1, 1);
+      voiceProcessor.onaudioprocess = (event) => {
+        if (!isRecordingVoice) return;
+        const input = event.inputBuffer.getChannelData(0);
+        const maxSamples = Math.min(
+          voiceSampleRate * MAX_VOICE_RECORDING_SECONDS,
+          MAX_VOICE_PCM_SAMPLES,
+        );
+        const remaining = Math.max(0, maxSamples - voiceSampleCount);
+        if (remaining > 0) {
+          const captured = new Float32Array(input.subarray(0, remaining));
+          voicePcmChunks.push(captured);
+          voiceSampleCount += captured.length;
+        }
+        const output = event.outputBuffer.getChannelData(0);
+        output.fill(0);
+        if (voiceSampleCount >= maxSamples && !voiceStopQueued) {
+          voiceStopQueued = true;
+          queueMicrotask(() => {
+            if (!voiceDisposed && isRecordingVoice) stopVoiceRecording();
+          });
+        }
+      };
+      voiceSource.connect(voiceProcessor);
+      voiceProcessor.connect(voiceAudioContext.destination);
+      if (voiceAudioContext.state === 'suspended') {
+        await voiceAudioContext.resume();
+      }
+      if (voiceDisposed) {
+        stopVoiceAudioGraph();
+        stopVoiceTracks();
+        return;
+      }
+      isRecordingVoice = true;
+    } catch (err) {
+      stopVoiceAudioGraph();
+      stopVoiceTracks();
+      if (!voiceDisposed) {
+        isRecordingVoice = false;
+        isTranscribingVoice = false;
+        voiceError = err instanceof Error ? err.message : String(err);
+      }
+    } finally {
+      if (!voiceDisposed) isStartingVoice = false;
+    }
+  }
+
+  function stopVoiceRecording(shouldTranscribe = true): void {
+    if (!isRecordingVoice) return;
+    isRecordingVoice = false;
+    const chunks = voicePcmChunks;
+    const sampleRate = voiceSampleRate;
+    voicePcmChunks = [];
+    voiceSampleCount = 0;
+    voiceStopQueued = false;
+    stopVoiceAudioGraph();
+    stopVoiceTracks();
+
+    if (!shouldTranscribe || voiceDisposed) return;
+    const blob = encodeWav(chunks, sampleRate);
+    if (blob.size <= 44) {
+      voiceError = $_t('No voice audio was recorded');
+      return;
+    }
+    isTranscribingVoice = true;
+    void transcribeVoiceBlob(blob);
+  }
+
+  async function transcribeVoiceBlob(blob: Blob): Promise<void> {
+    try {
+      const result = await transcribeAudioBlob(blob);
+      if (voiceDisposed) return;
+      appendVoiceTranscript(result.text);
+      voiceError = null;
+    } catch (err) {
+      if (voiceDisposed) return;
+      voiceError = err instanceof Error ? err.message : String(err);
+    } finally {
+      if (!voiceDisposed) {
+        isTranscribingVoice = false;
+      }
+    }
+  }
+
+  function handleVoiceButtonClick(): void {
+    if (isStartingVoice) return;
+    if (isRecordingVoice) {
+      stopVoiceRecording();
+      return;
+    }
+    void startVoiceRecording();
+  }
+
   function updateFilter(): void {
     const query = filterText;
     filteredCommands = commandRegistry.filter(query, lastExecuted);
     selectedIndex = 0;
   }
-
   async function executeCommand(commandName: string, args?: string): Promise<void> {
     const now = Date.now();
     const lastTime = lastExecuted.get(commandName);
@@ -471,12 +687,17 @@
   }
 
   onDestroy(() => {
+    voiceDisposed = true;
     if (errorTimeout) {
       clearTimeout(errorTimeout);
     }
+    stopVoiceRecording(false);
+    stopVoiceAudioGraph();
+    stopVoiceTracks();
   });
 
   onMount(() => {
+    void initializeVoiceSupport();
     const unregisterChatContext = registerShortcutContext('Chat', { active: () => isFocused });
     const unregisterSlashContext = registerShortcutContext('SlashCommand', {
       active: () => isFocused && isCommandMode && showDropdown,
@@ -592,6 +813,12 @@
       </div>
     {/if}
 
+    {#if voiceError}
+      <div class="mb-1 text-xs {currentTheme === 'modern' ? 'text-chat-stop dark:text-chat-stop-dark' : 'text-term-red'}">
+        {voiceError}
+      </div>
+    {/if}
+
     <!-- Track 24.3: next-message suggestion chip (Tab to accept, × to dismiss).
          Visible exactly when Tab will accept: palette closed AND input empty
          OR the typed text is a live prefix of the suggestion. -->
@@ -628,7 +855,7 @@
             ? 'text-chat-text dark:text-chat-text-dark font-chat px-4 py-3 caret-chat-text dark:caret-white'
             : 'text-term-green font-terminal px-3 py-2'}"
         aria-label="Message input"
-      />
+      ></textarea>
       <div
         class="flex items-center justify-start gap-2
           {currentTheme === 'modern'
@@ -643,6 +870,38 @@
 
         <!-- Spacer to push button to the right -->
         <div class="flex-1"></div>
+
+        {#if voiceSupported}
+          <Tooltip content={voiceTooltipContent}>
+            <button
+              type="button"
+              class="flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95
+                {currentTheme === 'modern'
+                  ? 'w-9 h-9 p-1.5 border-none rounded-full text-chat-text-muted dark:text-chat-text-muted-dark hover:bg-chat-button-hover dark:hover:bg-chat-button-hover-dark hover:text-chat-text dark:hover:text-chat-text-dark'
+                  : 'w-9 h-9 p-1.5 border rounded border-term-green/60 text-term-green hover:border-term-bright-green hover:text-term-bright-green'}
+                {(isRecordingVoice || isTranscribingVoice)
+                  ? (currentTheme === 'modern'
+                    ? ' bg-chat-stop/15 dark:bg-chat-stop-dark/20 text-chat-stop dark:text-chat-stop-dark'
+                    : ' bg-term-red/10 border-term-red text-term-red')
+                  : ''}"
+              onclick={handleVoiceButtonClick}
+              disabled={isStartingVoice || isTranscribingVoice}
+              aria-label={isRecordingVoice ? $_t('Stop recording') : $_t('Voice input')}
+            >
+              {#if isTranscribingVoice}
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-[18px] h-[18px] animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 12a9 9 0 1 1-6.2-8.6" />
+                </svg>
+              {:else}
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <path d="M12 19v3" />
+                </svg>
+              {/if}
+            </button>
+          </Tooltip>
+        {/if}
 
         <!-- Send/Stop Button -->
         <div class="relative inline-flex">

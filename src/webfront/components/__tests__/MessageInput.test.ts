@@ -1,8 +1,24 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+
+const voiceMocks = vi.hoisted(() => ({
+  canUseBrowserVoiceCapture: vi.fn(() => false),
+  getVoiceSttStatus: vi.fn(),
+  transcribeAudioBlob: vi.fn(),
+}));
+
+vi.mock('@/webfront/lib/voice/stt', () => voiceMocks);
+
 import MessageInput from '@/webfront/components/MessageInput.svelte';
 
 describe('MessageInput Component', () => {
+  beforeEach(() => {
+    voiceMocks.canUseBrowserVoiceCapture.mockReset();
+    voiceMocks.canUseBrowserVoiceCapture.mockReturnValue(false);
+    voiceMocks.getVoiceSttStatus.mockReset();
+    voiceMocks.transcribeAudioBlob.mockReset();
+  });
+
   // Component rendering test
   describe('Component Rendering', () => {
     it('should render with all props', () => {
@@ -343,6 +359,38 @@ describe('MessageInput Component', () => {
       const chip = screen.getByRole('button', { name: /working folder/i });
       expect(chip.textContent).toContain(root);
       expect(chip.textContent).not.toContain('.../');
+    });
+  });
+
+  describe('Voice input availability', () => {
+    it('shows voice input only when capture and a target asset are available', async () => {
+      voiceMocks.canUseBrowserVoiceCapture.mockReturnValue(true);
+      voiceMocks.getVoiceSttStatus.mockResolvedValue({
+        configured: true,
+        available: true,
+        installed: false,
+        target: 'linux-x86_64',
+      });
+
+      render(MessageInput, { props: { value: '', onSubmit: () => {} } });
+
+      expect(await screen.findByRole('button', { name: 'Voice input' })).toBeDefined();
+    });
+
+    it('hides voice input when the manifest has no asset for this target', async () => {
+      voiceMocks.canUseBrowserVoiceCapture.mockReturnValue(true);
+      voiceMocks.getVoiceSttStatus.mockResolvedValue({
+        configured: true,
+        available: false,
+        installed: false,
+        target: 'macos-aarch64',
+        error: 'No voice STT asset is available for target macos-aarch64',
+      });
+
+      render(MessageInput, { props: { value: '', onSubmit: () => {} } });
+
+      await waitFor(() => expect(voiceMocks.getVoiceSttStatus).toHaveBeenCalledOnce());
+      expect(screen.queryByRole('button', { name: 'Voice input' })).toBeNull();
     });
   });
 });
