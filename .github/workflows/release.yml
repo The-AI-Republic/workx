@@ -3,15 +3,14 @@ name: Release (Chrome extension)
 # Publishing a GitHub Release builds the Chrome extension, attaches workx.zip to
 # the Release, and opens the Chrome Web Store publish PR.
 #
-# The desktop app is NOT built here anymore — it moved to release-desktop.yml,
-# which builds/signs and pushes to the workx-desktop-releases S3 bucket that the
-# in-app auto-updater reads. Both workflows fire on the same `release: released`
-# event, so one GitHub Release ships both surfaces; desktop builds once, to S3.
+# Production desktop releases are owned by the private-workx overlay repository,
+# which prepares an exact WorkX commit, applies its private product adapters,
+# then builds/signs and publishes installers plus updater manifests to S3.
 
 on:
   # `released` fires only on publishing a non-prerelease Release (including a
-  # draft that is later published) — matches release-desktop.yml so both
-  # surfaces ship together and prereleases/drafts never auto-publish.
+  # draft that is later published), so prereleases and drafts never publish the
+  # Chrome extension.
   release:
     types: [released]
 
