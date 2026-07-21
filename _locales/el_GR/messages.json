@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Παρακαλώ πληκτρολογήστε μια έγκυρη εντολή"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Παρακαλώ αναβαθμίστε το πρόγραμμα για να ξεκλειδώσετε τα πιο προηγμένα μοντέλα του κόσμου"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Η θύρα 1455 είναι σε χρήση. Παρακαλώ κλείστε οποιαδήποτε εφαρμογή χρησιμοποιεί αυτή τη θύρα και δοκιμάστε ξανά."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Αναβάθμιση σε Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Αναβαθμίστε για να εξερευνήσετε τα πιο ισχυρά μοντέλα του κόσμου"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Αναβαθμίστε τη συνδρομή σας για να εξερευνήσετε τα πιο ισχυρά μοντέλα του κόσμου"
   },
   "Use_Context_Menu": {
     "message": "Χρήση του μενού περιβάλλοντος:"

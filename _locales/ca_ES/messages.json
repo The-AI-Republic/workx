@@ -1400,9 +1400,6 @@
   "Please_type_a_valid_command": {
     "message": "Escriviu una ordre vàlida"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Actualitzeu el pla per desbloquejar els models més avançats del món"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "El port 1455 està en ús. Si us plau, tanca qualsevol aplicació que utilitzi aquest port i torna-ho a intentar."
   },
@@ -1968,12 +1965,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "Actualitza a Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Actualitza per explorar els models més potents del món"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "Actualitza la teva subscripció per explorar els models més potents del món"
   },
   "Use_Context_Menu": {
     "message": "Menú contextual:"

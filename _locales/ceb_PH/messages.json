@@ -1405,9 +1405,6 @@
   "Please_type_a_valid_command": {
     "message": "Palihug i-type ang balidong command"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "Palihug i-upgrade ang plano aron ma-unblock ang pinakabago nga mga modelo sa kalibutan"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "Ang Port 1455 kay gigamit. Palihug isira ang bisan unsang aplikasyon nga naggamit niini nga port ug sulayi pag-usab."
   },
@@ -1973,12 +1970,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "I-upgrade sa Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "Pag-upgrade aron masusi ang pinakakusog nga mga modelo sa kalibutan"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "I-upgrade ang imong subscription aron masuhid ang labing gamhanan nga mga modelo sa kalibutan"
   },
   "Use_Context_Menu": {
     "message": "Paggamit sa Context Menu:"

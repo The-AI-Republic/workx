@@ -1405,9 +1405,6 @@
   "Please_type_a_valid_command": {
     "message": "لطفاً یک فرمان معتبر وارد کنید"
   },
-  "Please_upgrade_the_plan_to_unblock_world_9fed": {
-    "message": "لطفاً طرح را ارتقا دهید تا مدل‌های پیشرفته‌ترین جهان را باز کنید"
-  },
   "Port_1455_is_in_use_Please_close_any_app_a809": {
     "message": "پورت 1455 در حال استفاده است. لطفاً هر برنامه‌ای که از این پورت استفاده می‌کند ببندید و دوباره تلاش کنید."
   },
@@ -1973,12 +1970,6 @@
   },
   "Upgrade_to_Premium": {
     "message": "ارتقاء به Premium"
-  },
-  "Upgrade_to_explore_world_s_most_powerful_7c76": {
-    "message": "برای کشف قدرتمندترین مدل‌های جهان ارتقا دهید"
-  },
-  "Upgrade_your_subscription_to_explore_wor_c5db": {
-    "message": "اشتراک خود را ارتقاء دهید تا به قدرتمندترین مدل‌های جهان دسترسی پیدا کنید"
   },
   "Use_Context_Menu": {
     "message": "استفاده از منوی زمینه:"
