@@ -17,7 +17,7 @@ import type { OpenHubCredentialProvider } from './OpenHubCredentialProvider';
 
 const JSON_LIMIT = 2 * 1024 * 1024;
 const ICON_LIMIT = 256 * 1024;
-const REQUIRED_SCOPE = 'apps';
+const REQUIRED_SCOPES = ['chat', 'models', 'apps'] as const;
 const APP_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 
 export interface OpenHubAppsClientObserver {
@@ -53,8 +53,10 @@ function ensureBaseUrl(raw: string): URL {
 
 async function boundedBytes(response: Response, limit: number): Promise<Uint8Array> {
   const length = Number(response.headers.get('content-length') ?? 0);
-  if (Number.isFinite(length) && length > limit)
+  if (Number.isFinite(length) && length > limit) {
+    await response.body?.cancel().catch(() => undefined);
     throw new AppsServiceError('APPS_INVALID_RESPONSE', 'OpenHub response was too large.', true);
+  }
   if (!response.body) return new Uint8Array();
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -64,12 +66,14 @@ async function boundedBytes(response: Response, limit: number): Promise<Uint8Arr
       const { done, value } = await reader.read();
       if (done) break;
       total += value.byteLength;
-      if (total > limit)
+      if (total > limit) {
+        await reader.cancel().catch(() => undefined);
         throw new AppsServiceError(
           'APPS_INVALID_RESPONSE',
           'OpenHub response was too large.',
           true
         );
+      }
       chunks.push(value);
     }
   } finally {
@@ -209,10 +213,11 @@ export class OpenHubAppsClient {
     const scopes = Array.isArray(raw?.scopes)
       ? raw.scopes.filter((v): v is string => typeof v === 'string')
       : [];
-    if (!scopes.includes(REQUIRED_SCOPE)) {
+    const missingScopes = REQUIRED_SCOPES.filter((scope) => !scopes.includes(scope));
+    if (missingScopes.length > 0) {
       throw new AppsServiceError(
         'APPS_FORBIDDEN',
-        'This OpenHub credential is missing Apps permission.',
+        `This OpenHub credential is missing required permission: ${missingScopes.join(', ')}.`,
         false,
         403
       );

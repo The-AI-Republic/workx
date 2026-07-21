@@ -125,9 +125,14 @@ export class ModelClientFactory {
     return this.auth.gatewayCredentials()?.getCredential() ?? null;
   }
 
-  async isGatewayRoutingAvailable(): Promise<boolean> {
+  async isGatewayRoutingAvailable(provider?: ModelProvider): Promise<boolean> {
+    if (provider && this.isCustomProvider(provider)) return false;
     const gatewayUrl = this.auth.current()?.getGatewayLlmBaseUrl?.();
     return Boolean(gatewayUrl && (await this.getGatewayCredential()));
+  }
+
+  private isCustomProvider(provider: ModelProvider): boolean {
+    return Boolean(this.config?.getProvider(provider)?.isCustom);
   }
 
   /**
@@ -204,8 +209,13 @@ export class ModelClientFactory {
 
     // Add routing type and OAuth status to cache key to separate clients
     const oauthActive = this.auth.current()?.isChatGPTOAuthActive?.() ? 'oauth' : 'direct';
-    const gatewayRouting = await this.isGatewayRoutingAvailable();
-    const routingType = gatewayRouting ? 'gateway' : this.isBackendRouting() ? 'backend' : oauthActive;
+    const isCustomProvider = this.isCustomProvider(provider);
+    const gatewayRouting = await this.isGatewayRoutingAvailable(provider);
+    const routingType = gatewayRouting
+      ? 'gateway'
+      : !isCustomProvider && this.isBackendRouting()
+        ? 'backend'
+        : oauthActive;
     const constructionSignature = this.hashObject(this.getClientConstructionSignature(provider));
     const cacheKey = `${provider}-${selectedModelKey}-${routingType}-${constructionSignature}`;
 
@@ -241,7 +251,7 @@ export class ModelClientFactory {
     // User-defined custom providers (BYOK) always use direct API-key mode — the
     // backend gateway only knows about built-in providers, so never route a
     // custom endpoint through it even when the user is logged in.
-    const isCustomProvider = !!this.config?.getProvider(provider)?.isCustom;
+    const isCustomProvider = this.isCustomProvider(provider);
 
     if (!isCustomProvider) {
       const gatewayLlmBaseUrl = this.auth.current()?.getGatewayLlmBaseUrl?.();
@@ -287,8 +297,10 @@ export class ModelClientFactory {
     const cfg = this.config.getConfig();
     const selectedKey = cfg.selectedModelKey;
     const selectedProvider = selectedKey.split(':')[0];
+    const isCustomProvider = this.isCustomProvider(selectedProvider);
     const remoteRouting =
-      (await this.isGatewayRoutingAvailable()) || this.isBackendRouting();
+      !isCustomProvider &&
+      ((await this.isGatewayRoutingAvailable(selectedProvider)) || this.isBackendRouting());
 
     // 1. Explicit selection. Provider policy: gateway routing (logged in,
     //    not using own API key) accepts any catalog model — one gateway

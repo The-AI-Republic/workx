@@ -105,4 +105,27 @@ describe('OpenHubCredentialProvider', () => {
       source: 'session',
     });
   });
+
+  it('coalesces a rejected refresh and fails closed until login supplies a new token', async () => {
+    let token = 'expired';
+    const refresh = vi.fn(async () => {
+      throw new Error('identity provider unavailable');
+    });
+    const provider = new OpenHubCredentialProvider({
+      policy: { authMethod: 'session-jwt', setupCopy: { title: '', description: '', action: '' } },
+      credentialStore: store(),
+      getSessionToken: async () => token,
+      refreshSessionToken: refresh,
+    });
+    const failed = (await provider.getCredential())!;
+
+    await expect(
+      Promise.all([provider.handleUnauthorized(failed), provider.handleUnauthorized(failed)])
+    ).resolves.toEqual([null, null]);
+    expect(refresh).toHaveBeenCalledOnce();
+    await expect(provider.getCredential()).resolves.toBeNull();
+
+    token = 'new-login-token';
+    await expect(provider.getCredential()).resolves.toMatchObject({ token: 'new-login-token' });
+  });
 });

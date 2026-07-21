@@ -22,7 +22,7 @@ export function createAppsRuntime(options: CreateAppsRuntimeOptions): {
   provider: OpenHubCredentialProvider;
   client?: OpenHubAppsClient;
   access: AppsAccessController;
-  getGatewayCredential: () => ReturnType<OpenHubCredentialProvider['getCredential']>;
+  getGatewayCredential: () => Promise<OpenHubCredential | null>;
   handleGatewayUnauthorized: (failedToken: string | null) => Promise<string | null>;
   getMcpCredential: () => Promise<string | null>;
   handleMcpUnauthorized: (failedToken: string | null) => Promise<string | null>;
@@ -53,11 +53,13 @@ export function createAppsRuntime(options: CreateAppsRuntimeOptions): {
     disconnectMcp: options.disconnectMcp,
   });
 
-  const getMcpCredential = async (): Promise<string | null> => {
+  const getGatewayCredential = async (): Promise<OpenHubCredential | null> => {
     if (access.getState().credentialStatus !== 'ready') return null;
-    return (await provider.getCredential())?.token ?? null;
+    return provider.getCredential();
   };
-  const getGatewayCredential = () => provider.getCredential();
+  const getMcpCredential = async (): Promise<string | null> => {
+    return (await getGatewayCredential())?.token ?? null;
+  };
   const handleGatewayUnauthorized = async (failedToken: string | null): Promise<string | null> => {
     const current = await provider.getCredential();
     if (!current) return null;

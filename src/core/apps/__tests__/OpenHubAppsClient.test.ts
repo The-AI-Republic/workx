@@ -57,7 +57,7 @@ async function apiClient(fetchMock: ReturnType<typeof vi.fn>) {
 }
 
 describe('OpenHubAppsClient', () => {
-  it('requires the unified gateway contract and Apps scope', async () => {
+  it('requires the unified gateway contract and every WorkX gateway scope', async () => {
     const compatible = await apiClient(vi.fn(async () => json(validCredential())));
     await expect(
       compatible.validateCredential({ method: 'api-key', token: 'candidate' })
@@ -70,12 +70,18 @@ describe('OpenHubAppsClient', () => {
       incompatible.validateCredential({ method: 'api-key', token: 'candidate' })
     ).rejects.toMatchObject({ errorCode: 'APPS_BACKEND_INCOMPATIBLE' });
 
-    const forbidden = await apiClient(
-      vi.fn(async () => json({ ...validCredential(), scopes: ['chat', 'models'] }))
-    );
-    await expect(
-      forbidden.validateCredential({ method: 'api-key', token: 'candidate' })
-    ).rejects.toMatchObject({ errorCode: 'APPS_FORBIDDEN' });
+    for (const scopes of [
+      ['models', 'apps'],
+      ['chat', 'apps'],
+      ['chat', 'models'],
+    ]) {
+      const forbidden = await apiClient(
+        vi.fn(async () => json({ ...validCredential(), scopes }))
+      );
+      await expect(
+        forbidden.validateCredential({ method: 'api-key', token: 'candidate' })
+      ).rejects.toMatchObject({ errorCode: 'APPS_FORBIDDEN' });
+    }
   });
 
   it('maps missing introspection to backend incompatible', async () => {
@@ -165,6 +171,26 @@ describe('OpenHubAppsClient', () => {
     await expect(unsafe.startOAuth('mail')).rejects.toMatchObject({
       errorCode: 'APPS_INVALID_RESPONSE',
     });
+  });
+
+  it('cancels an oversized streaming response', async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(2 * 1024 * 1024 + 1));
+      },
+      cancel,
+    });
+    const client = await apiClient(
+      vi.fn(async () =>
+        new Response(body, { headers: { 'content-type': 'application/json' } })
+      )
+    );
+
+    await expect(client.marketplace()).rejects.toMatchObject({
+      errorCode: 'APPS_INVALID_RESPONSE',
+    });
+    expect(cancel).toHaveBeenCalledOnce();
   });
 
   it('fetches bounded icons in the runtime without leaking the bearer to the icon host', async () => {

@@ -58,6 +58,8 @@ describe('createAppsRuntime', () => {
       fetch: fetchMock as typeof fetch,
     });
 
+    await expect(runtime.getGatewayCredential()).resolves.toBeNull();
+    await expect(runtime.getMcpCredential()).resolves.toBeNull();
     await runtime.access.initialize();
 
     expect(runtime.access.getState()).toMatchObject({
@@ -86,6 +88,33 @@ describe('createAppsRuntime', () => {
       configured: false,
       credentialStatus: 'unconfigured',
     });
+    await expect(runtime.getGatewayCredential()).resolves.toBeNull();
+    await expect(runtime.getMcpCredential()).resolves.toBeNull();
+  });
+
+  it('does not expose a credential that fails unified scope validation', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          contractVersion: 1,
+          capabilities: ['single-gateway-credential-v1'],
+          credentialType: 'api-key',
+          scopes: ['apps'],
+          allowedAppIds: null,
+        }),
+        { headers: { 'content-type': 'application/json' } }
+      )
+    );
+    const runtime = createAppsRuntime({
+      urls: urls(),
+      credentialStore,
+      fetch: fetchMock as typeof fetch,
+    });
+
+    await runtime.access.initialize();
+
+    expect(runtime.access.getState()).toMatchObject({ credentialStatus: 'forbidden' });
+    await expect(runtime.getGatewayCredential()).resolves.toBeNull();
     await expect(runtime.getMcpCredential()).resolves.toBeNull();
   });
 });

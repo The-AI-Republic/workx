@@ -844,6 +844,26 @@ describe('RepublicAgent', () => {
       expect(config.getProviderApiKey).not.toHaveBeenCalled();
     });
 
+    it('requires a direct API key for a custom provider even when remote routing is active', async () => {
+      (config.getModelByKey as Mock).mockReturnValue({
+        model: { name: 'Custom Model', key: 'model' },
+        provider: { id: 'custom', name: 'Custom' },
+      });
+      (config.getProvider as Mock).mockReturnValue({
+        id: 'custom',
+        name: 'Custom',
+        isCustom: true,
+      });
+      (config.getProviderApiKey as Mock).mockResolvedValue(null);
+      mockModelClientFactoryInstance.isBackendRouting.mockReturnValue(true);
+      mockModelClientFactoryInstance.isGatewayRoutingAvailable.mockResolvedValue(true);
+
+      const result = await agent.isReady();
+
+      expect(result).toMatchObject({ ready: false, authMode: 'api_key' });
+      expect(mockModelClientFactoryInstance.isGatewayRoutingAvailable).not.toHaveBeenCalled();
+    });
+
     it('should return ready=false when no API key is configured and not backend routing', async () => {
       (config.getProviderApiKey as Mock).mockResolvedValue('');
 

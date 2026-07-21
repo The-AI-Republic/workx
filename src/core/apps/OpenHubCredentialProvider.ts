@@ -70,6 +70,11 @@ export class OpenHubCredentialProvider {
           this.generation++;
           return token;
         })
+        .catch(() => {
+          this.rejectedSessionToken = failed.token;
+          this.generation++;
+          return null;
+        })
         .finally(() => {
           this.refreshPromise = null;
         });
