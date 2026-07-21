@@ -20,7 +20,6 @@ function urls(overrides: Partial<RuntimeUrlConfig> = {}): RuntimeUrlConfig {
     gatewayMcpUrl: 'https://gateway.example/mcp',
     gatewayCatalogUrl: 'https://hub.example/apps',
     gatewayCatalogApiBaseUrl: 'https://hub.example/api/v1/apps',
-    modelCatalogUrl: null,
     gatewayMcpName: 'gateway',
     gatewayMcpAuthMode: 'none',
     gatewayMcpApiKey: 'managed-openhub-key',
