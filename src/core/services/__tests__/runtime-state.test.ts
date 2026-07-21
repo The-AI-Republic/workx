@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  RuntimeStateController,
-  accessStateFromReadyState,
-} from '../runtime-state';
+import { RuntimeStateController, accessStateFromReadyState } from '../runtime-state';
 import type { EventMsg } from '@/core/protocol/events';
 
 describe('RuntimeStateController', () => {
@@ -63,13 +60,58 @@ describe('RuntimeStateController', () => {
     });
   });
 
+  it('never serializes runtime URL credentials into the Webfront snapshot', () => {
+    const runtimeState = new RuntimeStateController({
+      urls: {
+        homePageBaseUrl: null,
+        backendApiBaseUrl: null,
+        llmApiUrl: null,
+        gatewayBaseUrl: null,
+        gatewayLlmApiUrl: null,
+        gatewayMcpUrl: 'https://gateway.example/mcp',
+        gatewayCatalogUrl: null,
+        gatewayCatalogApiBaseUrl: 'https://gateway.example/api/v1/apps',
+        gatewayMcpName: 'gateway',
+        gatewayMcpAuthMode: 'api-key',
+        gatewayMcpApiKey: 'must-never-cross-ui',
+        gatewayMcpToolDiscoveryHeader: null,
+        gatewayMcpToolDiscovery: null,
+        gatewayDefaultEfficientModel: null,
+        llmRoutingMode: 'legacy',
+        deeplinkRedirectUrl: 'workx://auth/callback',
+        source: {
+          homePageBaseUrl: 'default',
+          backendApiBaseUrl: 'default',
+          llmApiUrl: 'default',
+          gatewayBaseUrl: 'default',
+          gatewayLlmApiUrl: 'default',
+          gatewayMcpUrl: 'env',
+          gatewayCatalogUrl: 'default',
+          gatewayCatalogApiBaseUrl: 'env',
+          gatewayMcpName: 'default',
+          gatewayMcpAuthMode: 'env',
+          gatewayMcpApiKey: 'env',
+          gatewayMcpToolDiscoveryHeader: 'default',
+          gatewayMcpToolDiscovery: 'default',
+          llmRoutingMode: 'default',
+          deeplinkRedirectUrl: 'default',
+        },
+      },
+    });
+    const serialized = JSON.stringify(runtimeState.getSnapshot());
+    expect(serialized).not.toContain('must-never-cross-ui');
+    expect(runtimeState.getSnapshot()).not.toHaveProperty('urls');
+  });
+
   it('maps agent ready states into runtime access states', () => {
-    expect(accessStateFromReadyState({
-      ready: true,
-      authMode: 'login',
-      provider: 'OpenAI',
-      model: 'gpt',
-    })).toMatchObject({
+    expect(
+      accessStateFromReadyState({
+        ready: true,
+        authMode: 'login',
+        provider: 'OpenAI',
+        model: 'gpt',
+      })
+    ).toMatchObject({
       status: 'ready',
       mode: 'login',
       ready: true,
@@ -77,21 +119,25 @@ describe('RuntimeStateController', () => {
       model: 'gpt',
     });
 
-    expect(accessStateFromReadyState({
-      ready: false,
-      authMode: 'api_key',
-      message: 'missing key',
-    })).toMatchObject({
+    expect(
+      accessStateFromReadyState({
+        ready: false,
+        authMode: 'api_key',
+        message: 'missing key',
+      })
+    ).toMatchObject({
       status: 'needs_api_key',
       mode: 'api_key',
       ready: false,
       reason: 'missing key',
     });
 
-    expect(accessStateFromReadyState({
-      ready: false,
-      authMode: 'none',
-    })).toMatchObject({
+    expect(
+      accessStateFromReadyState({
+        ready: false,
+        authMode: 'none',
+      })
+    ).toMatchObject({
       status: 'needs_login',
       mode: 'none',
       ready: false,
@@ -102,7 +148,11 @@ describe('RuntimeStateController', () => {
     const emitted: string[] = [];
     const runtimeState = new RuntimeStateController({
       emitStateUpdate: vi.fn(async (event) => {
-        if (event.type === 'StateUpdate' && event.data.scope === 'desktop-runtime' && event.data.kind === 'auth.stateChanged') {
+        if (
+          event.type === 'StateUpdate' &&
+          event.data.scope === 'desktop-runtime' &&
+          event.data.kind === 'auth.stateChanged'
+        ) {
           emitted.push((event.data.auth as { profileStatus: string }).profileStatus);
         }
       }),

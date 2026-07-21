@@ -1471,12 +1471,19 @@ export class RepublicAgent {
 
       const providerId = modelData.provider.id;
 
-      if (this.modelClientFactory.isBackendRouting()) {
+      const isCustomProvider = Boolean(this.config.getProvider(providerId)?.isCustom);
+      const gatewayRouting =
+        !isCustomProvider &&
+        (await this.modelClientFactory.isGatewayRoutingAvailable(providerId));
+      const gatewayCredential = gatewayRouting
+        ? await this.modelClientFactory.getGatewayCredential()
+        : null;
+      if ((!isCustomProvider && this.modelClientFactory.isBackendRouting()) || gatewayRouting) {
         return {
           ready: true,
           provider: modelData.provider.name,
           model: modelData.model.name,
-          authMode: 'login',
+          authMode: gatewayCredential?.method === 'api-key' ? 'api_key' : 'login',
         };
       }
 

@@ -16,13 +16,17 @@
   import { HOME_PAGE_BASE_URL, LLM_API_URL } from './lib/constants';
   import { AgentConfig } from '@/config/AgentConfig';
   import { getInitializedUIClient } from '@/core/messaging';
-  import type { DesktopRuntimeStateSnapshot, RuntimeAuthState } from '@/core/services/runtime-state';
+  import type {
+    DesktopRuntimeStateSnapshot,
+    RuntimeAuthState,
+  } from '@/core/services/runtime-state';
   import { platform } from './stores/platformStore';
   import { vaultStore, refreshVaultStatus } from './stores/vaultStore';
   import PinUnlockOverlay from './components/vault/PinUnlockOverlay.svelte';
   import ShortcutProvider from './shortcuts/ShortcutProvider.svelte';
   import { registerShortcut } from './shortcuts/useShortcut';
   import DesktopWelcome from './pages/welcome/DesktopWelcome.svelte';
+  import { initializeAppsStore, refreshAppsStore } from './stores/appsStore';
 
   let {
     showDesktopWelcome: initialShowDesktopWelcome = false,
@@ -67,7 +71,8 @@
   };
 
   // Store the cookie change listener for cleanup
-  let cookieChangeListener: ((changeInfo: chrome.cookies.CookieChangeInfo) => void) | null = $state(null);
+  let cookieChangeListener: ((changeInfo: chrome.cookies.CookieChangeInfo) => void) | null =
+    $state(null);
   let runtimeStateUnlisten: (() => void) | null = null;
   let showDesktopWelcome = $state(false);
 
@@ -126,7 +131,9 @@
         await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
       }
       try {
-        const snapshot = await client.serviceRequest<DesktopRuntimeStateSnapshot>('runtime.getStateSnapshot');
+        const snapshot = await client.serviceRequest<DesktopRuntimeStateSnapshot>(
+          'runtime.getStateSnapshot'
+        );
         applyDesktopAuthState(snapshot.auth);
         return;
       } catch (error) {
@@ -140,7 +147,9 @@
         }
         if (attempt === RETRY_DELAYS_MS.length - 1) {
           if (!isTransient) {
-            console.warn('[App] Falling back to logged-out state after auth.getState exhausted retries');
+            console.warn(
+              '[App] Falling back to logged-out state after auth.getState exhausted retries'
+            );
           }
         }
       }
@@ -156,7 +165,10 @@
         avatar: state.profile?.avatar ?? state.user?.avatar ?? null,
         userType: state.profile?.userType ?? state.user?.userType ?? 0,
       });
-      console.log('[App] Desktop userStore updated for:', state.profile?.email ?? state.user?.email ?? 'stored token');
+      console.log(
+        '[App] Desktop userStore updated for:',
+        state.profile?.email ?? state.user?.email ?? 'stored token'
+      );
       return;
     }
     userStore.setNotLoggedIn();
@@ -202,7 +214,12 @@
             avatar: profile.avatar,
             userType: profile.userType,
           });
-          console.log('[App] Web userStore updated for:', profile.email, 'userType:', profile.userType);
+          console.log(
+            '[App] Web userStore updated for:',
+            profile.email,
+            'userType:',
+            profile.userType
+          );
           return;
         }
 
@@ -322,14 +339,17 @@
     const unregisterZoomIn = registerShortcut('app:zoomIn', 'Global', () => zoomBy(ZOOM_STEP));
     const unregisterZoomOut = registerShortcut('app:zoomOut', 'Global', () => zoomBy(-ZOOM_STEP));
     const unregisterZoomReset = registerShortcut('app:zoomReset', 'Global', () => setZoom(100));
-    AgentConfig.getInstance().then((config) => {
-      const zoom = config.getConfig().preferences?.zoomLevel;
-      if (zoom && zoom !== 100) applyZoom(zoom);
-    }).catch(() => {});
+    AgentConfig.getInstance()
+      .then((config) => {
+        const zoom = config.getConfig().preferences?.zoomLevel;
+        if (zoom && zoom !== 100) applyZoom(zoom);
+      })
+      .catch(() => {});
 
     // Initial auth check
     wireDesktopRuntimeStateEvents();
     checkAndUpdateAuth();
+    initializeAppsStore();
 
     // Listen for cookie changes to detect login/logout from other pages
     if (typeof chrome !== 'undefined' && chrome.cookies?.onChanged) {
@@ -344,6 +364,7 @@
         ) {
           console.log('[App] Auth cookie changed:', removed ? 'removed' : 'set');
           checkAndUpdateAuth();
+          refreshAppsStore();
         }
       };
 

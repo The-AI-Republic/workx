@@ -113,7 +113,9 @@ function createMockAgentConfig(overrides: {
     getConfig: vi.fn().mockReturnValue({ selectedModelKey }),
     getModelByKey: vi.fn().mockReturnValue(defaultModelData),
     getProviderApiKey: vi.fn().mockResolvedValue(providerApiKey),
-    getProvider: vi.fn().mockReturnValue(providerData),
+    getProvider: vi.fn((providerId: string) =>
+      providerData?.id === providerId ? providerData : null
+    ),
     getProviders: vi.fn().mockReturnValue({
       openai: { id: 'openai' },
       xai: { id: 'xai' },
@@ -166,6 +168,21 @@ describe('ModelClientFactory', () => {
     factory.getAuthManager = () => authContext.current();
   });
 
+  function useGatewayCredential(
+    token = 'jwt-123',
+    refreshedToken: string | null = token,
+    method: 'api-key' | 'session-jwt' = 'session-jwt',
+  ): void {
+    let currentToken: string | null = token;
+    authContext.setGatewayCredentialProvider({
+      getCredential: vi.fn(async () => currentToken ? { method, token: currentToken } : null),
+      handleUnauthorized: vi.fn(async () => {
+        currentToken = refreshedToken;
+        return currentToken;
+      }),
+    });
+  }
+
   // =========================================================================
   // Construction & Auth Manager
   // =========================================================================
@@ -191,6 +208,22 @@ describe('ModelClientFactory', () => {
 
       factory.updateAuthContext(createMockAuthManager({ shouldUseBackend: true }));
       expect(factory.isBackendRouting()).toBe(true);
+    });
+
+    it('does not make custom providers gateway-routable with an OpenHub credential', async () => {
+      await factory.initialize(
+        createMockAgentConfig({
+          selectedModelKey: 'custom:model',
+          providerData: { id: 'custom', name: 'Custom', isCustom: true },
+        })
+      );
+      factory.updateAuthContext(
+        createMockAuthManager({ gatewayLlmBaseUrl: 'https://gateway.example/v1' })
+      );
+      useGatewayCredential('air_openhub', 'air_openhub', 'api-key');
+
+      await expect(factory.isGatewayRoutingAvailable('custom')).resolves.toBe(false);
+      await expect(factory.isGatewayRoutingAvailable('openai')).resolves.toBe(true);
     });
 
     it('should clear client cache when auth manager changes', async () => {
@@ -334,6 +367,7 @@ describe('ModelClientFactory', () => {
     });
 
     it('should fail closed in gateway mode when routing metadata is unavailable', async () => {
+      useGatewayCredential();
       factory.updateAuthContext(createMockAuthManager({
         shouldUseBackend: true,
         gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
@@ -536,6 +570,7 @@ describe('ModelClientFactory', () => {
           provider: { id: 'openai', name: 'OpenAI', apiKey: '', timeout: 30000, models: [] },
         },
       }));
+      useGatewayCredential('jwt-123', 'jwt-456');
       factory.updateAuthContext(createMockAuthManager({
         shouldUseBackend: true,
         backendBaseUrl: 'https://legacy.example.com/api/llm',
@@ -555,6 +590,25 @@ describe('ModelClientFactory', () => {
       await expect((client as any)._opts.refreshAuthorizationToken()).resolves.toBe('jwt-456');
     });
 
+    it('should use the shared OpenHub API key for LLM routing in own-key mode', async () => {
+      await factory.initialize(createMockAgentConfig({
+        modelData: {
+          model: { modelKey: 'gpt-5', name: 'GPT-5', openHubRoute: { modelSlug: 'openai/gpt-5', providerSlug: 'azure' }, supportsReasoning: true, supportBackendMode: 1, contextWindow: 128000, maxOutputTokens: 8192, creator: 'OpenAI' },
+          provider: { id: 'openai', name: 'OpenAI', apiKey: '', timeout: 30000, models: [] },
+        },
+      }));
+      useGatewayCredential('air_openhub-key', null, 'api-key');
+      factory.updateAuthContext(createMockAuthManager({
+        shouldUseBackend: false,
+        gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
+      }));
+
+      const client = await factory.createClient('openai');
+
+      expect((client as any)._opts.baseUrl).toBe('https://gateway.example.com/v1');
+      await expect((client as any)._opts.getAuthorizationToken()).resolves.toBe('air_openhub-key');
+    });
+
     it('should pass the catalog OpenHub provider pin to gateway-routed clients', async () => {
       await factory.initialize(createMockAgentConfig({
         modelData: {
@@ -562,6 +616,7 @@ describe('ModelClientFactory', () => {
           provider: { id: 'deepseek', name: 'DeepSeek', apiKey: '', timeout: 30000, models: [] },
         },
       }));
+      useGatewayCredential();
       factory.updateAuthContext(createMockAuthManager({
         shouldUseBackend: true,
         gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
@@ -581,6 +636,7 @@ describe('ModelClientFactory', () => {
           provider: { id: 'google-ai-studio', name: 'Google AI Studio', apiKey: '', timeout: 30000, models: [] },
         },
       }));
+      useGatewayCredential();
       factory.updateAuthContext(createMockAuthManager({
         shouldUseBackend: true,
         gatewayLlmBaseUrl: 'https://gateway.example.com/v1',
@@ -595,6 +651,7 @@ describe('ModelClientFactory', () => {
 
     it('should fail closed when a gateway model has no explicit OpenHub route', async () => {
       await factory.initialize(createMockAgentConfig());
+      useGatewayCredential();
       factory.updateAuthContext(createMockAuthManager({
         shouldUseBackend: true,
         gatewayLlmBaseUrl: 'https://gateway.example.com/v1',

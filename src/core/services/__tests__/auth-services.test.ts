@@ -17,7 +17,9 @@ function fakeCredentialStore() {
   const data = new Map<string, string>();
   return {
     data,
-    get: vi.fn(async (service: string, account: string) => data.get(`${service}:${account}`) ?? null),
+    get: vi.fn(
+      async (service: string, account: string) => data.get(`${service}:${account}`) ?? null
+    ),
     set: vi.fn(async (service: string, account: string, value: string) => {
       data.set(`${service}:${account}`, value);
     }),
@@ -51,7 +53,9 @@ function buildDeps(overrides: Partial<AuthServiceDeps> = {}): AuthServiceDeps & 
     listSessions: vi.fn(() => [{ sessionId: 's1', state: 'active' }]),
   };
   const createAuthManager = vi.fn((shouldUseBackend: boolean, base: string | null) => ({
-    shouldUseBackend, base, kind: 'fake-auth-manager',
+    shouldUseBackend,
+    base,
+    kind: 'fake-auth-manager',
   }));
   const updateAuthContext = vi.fn();
   return {
@@ -76,11 +80,14 @@ describe('createAuthServices', () => {
 
   describe('auth.completeLogin', () => {
     it('persists both tokens and updates the bootstrap-owned AuthContext', async () => {
-      const result = await svc['auth.completeLogin']!({
-        accessToken: 'at-1',
-        refreshToken: 'rt-1',
-        backendBaseUrl: 'https://api.example.com',
-      }, TEST_CONTEXT);
+      const result = await svc['auth.completeLogin']!(
+        {
+          accessToken: 'at-1',
+          refreshToken: 'rt-1',
+          backendBaseUrl: 'https://api.example.com',
+        },
+        TEST_CONTEXT
+      );
 
       expect(deps.credentialStore.set).toHaveBeenCalledWith('auth', 'access_token', 'at-1');
       expect(deps.credentialStore.set).toHaveBeenCalledWith('auth', 'refresh_token', 'rt-1');
@@ -112,11 +119,14 @@ describe('createAuthServices', () => {
       });
       svc = createAuthServices(deps);
 
-      const result = await svc['auth.completeLogin']!({
-        accessToken: 'at-1',
-        refreshToken: 'rt-1',
-        backendBaseUrl: 'https://api.example.com',
-      }, TEST_CONTEXT);
+      const result = await svc['auth.completeLogin']!(
+        {
+          accessToken: 'at-1',
+          refreshToken: 'rt-1',
+          backendBaseUrl: 'https://api.example.com',
+        },
+        TEST_CONTEXT
+      );
 
       expect(result).toMatchObject({
         success: true,
@@ -133,19 +143,25 @@ describe('createAuthServices', () => {
 
     it('rejects when either token is missing', async () => {
       await expect(svc['auth.completeLogin']!({ accessToken: 'a' }, TEST_CONTEXT)).rejects.toThrow(
-        /accessToken and refreshToken/,
+        /accessToken and refreshToken/
       );
       await expect(svc['auth.completeLogin']!({ refreshToken: 'b' }, TEST_CONTEXT)).rejects.toThrow(
-        /accessToken and refreshToken/,
+        /accessToken and refreshToken/
       );
       expect(deps.credentialStore.set).not.toHaveBeenCalled();
     });
 
     it('rejects when no credential store is available (e.g. on the wrong platform)', async () => {
       const localSvc = createAuthServices({ ...deps, getCredentialStore: undefined });
-      await expect(localSvc['auth.completeLogin']!({
-        accessToken: 'a', refreshToken: 'b',
-      }, TEST_CONTEXT)).rejects.toThrow(/credential store not available/);
+      await expect(
+        localSvc['auth.completeLogin']!(
+          {
+            accessToken: 'a',
+            refreshToken: 'b',
+          },
+          TEST_CONTEXT
+        )
+      ).rejects.toThrow(/credential store not available/);
     });
   });
 
@@ -160,14 +176,17 @@ describe('createAuthServices', () => {
       const originalFetch = globalThis.fetch;
       globalThis.fetch = fetchMock as never;
       try {
-        const result = await svc['auth.exchangeOIDCCode']!({
-          code: 'auth-code',
-          codeVerifier: 'verifier',
-          tokenUrl: 'https://testhome.example.com/auth/token',
-          clientId: 'workx-desktop',
-          redirectUri: 'workx://auth/callback',
-          backendBaseUrl: 'https://api.example.com',
-        }, TEST_CONTEXT);
+        const result = await svc['auth.exchangeOIDCCode']!(
+          {
+            code: 'auth-code',
+            codeVerifier: 'verifier',
+            tokenUrl: 'https://testhome.example.com/auth/token',
+            clientId: 'workx-desktop',
+            redirectUri: 'workx://auth/callback',
+            backendBaseUrl: 'https://api.example.com',
+          },
+          TEST_CONTEXT
+        );
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
         const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
@@ -197,10 +216,18 @@ describe('createAuthServices', () => {
       const originalFetch = globalThis.fetch;
       globalThis.fetch = fetchMock as never;
       try {
-        await expect(svc['auth.exchangeOIDCCode']!({
-          code: 'bad', codeVerifier: 'v', tokenUrl: 'https://t/auth/token',
-          clientId: 'workx-desktop', redirectUri: 'workx://auth/callback',
-        }, TEST_CONTEXT)).rejects.toThrow(/token exchange failed \(400\)/);
+        await expect(
+          svc['auth.exchangeOIDCCode']!(
+            {
+              code: 'bad',
+              codeVerifier: 'v',
+              tokenUrl: 'https://t/auth/token',
+              clientId: 'workx-desktop',
+              redirectUri: 'workx://auth/callback',
+            },
+            TEST_CONTEXT
+          )
+        ).rejects.toThrow(/token exchange failed \(400\)/);
         expect(deps.credentialStore.set).not.toHaveBeenCalled();
       } finally {
         globalThis.fetch = originalFetch;
@@ -209,34 +236,20 @@ describe('createAuthServices', () => {
 
     it('rejects when required params are missing', async () => {
       await expect(svc['auth.exchangeOIDCCode']!({ code: 'c' }, TEST_CONTEXT)).rejects.toThrow(
-        /code, codeVerifier, tokenUrl, clientId, and redirectUri are required/,
+        /code, codeVerifier, tokenUrl, clientId, and redirectUri are required/
       );
-    });
-  });
-
-  describe('auth.getAccessToken', () => {
-    it('returns the stored access token for first-party control-plane calls', async () => {
-      await deps.credentialStore.set('auth', 'access_token', 'fresh-at');
-      const res = await svc['auth.getAccessToken']!({}, TEST_CONTEXT);
-      expect(res).toEqual({ accessToken: 'fresh-at' });
-    });
-
-    it('returns accessToken=null when nothing is stored', async () => {
-      const res = await svc['auth.getAccessToken']!({}, TEST_CONTEXT);
-      expect(res).toEqual({ accessToken: null });
-    });
-
-    it('returns accessToken=null when no credential store is available', async () => {
-      const localSvc = createAuthServices({ ...deps, getCredentialStore: undefined });
-      const res = await localSvc['auth.getAccessToken']!({}, TEST_CONTEXT);
-      expect(res).toEqual({ accessToken: null });
     });
   });
 
   describe('auth.getState', () => {
     it('returns hasValidToken=false when no token is persisted', async () => {
       const res = await svc['auth.getState']!({}, TEST_CONTEXT);
-      expect(res).toMatchObject({ hasValidToken: false, hasToken: false, user: null, profile: null });
+      expect(res).toMatchObject({
+        hasValidToken: false,
+        hasToken: false,
+        user: null,
+        profile: null,
+      });
     });
 
     it('returns hasValidToken=true and the user payload when a token is present', async () => {
@@ -262,9 +275,9 @@ describe('createAuthServices', () => {
     });
 
     it('refreshes stored desktop tokens when the access token no longer loads a profile', async () => {
-      const fetchUserProfile = vi.fn(async (token: string) => (
+      const fetchUserProfile = vi.fn(async (token: string) =>
         token === 'new-at' ? { email: 'fresh@test' } : null
-      ));
+      );
       const refreshAuthTokens = vi.fn(async () => ({
         accessToken: 'new-at',
         refreshToken: 'new-rt',
@@ -311,7 +324,12 @@ describe('createAuthServices', () => {
     it('degrades gracefully on platforms without a credential store', async () => {
       const localSvc = createAuthServices({ ...deps, getCredentialStore: undefined });
       const res = await localSvc['auth.getState']!({}, TEST_CONTEXT);
-      expect(res).toMatchObject({ hasValidToken: false, hasToken: false, user: null, profile: null });
+      expect(res).toMatchObject({
+        hasValidToken: false,
+        hasToken: false,
+        user: null,
+        profile: null,
+      });
     });
   });
 

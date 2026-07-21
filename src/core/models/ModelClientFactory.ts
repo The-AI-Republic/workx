@@ -13,7 +13,7 @@ import { TogetherChatCompletionClient } from './client/TogetherChatCompletionCli
 import { AnthropicClient } from './client/AnthropicClient';
 import { AgentConfig } from '../../config/AgentConfig';
 import { getConfigStorage } from '../storage/ConfigStorageProvider';
-import { TestAuthContext, type AuthContext } from '../auth/AuthContext';
+import { TestAuthContext, type AuthContext, type GatewayCredential } from '../auth/AuthContext';
 
 /**
  * Supported model providers
@@ -121,6 +121,20 @@ export class ModelClientFactory {
     return this.auth.current()?.shouldUseBackend() ?? false;
   }
 
+  async getGatewayCredential(): Promise<GatewayCredential | null> {
+    return this.auth.gatewayCredentials()?.getCredential() ?? null;
+  }
+
+  async isGatewayRoutingAvailable(provider?: ModelProvider): Promise<boolean> {
+    if (provider && this.isCustomProvider(provider)) return false;
+    const gatewayUrl = this.auth.current()?.getGatewayLlmBaseUrl?.();
+    return Boolean(gatewayUrl && (await this.getGatewayCredential()));
+  }
+
+  private isCustomProvider(provider: ModelProvider): boolean {
+    return Boolean(this.config?.getProvider(provider)?.isCustom);
+  }
+
   /**
    * Create a model client for the currently selected model
    * Uses the config passed during initialize() to determine provider
@@ -195,7 +209,13 @@ export class ModelClientFactory {
 
     // Add routing type and OAuth status to cache key to separate clients
     const oauthActive = this.auth.current()?.isChatGPTOAuthActive?.() ? 'oauth' : 'direct';
-    const routingType = this.isBackendRouting() ? 'backend' : oauthActive;
+    const isCustomProvider = this.isCustomProvider(provider);
+    const gatewayRouting = await this.isGatewayRoutingAvailable(provider);
+    const routingType = gatewayRouting
+      ? 'gateway'
+      : !isCustomProvider && this.isBackendRouting()
+        ? 'backend'
+        : oauthActive;
     const constructionSignature = this.hashObject(this.getClientConstructionSignature(provider));
     const cacheKey = `${provider}-${selectedModelKey}-${routingType}-${constructionSignature}`;
 
@@ -231,14 +251,16 @@ export class ModelClientFactory {
     // User-defined custom providers (BYOK) always use direct API-key mode — the
     // backend gateway only knows about built-in providers, so never route a
     // custom endpoint through it even when the user is logged in.
-    const isCustomProvider = !!this.config?.getProvider(provider)?.isCustom;
+    const isCustomProvider = this.isCustomProvider(provider);
 
-    // If using backend routing (logged in), create backend-routed client
-    if (!isCustomProvider && this.isBackendRouting()) {
+    if (!isCustomProvider) {
       const gatewayLlmBaseUrl = this.auth.current()?.getGatewayLlmBaseUrl?.();
-      return gatewayLlmBaseUrl
-        ? await this.createGatewayRoutedClient(provider, gatewayLlmBaseUrl, modelKeyOverride)
-        : await this.createBackendRoutedClient(provider, modelKeyOverride);
+      if (gatewayLlmBaseUrl && (await this.getGatewayCredential())) {
+        return this.createGatewayRoutedClient(provider, gatewayLlmBaseUrl, modelKeyOverride);
+      }
+      if (this.isBackendRouting()) {
+        return this.createBackendRoutedClient(provider, modelKeyOverride);
+      }
     }
 
     // Fall through to existing provider-specific logic for API key mode
@@ -275,6 +297,10 @@ export class ModelClientFactory {
     const cfg = this.config.getConfig();
     const selectedKey = cfg.selectedModelKey;
     const selectedProvider = selectedKey.split(':')[0];
+    const isCustomProvider = this.isCustomProvider(selectedProvider);
+    const remoteRouting =
+      !isCustomProvider &&
+      ((await this.isGatewayRoutingAvailable(selectedProvider)) || this.isBackendRouting());
 
     // 1. Explicit selection. Provider policy: gateway routing (logged in,
     //    not using own API key) accepts any catalog model — one gateway
@@ -284,7 +310,7 @@ export class ModelClientFactory {
     let efficientKey = cfg.efficientModelKey ?? cfg.modelForTitleGenerate;
     if (
       efficientKey &&
-      !this.isBackendRouting() &&
+      !remoteRouting &&
       efficientKey.split(':')[0] !== selectedProvider
     ) {
       console.warn(`[ModelClientFactory] Efficient model ${efficientKey} is not from provider ${selectedProvider} (own-API-key mode); using task model`);
@@ -293,7 +319,7 @@ export class ModelClientFactory {
 
     // 2. Gateway default when logged in (single gateway credential routes any
     //    catalog model, so this default may come from a different provider).
-    if (!efficientKey && this.isBackendRouting()) {
+    if (!efficientKey && remoteRouting) {
       const { resolveRuntimeUrls } = await import('../../config/runtimeUrls');
       const defaultModel = resolveRuntimeUrls().gatewayDefaultEfficientModel;
       if (defaultModel) {
@@ -473,10 +499,14 @@ export class ModelClientFactory {
    * is resolved per request so cached clients do not pin an expired session JWT.
    */
   private async createGatewayRoutedClient(provider: ModelProvider, gatewayLlmBaseUrl: string, modelKeyOverride?: string): Promise<ModelClient> {
-    const tokenProvider = async () => this.auth.current()?.getAccessToken() ?? null;
+    let lastProvidedToken: string | null = null;
+    const tokenProvider = async () => {
+      lastProvidedToken = (await this.getGatewayCredential())?.token ?? null;
+      return lastProvidedToken;
+    };
     const accessToken = await tokenProvider();
     if (!accessToken) {
-      throw new ModelClientError('Gateway routing requires a session access token');
+      throw new ModelClientError('Gateway routing requires an OpenHub credential');
     }
 
     const parallelToolCalls = this.resolveParallelToolCalls();
@@ -526,7 +556,8 @@ export class ModelClientFactory {
       useCredentials: false,
       parallelToolCalls,
       getAuthorizationToken: tokenProvider,
-      refreshAuthorizationToken: async () => this.auth.current()?.refreshAccessToken?.() ?? null,
+      refreshAuthorizationToken: async () =>
+        this.auth.gatewayCredentials()?.handleUnauthorized(lastProvidedToken) ?? null,
       providerRoutingSlug,
     });
   }

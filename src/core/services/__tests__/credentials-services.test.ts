@@ -16,7 +16,11 @@ function mockStore(): CredentialStore & {
     get: vi.fn(async () => 'sk-stored'),
     set: vi.fn(async () => undefined),
     delete: vi.fn(async () => undefined),
-    listAccounts: vi.fn(async () => ['provider-apikey-moonshot']),
+    listAccounts: vi.fn(async () => [
+      'provider-apikey-moonshot',
+      'openhub',
+      'provider-apikey-!bad',
+    ]),
   };
 }
 
@@ -35,7 +39,10 @@ describe('credentials.* service handlers', () => {
   });
 
   it('credentials.get reads from the store', async () => {
-    const res = await handlers['credentials.get']({ service: 'workx', account: 'provider-apikey-moonshot' }, {} as any);
+    const res = await handlers['credentials.get'](
+      { service: 'workx', account: 'provider-apikey-moonshot' },
+      {} as any
+    );
     expect(res).toEqual({ value: 'sk-stored' });
     expect(store.get).toHaveBeenCalledWith('workx', 'provider-apikey-moonshot');
   });
@@ -43,14 +50,17 @@ describe('credentials.* service handlers', () => {
   it('credentials.set writes to the store', async () => {
     const res = await handlers['credentials.set'](
       { service: 'workx', account: 'provider-apikey-moonshot', password: 'sk-new' },
-      {} as any,
+      {} as any
     );
     expect(res).toEqual({ ok: true });
     expect(store.set).toHaveBeenCalledWith('workx', 'provider-apikey-moonshot', 'sk-new');
   });
 
   it('credentials.delete removes from the store', async () => {
-    const res = await handlers['credentials.delete']({ service: 'workx', account: 'provider-apikey-moonshot' }, {} as any);
+    const res = await handlers['credentials.delete'](
+      { service: 'workx', account: 'provider-apikey-moonshot' },
+      {} as any
+    );
     expect(res).toEqual({ ok: true });
     expect(store.delete).toHaveBeenCalledWith('workx', 'provider-apikey-moonshot');
   });
@@ -60,10 +70,25 @@ describe('credentials.* service handlers', () => {
     expect(res).toEqual({ accounts: ['provider-apikey-moonshot'] });
   });
 
+  it.each([
+    ['auth', 'access_token'],
+    ['auth', 'refresh_token'],
+    ['openhub', 'api_key'],
+    ['workx', 'unrestricted-account'],
+  ])('rejects reserved or unrestricted credential access: %s/%s', async (service, account) => {
+    await expect(handlers['credentials.get']({ service, account }, {} as any)).rejects.toThrow(
+      /not available/
+    );
+    expect(store.get).not.toHaveBeenCalled();
+  });
+
   it('throws a clear error when the store is not initialized', async () => {
     setCredentialStore(null as unknown as CredentialStore);
     await expect(
-      handlers['credentials.get']({ service: 'workx', account: 'x' }, {} as any),
+      handlers['credentials.get'](
+        { service: 'workx', account: 'provider-apikey-openai' },
+        {} as any
+      )
     ).rejects.toThrow(/not initialized/);
   });
 });

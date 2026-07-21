@@ -582,7 +582,12 @@ export interface TurnAbortedEvent {
   message?: string;
 }
 
-export type TurnAbortReason = 'user_interrupt' | 'automatic_abort' | 'error' | 'user_request' | 'worker_restart';
+export type TurnAbortReason =
+  | 'user_interrupt'
+  | 'automatic_abort'
+  | 'error'
+  | 'user_request'
+  | 'worker_restart';
 
 export interface ConversationPathResponseEvent {
   path: string;
@@ -967,8 +972,7 @@ export interface SessionSubmissionStateEventData {
   clientMessageId: string;
   state: 'accepted' | 'failed';
   submissionId?: string;
-  reason?: 'hydration-failed' | 'deleted' | 'shutdown'
-    | 'capacity-canceled' | 'submit-failed';
+  reason?: 'hydration-failed' | 'deleted' | 'shutdown' | 'capacity-canceled' | 'submit-failed';
   ts: number;
 }
 
@@ -1007,9 +1011,16 @@ export interface DesktopRuntimeAccessStateUpdateEvent {
   [key: string]: unknown;
 }
 
+export interface AppsStateUpdateEvent {
+  scope: 'apps-runtime';
+  kind: 'apps.stateChanged';
+  apps: import('../apps/types').AppsAccessState;
+}
+
 export type StateUpdateEvent =
   | DesktopRuntimeAuthStateUpdateEvent
   | DesktopRuntimeAccessStateUpdateEvent
+  | AppsStateUpdateEvent
   | GenericStateUpdateEvent;
 
 // Hook system event payloads

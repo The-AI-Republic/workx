@@ -22,6 +22,7 @@
   import KeyboardShortcutsSettings from '../../settings/KeyboardShortcutsSettings.svelte';
   import DataSourcesSettings from '../../settings/DataSourcesSettings.svelte';
   import ComponentsSettings from '../../settings/ComponentsSettings.svelte';
+  import AppsSettings from '../../settings/AppsSettings.svelte';
   import { t } from '../../lib/i18n';
   import { uiTheme } from '../../stores/themeStore';
 
@@ -36,6 +37,7 @@
     | 'tools'
     | 'data-sources'
     | 'components'
+    | 'apps'
     | 'mcp-servers'
     | 'extension'
     | 'approval'
@@ -74,6 +76,10 @@
       ? window.location.hash.slice(window.location.hash.indexOf('?') + 1)
       : '';
     const query = new URLSearchParams(window.location.search || hashQuery);
+    if (query.get('view') === 'apps') {
+      currentView = 'apps';
+      return;
+    }
     if (query.get('view') !== 'data-sources') return;
     currentView = 'data-sources';
     const sourceId = query.get('source');
@@ -234,6 +240,8 @@
         />
       {:else if currentView === 'components'}
         <ComponentsSettings onBack={handleBack} />
+      {:else if currentView === 'apps'}
+        <AppsSettings onBack={handleBack} />
       {:else if currentView === 'mcp-servers'}
         <MCPSettings
           {settingsConfig}

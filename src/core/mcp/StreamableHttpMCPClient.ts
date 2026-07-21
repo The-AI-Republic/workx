@@ -24,6 +24,8 @@ export interface StreamableHttpMCPClientOptions {
   apiKey?: string;
   tokenProvider?: () => Promise<string | null>;
   refreshTokenProvider?: () => Promise<string | null>;
+  credentialProvider?: () => Promise<string | null>;
+  unauthorizedCredentialProvider?: (failedToken: string | null) => Promise<string | null>;
   onStatusChange?: (status: MCPConnectionStatus, error?: string) => void;
   onToolsChange?: (tools: IMCPTool[]) => void;
   onResourcesChange?: (resources: IMCPResource[]) => void;
@@ -57,10 +59,7 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
         fetch: this.createAuthenticatedFetch(),
       });
 
-      this.client = new Client(
-        { name: 'workx', version: '1.0.0' },
-        { capabilities: {} },
-      );
+      this.client = new Client({ name: 'workx', version: '1.0.0' }, { capabilities: {} });
 
       this.transport.onerror = (error) => {
         console.error(`[StreamableHttpMCPClient:${config.name}] Transport error:`, error);
@@ -75,7 +74,10 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
         await Promise.race([
           this.client.connect(this.transport),
           new Promise<never>((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error(`Connection timeout after ${timeout}ms`)), timeout);
+            timeoutId = setTimeout(
+              () => reject(new Error(`Connection timeout after ${timeout}ms`)),
+              timeout
+            );
           }),
         ]);
       } finally {
@@ -92,8 +94,12 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
       if (serverCaps) {
         this.capabilities = {
           tools: serverCaps.tools ? { listChanged: !!serverCaps.tools.listChanged } : undefined,
-          resources: serverCaps.resources ? { subscribe: !!serverCaps.resources.subscribe } : undefined,
-          prompts: serverCaps.prompts ? { listChanged: !!serverCaps.prompts.listChanged } : undefined,
+          resources: serverCaps.resources
+            ? { subscribe: !!serverCaps.resources.subscribe }
+            : undefined,
+          prompts: serverCaps.prompts
+            ? { listChanged: !!serverCaps.prompts.listChanged }
+            : undefined,
         };
       }
 
@@ -101,7 +107,9 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
       await this.discoverTools();
       await this.discoverResources();
 
-      console.log(`[StreamableHttpMCPClient:${config.name}] Connected (${this.tools.length} tools, ${this.resources.length} resources)`);
+      console.log(
+        `[StreamableHttpMCPClient:${config.name}] Connected (${this.tools.length} tools, ${this.resources.length} resources)`
+      );
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.setStatus('error', msg);
@@ -128,14 +136,16 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
       description: tool.description || '',
       inputSchema: tool.inputSchema as IMCPTool['inputSchema'],
       outputSchema: tool.outputSchema as IMCPTool['outputSchema'],
-      annotations: tool.annotations ? {
-        readOnlyHint: tool.annotations.readOnlyHint,
-        destructiveHint: tool.annotations.destructiveHint,
-        openWorldHint: tool.annotations.openWorldHint,
-        audience: tool.annotations.readOnlyHint ? ['user' as const] : undefined,
-        priority: undefined,
-        costLevel: tool.annotations.destructiveHint ? 'high' as const : undefined,
-      } : undefined,
+      annotations: tool.annotations
+        ? {
+            readOnlyHint: tool.annotations.readOnlyHint,
+            destructiveHint: tool.annotations.destructiveHint,
+            openWorldHint: tool.annotations.openWorldHint,
+            audience: tool.annotations.readOnlyHint ? ['user' as const] : undefined,
+            priority: undefined,
+            costLevel: tool.annotations.destructiveHint ? ('high' as const) : undefined,
+          }
+        : undefined,
     }));
 
     this.options.onToolsChange?.(this.tools);
@@ -151,7 +161,10 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
       const result = await Promise.race([
         this.client!.callTool({ name, arguments: args }),
         new Promise<never>((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error(`Tool call timeout after ${timeout}ms`)), timeout);
+          timeoutId = setTimeout(
+            () => reject(new Error(`Tool call timeout after ${timeout}ms`)),
+            timeout
+          );
         }),
       ]).finally(() => {
         if (timeoutId) clearTimeout(timeoutId);
@@ -159,7 +172,10 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
 
       if (name === 'app_activate' || name === 'app_deactivate') {
         await this.listTools().catch((error) => {
-          console.warn(`[StreamableHttpMCPClient:${this.options.config.name}] Failed to refresh tools:`, error);
+          console.warn(
+            `[StreamableHttpMCPClient:${this.options.config.name}] Failed to refresh tools:`,
+            error
+          );
         });
       }
 
@@ -173,8 +189,10 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
       return {
         content: result.content.map((c) => {
           if (c.type === 'text') return { type: 'text' as const, text: c.text };
-          if (c.type === 'image') return { type: 'image' as const, data: c.data, mimeType: c.mimeType };
-          if (c.type === 'audio') return { type: 'audio' as const, data: c.data, mimeType: c.mimeType };
+          if (c.type === 'image')
+            return { type: 'image' as const, data: c.data, mimeType: c.mimeType };
+          if (c.type === 'audio')
+            return { type: 'audio' as const, data: c.data, mimeType: c.mimeType };
           if (c.type === 'resource') {
             return {
               type: 'resource' as const,
@@ -185,7 +203,8 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
               },
             };
           }
-          if (c.type === 'resource_link') return { type: 'resource_link' as const, uri: c.uri, name: c.name };
+          if (c.type === 'resource_link')
+            return { type: 'resource_link' as const, uri: c.uri, name: c.name };
           return { type: 'text' as const, text: JSON.stringify(c) };
         }),
         isError: result.isError,
@@ -270,36 +289,41 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
     return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const authMode = this.options.config.authMode ?? (this.options.apiKey ? 'api-key' : 'none');
 
-      const send = async (sessionToken?: string | null): Promise<Response> => {
+      const send = async (credential?: string | null): Promise<Response> => {
         const headers = new Headers(init?.headers ?? {});
         for (const [key, value] of Object.entries(this.options.config.headers ?? {})) {
           if (!headers.has(key)) headers.set(key, value);
         }
 
-        if (authMode === 'session-jwt') {
-          if (!sessionToken) throw new Error('MCP session-jwt auth requires an access token');
-          headers.set('Authorization', `Bearer ${sessionToken}`);
-        } else if (authMode === 'api-key' && this.options.apiKey) {
-          headers.set('Authorization', `Bearer ${this.options.apiKey}`);
+        if (authMode === 'session-jwt' || authMode === 'api-key') {
+          const value = credential ?? this.options.apiKey;
+          if (!value) throw new Error(`MCP ${authMode} auth requires a credential`);
+          headers.set('Authorization', `Bearer ${value}`);
         }
 
         return fetch(input, { ...init, headers });
       };
 
-      if (authMode !== 'session-jwt') {
+      if (authMode === 'none') {
         return send();
       }
 
-      let token = await this.options.tokenProvider?.();
-      if (!token) {
+      const provider = this.options.credentialProvider ?? this.options.tokenProvider;
+      const unauthorized =
+        this.options.unauthorizedCredentialProvider ??
+        (this.options.refreshTokenProvider
+          ? async () => this.options.refreshTokenProvider!()
+          : undefined);
+      let token = await provider?.();
+      if (!token && authMode === 'session-jwt') {
         token = await this.options.refreshTokenProvider?.();
       }
       const response = await send(token);
-      if (response.status !== 401 || !this.options.refreshTokenProvider) {
+      if (response.status !== 401 || !unauthorized) {
         return response;
       }
 
-      const refreshed = await this.options.refreshTokenProvider();
+      const refreshed = await unauthorized(token ?? null);
       return refreshed ? send(refreshed) : response;
     };
   }
@@ -332,7 +356,10 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
     try {
       await this.transport?.close();
     } catch (error) {
-      console.warn(`[StreamableHttpMCPClient:${this.options.config.name}] Error during cleanup:`, error);
+      console.warn(
+        `[StreamableHttpMCPClient:${this.options.config.name}] Error during cleanup:`,
+        error
+      );
     }
 
     this.transport = null;

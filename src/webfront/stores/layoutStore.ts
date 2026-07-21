@@ -6,7 +6,6 @@
  */
 
 import { readable, type Readable } from 'svelte/store';
-import { GATEWAY_CATALOG_API_BASE_URL } from '../lib/constants';
 
 // ---------------------------------------------------------------------------
 // Wide-mode media query store
@@ -71,18 +70,12 @@ export const NAV_ITEMS: NavItem[] = [
     route: '/skills',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><line x1="9" y1="7" x2="17" y2="7"></line><line x1="9" y1="11" x2="15" y2="11"></line></svg>',
   },
-  // The Apps catalog is only reachable when a Hub catalog API base is wired up;
-  // otherwise the page is a dead-end, so omit the nav entry entirely.
-  ...(GATEWAY_CATALOG_API_BASE_URL.trim().length > 0
-    ? [
-        {
-          id: 'apps',
-          label: 'Apps',
-          route: '/apps',
-          icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>',
-        },
-      ]
-    : []),
+  {
+    id: 'apps',
+    label: 'Apps',
+    route: '/apps',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>',
+  },
 ];
 
 /**

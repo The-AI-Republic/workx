@@ -1,163 +1,173 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { push } from 'svelte-spa-router';
   import { uiTheme } from '../../stores/themeStore';
+  import { appsStore, initializeAppsStore, refreshAppsStore } from '../../stores/appsStore';
   import { _t } from '../../lib/i18n';
-  import { platform } from '../../stores/platformStore';
-  import { getInitializedUIClient } from '@/core/messaging';
+  import { openExternalUrl } from '../../lib/gatewayCatalog';
   import {
-    fetchMarketplace,
-    installApp,
     activateApp,
+    AppsApiError,
+    fetchAppIcon,
+    fetchMarketplace,
     getAuthStatus,
+    installApp,
+    needsAuth,
     startOAuth,
     submitApiKey,
-    needsAuth,
-    isAppsCatalogConfigured,
-    AppsApiError,
-    type MarketplaceApp,
     type ManualSetupField,
+    type MarketplaceApp,
   } from '../../lib/apis/apps';
-  import { openExternalUrl } from '../../lib/gatewayCatalog';
 
   let currentTheme = $derived($uiTheme);
   let modern = $derived(currentTheme === 'modern');
+  let access = $derived($appsStore.access);
+  let policy = $derived($appsStore.policy);
+  let configured = $derived(access?.configured === true);
+  let ready = $derived(
+    access?.credentialStatus === 'ready' && access?.capabilityStatus === 'supported'
+  );
+  let accessCard = $derived.by(() => {
+    if (access?.capabilityStatus === 'incompatible') {
+      return {
+        title: 'Apps service update required',
+        description:
+          'This OpenHub deployment does not support the Apps authentication contract required by WorkX.',
+        action: 'retry' as const,
+      };
+    }
+    if (access?.credentialStatus === 'unverified' || access?.backendStatus === 'unavailable') {
+      return {
+        title: 'Apps service unavailable',
+        description: 'WorkX could not verify Apps access. Check your connection and try again.',
+        action: 'retry' as const,
+      };
+    }
+    if (access?.credentialStatus === 'validating') {
+      return {
+        title: 'Checking Apps access',
+        description: 'WorkX is verifying your Apps credential.',
+        action: 'none' as const,
+      };
+    }
+    if (access?.credentialStatus === 'forbidden') {
+      return {
+        title: 'Apps access unavailable',
+        description: 'Your account does not have permission to use Apps.',
+        action: 'retry' as const,
+      };
+    }
+    if (access?.credentialStatus === 'invalid-credential') {
+      return {
+        title: access.authMethod === 'session-jwt' ? 'Sign in again to use Apps' : 'Reconnect Apps',
+        description:
+          access.authMethod === 'session-jwt'
+            ? 'Your Apps session is no longer valid.'
+            : 'OpenHub rejected the current Apps API key.',
+        action: 'setup' as const,
+      };
+    }
+    return {
+      title: policy?.setupCopy.title ?? 'Apps unavailable',
+      description: policy?.setupCopy.description ?? $appsStore.error ?? access?.reason ?? '',
+      action: 'setup' as const,
+    };
+  });
 
   let apps = $state<MarketplaceApp[]>([]);
-  let loading = $state(true);
+  let icons = $state<Record<string, string>>({});
+  let loading = $state(false);
   let error = $state<string | null>(null);
   let query = $state('');
-  /** appId currently being installed/activated, for per-card button state. */
   let pendingId = $state<string | null>(null);
-
-  const configured = isAppsCatalogConfigured();
-
-  let searchController: AbortController | null = null;
   let searchTimer: ReturnType<typeof setTimeout> | null = null;
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  let generation = 0;
+  let loadedRevision = -1;
 
-  // On desktop the WebView has no cookies — the runtime owns credentials — so
-  // the token comes from the `auth.getAccessToken` runtime service. Cache it
-  // briefly so a marketplace request per search keystroke doesn't round-trip.
-  const DESKTOP_TOKEN_TTL_MS = 30_000;
-  let desktopTokenCache: { value: string | null; at: number } | null = null;
+  let oauthPendingIds = $state<string[]>([]);
+  let connectErrors = $state<Record<string, string>>({});
+  let apiKeyFormId = $state<string | null>(null);
+  let apiKeyFields = $state<ManualSetupField[]>([]);
+  let apiKeyValues = $state<Record<string, string>>({});
+  let apiKeyError = $state<string | null>(null);
+  let apiKeySubmitting = $state(false);
+  const pollers = new Map<string, { cancelled: boolean }>();
 
-  async function resolveAccessToken(): Promise<string | null> {
-    if (platform.platformName !== 'desktop') return null;
-    const now = Date.now();
-    if (desktopTokenCache && now - desktopTokenCache.at < DESKTOP_TOKEN_TTL_MS) {
-      return desktopTokenCache.value;
-    }
-    let value: string | null = null;
-    try {
-      const client = await getInitializedUIClient();
-      const res = await client.serviceRequest<{ accessToken: string | null }>('auth.getAccessToken');
-      value = res?.accessToken ?? null;
-    } catch {
-      value = null;
-    }
-    desktopTokenCache = { value, at: now };
-    return value;
+  function message(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 
-  async function load(q = '', { background = false }: { background?: boolean } = {}) {
-    if (!configured) {
-      loading = false;
-      error = null;
-      return;
-    }
-    searchController?.abort();
-    const controller = new AbortController();
-    searchController = controller;
-    // A background refresh (focus/visibility) must not blank the grid: only show
-    // the page spinner when there's nothing to show yet, and don't surface its
-    // errors over the existing list (keep stale data on a transient failure).
-    const showSpinner = !background || apps.length === 0;
-    if (showSpinner) loading = true;
+  async function load(search = query, background = false) {
+    if (!ready) return;
+    const currentGeneration = ++generation;
+    if (!background || apps.length === 0) loading = true;
     if (!background) error = null;
     try {
-      const accessToken = await resolveAccessToken();
-      const page = await fetchMarketplace({ query: q, signal: controller.signal, accessToken });
-      if (controller.signal.aborted) return;
+      const page = await fetchMarketplace({ query: search });
+      if (currentGeneration !== generation) return;
       apps = page.items;
-      if (background) error = null; // a successful refresh clears any stale error
-    } catch (err) {
-      if (controller.signal.aborted) return;
-      if (!background) error = err instanceof Error ? err.message : String(err);
+      error = null;
+      void loadIcons(page.items, currentGeneration);
+    } catch (cause) {
+      if (currentGeneration !== generation) return;
+      if (!background) error = message(cause);
     } finally {
-      if (showSpinner && !controller.signal.aborted) loading = false;
+      if (currentGeneration === generation) loading = false;
     }
+  }
+
+  async function loadIcons(items: MarketplaceApp[], currentGeneration: number) {
+    await Promise.allSettled(
+      items
+        .filter((app) => app.hasIcon)
+        .map(async (app) => {
+          const icon = await fetchAppIcon(app.appId);
+          if (!icon || currentGeneration !== generation) return;
+          icons = { ...icons, [app.appId]: `data:${icon.mimeType};base64,${icon.base64}` };
+        })
+    );
   }
 
   function onSearchInput() {
     if (searchTimer) clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => load(query), 250);
+    searchTimer = setTimeout(() => void load(query), 250);
   }
 
-  /**
-   * Run an install/activate mutation, then apply the updated card in place
-   * (the Hub echoes the new card) rather than refetching the whole catalog.
-   * Falls back to a refetch only when the Hub returns no card.
-   */
+  function replaceApp(updated: MarketplaceApp | null) {
+    if (!updated) return false;
+    apps = apps.map((app) => (app.appId === updated.appId ? updated : app));
+    return true;
+  }
+
   async function runAction(
     app: MarketplaceApp,
-    action: (appId: string, accessToken?: string | null) => Promise<MarketplaceApp | null>,
+    action: (appId: string) => Promise<MarketplaceApp | null>
   ) {
     pendingId = app.appId;
     error = null;
     try {
-      const accessToken = await resolveAccessToken();
-      const updated = await action(app.appId, accessToken);
-      if (updated) {
-        apps = apps.map((a) => (a.appId === app.appId ? updated : a));
-      } else {
-        await load(query);
-      }
-    } catch (err) {
-      error = err instanceof AppsApiError ? err.message : String(err);
+      if (!replaceApp(await action(app.appId))) await load();
+    } catch (cause) {
+      error = message(cause);
     } finally {
       pendingId = null;
     }
   }
 
-  const handleActivate = (app: MarketplaceApp) => runAction(app, activateApp);
-
-  /**
-   * Install, then — since installing an app means making it usable — immediately
-   * launch the connect flow if it needs a credential (OAuth browser / form). One
-   * click does install + connect; the inline "Connect"/"Reconnect" affordance is
-   * only a fallback for an installed app whose connection is missing/expired.
-   */
   async function handleInstall(app: MarketplaceApp) {
     pendingId = app.appId;
-    error = null;
     setConnectError(app.appId, null);
-    // Keep the card busy (pendingId) across BOTH install and the post-install
-    // auth probe, so no live "Connect" button appears in the gap — otherwise a
-    // click there could launch a second OAuth alongside the auto-connect.
     try {
-      try {
-        const accessToken = await resolveAccessToken();
-        const result = await installApp(app.appId, accessToken);
-        if (result) apps = apps.map((a) => (a.appId === app.appId ? result : a));
-        else await load(query);
-      } catch (err) {
-        error = err instanceof AppsApiError ? err.message : String(err);
-        return;
+      if (!replaceApp(await installApp(app.appId))) await load();
+      const auth = await getAuthStatus(app.appId);
+      if (auth) applyAuth(app.appId, auth);
+      if (needsAuth(auth)) {
+        pendingId = null;
+        await handleConnect({ ...(apps.find((item) => item.appId === app.appId) ?? app), auth });
       }
-      // Auto-connect. A probe/connect failure surfaces inline (per-app), never
-      // the page-level error — so it can't blank the grid.
-      try {
-        const auth = await getAuthStatus(app.appId, await resolveAccessToken());
-        if (auth) applyAuth(app.appId, auth);
-        if (needsAuth(auth)) {
-          const current = apps.find((a) => a.appId === app.appId) ?? app;
-          // Hand off gaplessly: handleConnect synchronously sets its own busy
-          // state (oauthPendingIds / apiKeyFormId) before its first await, so
-          // clearing pendingId here never exposes a clickable Connect button.
-          pendingId = null;
-          await handleConnect({ ...current, auth });
-        }
-      } catch (err) {
-        setConnectError(app.appId, err instanceof Error ? err.message : String(err));
-      }
+    } catch (cause) {
+      error = message(cause);
     } finally {
       if (pendingId === app.appId) pendingId = null;
     }
@@ -166,105 +176,74 @@
   function isInstalled(app: MarketplaceApp): boolean {
     return app.installStatus === 'installed';
   }
-
-  /** True when an installed app still needs the user to connect a credential. */
   function appNeedsConnect(app: MarketplaceApp): boolean {
     return isInstalled(app) && needsAuth(app.auth);
   }
-
-  // ─── Connect-auth flow ────────────────────────────────────────────────────
-  /** appIds currently mid OAuth (browser open + polling). */
-  let oauthPendingIds = $state<string[]>([]);
-  /** Per-app connect error, shown inline on the card (never gates the grid). */
-  let connectErrors = $state<Record<string, string>>({});
-  /** appId whose manual-credential form is open. */
-  let apiKeyFormId = $state<string | null>(null);
-  let apiKeyFields = $state<ManualSetupField[]>([]);
-  let apiKeyValues = $state<Record<string, string>>({});
-  let apiKeyError = $state<string | null>(null);
-  let apiKeySubmitting = $state(false);
-  /** In-flight OAuth polls keyed by appId, so concurrent connects don't leak. */
-  const pollers = new Map<string, { cancelled: boolean }>();
-
   function isOauthPending(appId: string): boolean {
     return oauthPendingIds.includes(appId);
   }
-  function setConnectError(appId: string, message: string | null) {
-    if (message) connectErrors = { ...connectErrors, [appId]: message };
-    else {
-      const { [appId]: _drop, ...rest } = connectErrors;
-      connectErrors = rest;
-    }
-  }
-
-  /** Patch one app's auth block in place (after a connect succeeds). */
   function applyAuth(appId: string, auth: MarketplaceApp['auth']) {
-    apps = apps.map((a) => (a.appId === appId ? { ...a, auth } : a));
+    apps = apps.map((app) => (app.appId === appId ? { ...app, auth } : app));
+  }
+  function setConnectError(appId: string, value: string | null) {
+    if (value) connectErrors = { ...connectErrors, [appId]: value };
+    else {
+      const next = { ...connectErrors };
+      delete next[appId];
+      connectErrors = next;
+    }
   }
 
   async function handleConnect(app: MarketplaceApp) {
     setConnectError(app.appId, null);
-    const type = app.auth?.type ?? 'oauth2';
-    if (type === 'api_key' || type === 'basic') {
-      apiKeyError = null;
-      apiKeyFields = app.auth?.manualFields ?? [];
-      apiKeyValues = Object.fromEntries(apiKeyFields.map((f) => [f.key, '']));
+    if (app.auth?.type === 'api_key' || app.auth?.type === 'basic') {
+      apiKeyFields = app.auth.manualFields;
+      apiKeyValues = Object.fromEntries(apiKeyFields.map((field) => [field.key, '']));
       apiKeyFormId = app.appId;
+      apiKeyError = null;
       return;
     }
     await connectOAuth(app);
   }
 
   async function connectOAuth(app: MarketplaceApp) {
-    const appId = app.appId;
-    // Already connecting this app? Don't launch a second browser tab / poll.
-    // (Covers a stray Connect click racing the post-install auto-connect.)
-    if (pollers.has(appId)) return;
-    setConnectError(appId, null);
-    // Tracked by appId so a connect on another app never cancels or leaks this one.
+    if (pollers.has(app.appId)) return;
     const controller = { cancelled: false };
-    pollers.set(appId, controller);
-    if (!oauthPendingIds.includes(appId)) oauthPendingIds = [...oauthPendingIds, appId];
+    pollers.set(app.appId, controller);
+    oauthPendingIds = [...oauthPendingIds, app.appId];
     try {
-      const accessToken = await resolveAccessToken();
-      const { authorizationUrl } = await startOAuth(appId, { accessToken });
-      await openExternalUrl(authorizationUrl);
-      // The provider redirects to the Hub callback (not back into the app), so
-      // poll the Hub for the new connection until it lands or we time out.
-      const connected = await pollAuthUntilConnected(appId, controller);
-      if (controller.cancelled) return;
-      if (connected) {
-        await load(query); // refresh suggestedAction / isActivated
-      } else {
-        setConnectError(appId, `Couldn't confirm the ${app.name} connection. Finish in your browser, then Retry.`);
-      }
-    } catch (err) {
-      if (!controller.cancelled) setConnectError(appId, err instanceof Error ? err.message : String(err));
+      const oauth = await startOAuth(app.appId);
+      await openExternalUrl(oauth.authorizationUrl);
+      if (await pollAuthUntilConnected(app.appId, controller)) await load();
+      else if (!controller.cancelled)
+        setConnectError(
+          app.appId,
+          `Couldn't confirm the ${app.name} connection. Finish in your browser, then retry.`
+        );
+    } catch (cause) {
+      if (!controller.cancelled) setConnectError(app.appId, message(cause));
     } finally {
-      // Only clear if this is still the active controller for the app.
-      if (pollers.get(appId) === controller) {
-        pollers.delete(appId);
-        oauthPendingIds = oauthPendingIds.filter((id) => id !== appId);
+      if (pollers.get(app.appId) === controller) {
+        pollers.delete(app.appId);
+        oauthPendingIds = oauthPendingIds.filter((id) => id !== app.appId);
       }
     }
   }
 
-  /** Poll auth status (~every 2.5s, ~90s budget) until connected. */
   async function pollAuthUntilConnected(
     appId: string,
-    controller: { cancelled: boolean },
+    controller: { cancelled: boolean }
   ): Promise<boolean> {
     const deadline = Date.now() + 90_000;
     while (!controller.cancelled && Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 2500));
+      await new Promise((resolve) => setTimeout(resolve, 2500));
       if (controller.cancelled) return false;
       try {
-        // Re-resolve the token each round so a mid-poll refresh is picked up.
-        const status = await getAuthStatus(appId, await resolveAccessToken());
+        const status = await getAuthStatus(appId);
         if (status) applyAuth(appId, status);
-        if (status && status.status === 'connected') return true;
+        if (status?.status === 'connected') return true;
       } catch {
-        // transient — keep polling within the budget
+        // Keep polling through transient runtime/backend failures.
       }
     }
     return false;
@@ -277,62 +256,70 @@
     oauthPendingIds = oauthPendingIds.filter((id) => id !== appId);
   }
 
-  function closeApiKeyForm() {
+  function closeCredentialForm() {
     apiKeyFormId = null;
-    apiKeyError = null;
+    apiKeyFields = [];
     apiKeyValues = {};
+    apiKeyError = null;
   }
 
-  async function submitApiKeyForm(app: MarketplaceApp) {
-    apiKeyError = null;
-    const missing = apiKeyFields.filter((f) => !f.optional && !(apiKeyValues[f.key] ?? '').trim());
+  async function submitCredentialForm(app: MarketplaceApp) {
+    const missing = apiKeyFields.filter(
+      (field) => !field.optional && !(apiKeyValues[field.key] ?? '').trim()
+    );
     if (missing.length) {
-      apiKeyError = `Enter ${missing.map((f) => f.label).join(', ')}.`;
+      apiKeyError = `Enter ${missing.map((field) => field.label).join(', ')}.`;
       return;
     }
     apiKeySubmitting = true;
     try {
-      const accessToken = await resolveAccessToken();
       const fields = Object.fromEntries(
-        Object.entries(apiKeyValues).filter(([, v]) => (v ?? '').trim()),
+        Object.entries(apiKeyValues).filter(([, value]) => value.trim())
       );
-      const auth = await submitApiKey(app.appId, fields, { accessToken });
+      const auth = await submitApiKey(app.appId, fields);
       if (auth) applyAuth(app.appId, auth);
-      closeApiKeyForm();
-      await load(query);
-    } catch (err) {
-      apiKeyError = err instanceof AppsApiError ? err.message : String(err);
+      closeCredentialForm();
+      await load();
+    } catch (cause) {
+      apiKeyError = cause instanceof AppsApiError ? cause.message : message(cause);
     } finally {
+      apiKeyValues = {};
       apiKeySubmitting = false;
     }
   }
 
-  // Connecting an app finishes in the external browser, so the user returns to
-  // WorkX afterward. Refetch on window focus / tab-visible so install/connect
-  // state updates on return — no manual refresh. (In-window connects already
-  // update live via the OAuth poll / inline forms.)
-  //
-  // Background refresh: never blanks the grid (see load's `background`). Debounced
-  // so the focus + visibilitychange pair (and rapid alt-tabbing) coalesce into
-  // one refetch.
-  let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-  function refreshOnReturn() {
-    if (!configured) return;
-    if (refreshTimer) clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(() => load(query, { background: true }), 300);
+  function openSetup() {
+    if (access?.authMethod === 'api-key') push('/settings?view=apps');
+    else window.dispatchEvent(new CustomEvent('workx:request-login'));
   }
-  function onVisibility() {
-    if (document.visibilityState === 'visible') refreshOnReturn();
+
+  function refreshOnReturn() {
+    if (ready) {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => void load(query, true), 300);
+    } else {
+      void refreshAppsStore();
+    }
   }
 
   $effect(() => {
-    load();
+    const revision = access?.revision ?? -1;
+    if (ready && revision !== loadedRevision) {
+      loadedRevision = revision;
+      void load();
+    }
+  });
+
+  onMount(() => {
+    void initializeAppsStore();
     window.addEventListener('focus', refreshOnReturn);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshOnReturn();
+    };
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('focus', refreshOnReturn);
       document.removeEventListener('visibilitychange', onVisibility);
-      searchController?.abort();
       if (searchTimer) clearTimeout(searchTimer);
       if (refreshTimer) clearTimeout(refreshTimer);
       for (const controller of pollers.values()) controller.cancelled = true;
@@ -341,223 +328,179 @@
   });
 </script>
 
-<div class="h-full overflow-y-auto {currentTheme}
-  {modern ? 'bg-chat-bg dark:bg-chat-bg-dark' : 'bg-term-bg'}">
-
-  <!-- Page Header -->
-  <div class="px-4 py-3 flex items-center gap-2
-    {modern
+<div
+  data-testid="apps-page"
+  class="h-full overflow-y-auto {currentTheme} {modern
+    ? 'font-chat bg-chat-bg text-chat-text dark:bg-chat-bg-dark dark:text-chat-text-dark'
+    : 'font-terminal bg-term-bg text-term-green'}"
+>
+  <div
+    class="px-4 py-3 flex gap-2 items-center {modern
       ? 'border-b border-chat-border dark:border-chat-border-dark'
-      : 'border-b border-term-dim-green'}">
-    <svg class="w-5 h-5 {modern ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-green'}"
-      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-      <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-      <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-      <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-    </svg>
-    <h1 class="m-0 text-base font-semibold
-      {modern ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green font-terminal'}">
+      : 'border-b border-term-dim-green'}"
+  >
+    <h1
+      class="m-0 text-base font-semibold {modern
+        ? 'text-chat-text dark:text-chat-text-dark'
+        : 'text-term-green'}"
+    >
       {$_t('Apps')}
     </h1>
   </div>
 
-  <!-- Search -->
-  {#if configured}
+  {#if ready}
     <div class="px-4 py-3">
       <input
         type="search"
         bind:value={query}
         oninput={onSearchInput}
         placeholder={$_t('Search apps…')}
-        class="w-full px-3 py-2 text-sm rounded outline-none
-          {modern
-            ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark font-chat placeholder:text-chat-text-muted dark:placeholder:text-chat-text-muted-dark'
-            : 'bg-transparent border border-term-dim-green text-term-green font-terminal placeholder:text-term-dim-green'}"
+        class="w-full px-3 py-2 text-sm rounded bg-transparent border {modern
+          ? 'border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark'
+          : 'border-term-dim-green text-term-green'}"
       />
     </div>
   {/if}
 
   <div class="px-4 pb-6">
-    {#if !configured}
-      <p class="text-sm {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
-        {$_t('The app catalog is not configured for this build.')}
-      </p>
+    {#if $appsStore.loading}
+      <p class="text-sm opacity-70">{$_t('Loading apps…')}</p>
+    {:else if !configured}
+      <p class="text-sm opacity-70">{$_t('The app catalog is not configured for this build.')}</p>
+    {:else if !ready}
+      <div
+        data-testid="apps-access-card"
+        class="rounded-lg border p-4 {modern
+          ? 'border-chat-border bg-chat-surface text-chat-text dark:border-chat-border-dark dark:bg-chat-surface-dark dark:text-chat-text-dark'
+          : 'border-term-dim-green bg-[#0a0a0a] text-term-green'}"
+      >
+        <h2 class="m-0 text-base font-semibold">
+          {$_t(accessCard.title)}
+        </h2>
+        <p
+          class="text-sm {modern
+            ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
+            : 'text-term-dim-green'}"
+        >
+          {$_t(accessCard.description)}
+        </p>
+        {#if accessCard.action === 'retry'}
+          <button
+            class="text-sm underline {modern
+              ? 'text-chat-primary hover:opacity-80 dark:text-chat-primary-dark'
+              : 'text-term-bright-green hover:text-term-green'}"
+            onclick={() => refreshAppsStore()}>{$_t('Retry')}</button
+          >
+        {:else if accessCard.action === 'setup'}
+          <button
+            class="text-sm px-3 py-1.5 rounded {modern
+              ? 'border border-chat-primary bg-chat-primary text-white hover:opacity-90 dark:border-chat-primary-dark dark:bg-chat-primary-dark'
+              : 'border border-term-green bg-term-green text-black hover:bg-term-bright-green'}"
+            onclick={openSetup}
+          >
+            {policy ? $_t(policy.setupCopy.action) : $_t('Configure')}
+          </button>
+        {/if}
+      </div>
     {:else if loading}
-      <p class="text-sm {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
-        {$_t('Loading apps…')}
-      </p>
+      <p class="text-sm opacity-70">{$_t('Loading apps…')}</p>
     {:else if error}
-      <div class="text-sm rounded p-3
-        {modern ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'border border-term-dim-green text-term-green'}">
-        {error}
-        <button
-          class="ml-2 underline cursor-pointer"
-          onclick={() => load(query)}
-        >{$_t('Retry')}</button>
+      <div class="text-sm rounded p-3 text-red-500">
+        {error} <button class="underline" onclick={() => load()}>{$_t('Retry')}</button>
       </div>
     {:else if apps.length === 0}
-      <p class="text-sm {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
-        {$_t('No apps found.')}
-      </p>
+      <p class="text-sm opacity-70">{$_t('No apps found.')}</p>
     {:else}
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {#each apps as app (app.appId)}
-          <div class="flex flex-col gap-2 rounded-lg p-3
-            {modern
-              ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark'
-              : 'bg-transparent border border-term-dim-green'}">
+          <article
+            class="flex flex-col gap-2 rounded-lg p-3 border {modern
+              ? 'bg-chat-surface dark:bg-chat-surface-dark border-chat-border dark:border-chat-border-dark'
+              : 'border-term-dim-green'}"
+          >
             <div class="flex items-start gap-3">
-              {#if app.iconUrl}
-                <img src={app.iconUrl} alt="" class="w-9 h-9 rounded shrink-0 object-cover" />
+              {#if icons[app.appId]}
+                <img src={icons[app.appId]} alt="" class="w-9 h-9 rounded object-cover" />
               {:else}
-                <div class="w-9 h-9 rounded shrink-0 flex items-center justify-center text-sm font-semibold
-                  {modern ? 'bg-chat-bg dark:bg-chat-bg-dark text-chat-text dark:text-chat-text-dark' : 'border border-term-dim-green text-term-green'}">
+                <div class="w-9 h-9 rounded flex items-center justify-center border">
                   {app.name.charAt(0).toUpperCase()}
                 </div>
               {/if}
-              <div class="min-w-0 flex-1">
-                <h2 class="m-0 text-sm font-semibold truncate
-                  {modern ? 'text-chat-text dark:text-chat-text-dark font-chat' : 'text-term-green font-terminal'}">
-                  {app.name}
-                </h2>
-                {#if app.categories.length}
-                  <p class="m-0 text-meta font-normal truncate
-                    {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
-                    {app.categories.join(' · ')}
-                  </p>
-                {/if}
+              <div class="min-w-0">
+                <h2 class="m-0 text-sm font-semibold truncate">{app.name}</h2>
+                <p class="m-0 text-xs opacity-60 truncate">{app.categories.join(' · ')}</p>
               </div>
             </div>
-
-            {#if app.description}
-              <p class="m-0 text-meta font-normal line-clamp-3
-                {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
+            {#if app.description}<p class="m-0 text-sm opacity-70 line-clamp-3">
                 {app.description}
-              </p>
-            {/if}
-
-            <div class="mt-auto flex items-center gap-2 pt-1 flex-wrap">
+              </p>{/if}
+            <div class="mt-auto flex gap-2 items-center flex-wrap">
               {#if !isInstalled(app)}
                 <button
                   disabled={pendingId === app.appId}
                   onclick={() => handleInstall(app)}
-                  class="text-sm px-2.5 py-1 rounded cursor-pointer disabled:opacity-50
-                    {modern
-                      ? 'bg-chat-primary dark:bg-chat-primary-dark text-white font-chat hover:opacity-90'
-                      : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
+                  class="text-sm px-2.5 py-1 rounded border disabled:opacity-50"
+                  >{pendingId === app.appId ? $_t('Working…') : $_t('Install')}</button
                 >
-                  {pendingId === app.appId ? $_t('Working…') : $_t('Install')}
-                </button>
               {:else if appNeedsConnect(app)}
                 {#if isOauthPending(app.appId)}
-                  <span class="text-meta font-normal {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
-                    {$_t('Connecting… finish in your browser')}
-                  </span>
-                  <button
-                    onclick={() => cancelOAuth(app.appId)}
-                    class="text-sm px-2 py-1 rounded cursor-pointer
-                      {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:underline' : 'text-term-dim-green hover:underline'}"
+                  <span class="text-xs opacity-70">{$_t('Connecting… finish in your browser')}</span
+                  ><button class="text-sm underline" onclick={() => cancelOAuth(app.appId)}
+                    >{$_t('Cancel')}</button
                   >
-                    {$_t('Cancel')}
-                  </button>
                 {:else}
                   <button
+                    class="text-sm px-2.5 py-1 rounded border"
                     onclick={() => handleConnect(app)}
-                    class="text-sm px-2.5 py-1 rounded cursor-pointer
-                      {modern
-                        ? 'bg-chat-primary dark:bg-chat-primary-dark text-white font-chat hover:opacity-90'
-                        : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
+                    >{app.auth?.status === 'expired' ? $_t('Reconnect') : $_t('Connect')}</button
                   >
-                    {app.auth?.status === 'expired' ? $_t('Reconnect') : $_t('Connect')}
-                  </button>
                 {/if}
               {:else if app.isActivated}
-                <span class="text-xs px-2 py-1 rounded
-                  {modern ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'text-term-green'}">
-                  {$_t('Active')}
-                </span>
+                <span class="text-xs text-green-500">{$_t('Active')}</span>
               {:else}
                 <button
                   disabled={pendingId === app.appId}
-                  onclick={() => handleActivate(app)}
-                  class="text-sm px-2.5 py-1 rounded cursor-pointer disabled:opacity-50
-                    {modern
-                      ? 'bg-chat-button-hover dark:bg-chat-button-hover-dark text-chat-text dark:text-chat-text-dark font-chat'
-                      : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
+                  class="text-sm px-2.5 py-1 rounded border disabled:opacity-50"
+                  onclick={() => runAction(app, activateApp)}>{$_t('Activate')}</button
                 >
-                  {pendingId === app.appId ? $_t('Working…') : $_t('Activate')}
-                </button>
               {/if}
-              {#if app.auth?.accountHint && app.auth?.status === 'connected'}
-                <span class="text-meta font-normal truncate max-w-[120px]
-                  {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
-                  {app.auth.accountHint}
-                </span>
-              {/if}
-              {#if app.version}
-                <span class="ml-auto text-meta font-normal
-                  {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
-                  v{app.version}
-                </span>
-              {/if}
+              {#if app.version}<span class="ml-auto text-xs opacity-60">v{app.version}</span>{/if}
             </div>
-
-            {#if connectErrors[app.appId]}
-              <p class="m-0 text-meta font-normal text-red-500">{connectErrors[app.appId]}</p>
-            {/if}
-
+            {#if connectErrors[app.appId]}<p class="m-0 text-xs text-red-500">
+                {connectErrors[app.appId]}
+              </p>{/if}
             {#if apiKeyFormId === app.appId}
-              <div class="flex flex-col gap-2 mt-1 p-2 rounded
-                {modern ? 'bg-chat-bg dark:bg-chat-bg-dark' : 'border border-term-dim-green'}">
+              <div class="flex flex-col gap-2 border rounded p-2">
                 {#each apiKeyFields as field (field.key)}
-                  <label class="flex flex-col gap-1 text-sm
-                    {modern ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-green'}">
-                    <span>{field.label}{field.optional ? '' : ' *'}</span>
-                    <input
+                  <label class="text-sm flex flex-col gap-1"
+                    ><span>{field.label}{field.optional ? '' : ' *'}</span><input
                       type={field.type === 'secret' ? 'password' : 'text'}
                       bind:value={apiKeyValues[field.key]}
-                      placeholder={field.placeholder ?? ''}
                       autocomplete="off"
-                      class="px-2 py-1 rounded text-sm
-                        {modern
-                          ? 'bg-chat-surface dark:bg-chat-surface-dark border border-chat-border dark:border-chat-border-dark text-chat-text dark:text-chat-text-dark'
-                          : 'bg-transparent border border-term-dim-green text-term-green'}"
-                    />
-                  </label>
+                      class="px-2 py-1 border rounded bg-transparent"
+                    /></label
+                  >
                 {/each}
-                {#if apiKeyError}
-                  <p class="m-0 text-meta font-normal text-red-500">{apiKeyError}</p>
-                {/if}
-                <div class="flex items-center gap-2">
+                {#if apiKeyError}<p class="m-0 text-xs text-red-500">{apiKeyError}</p>{/if}
+                <div class="flex gap-2">
                   <button
                     disabled={apiKeySubmitting}
-                    onclick={() => submitApiKeyForm(app)}
-                    class="text-sm px-2.5 py-1 rounded cursor-pointer disabled:opacity-50
-                      {modern
-                        ? 'bg-chat-primary dark:bg-chat-primary-dark text-white font-chat hover:opacity-90'
-                        : 'border border-term-dim-green text-term-green font-terminal hover:bg-[rgba(0,255,0,0.1)]'}"
+                    class="text-sm px-2 py-1 border rounded"
+                    onclick={() => submitCredentialForm(app)}
+                    >{apiKeySubmitting ? $_t('Saving…') : $_t('Save')}</button
                   >
-                    {apiKeySubmitting ? $_t('Saving…') : $_t('Save')}
-                  </button>
-                  <button
-                    onclick={closeApiKeyForm}
-                    class="text-sm px-2 py-1 rounded cursor-pointer
-                      {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark hover:underline' : 'text-term-dim-green hover:underline'}"
+                  <button class="text-sm underline" onclick={closeCredentialForm}
+                    >{$_t('Cancel')}</button
                   >
-                    {$_t('Cancel')}
-                  </button>
-                  {#if app.auth?.setupUrl}
-                    <a href={app.auth.setupUrl} target="_blank" rel="noopener noreferrer"
-                      class="ml-auto text-meta font-normal underline
-                        {modern ? 'text-chat-text-muted dark:text-chat-text-muted-dark' : 'text-term-dim-green'}">
-                      {$_t('Where do I get this?')}
-                    </a>
-                  {/if}
+                  {#if app.auth?.setupUrl}<button
+                      class="ml-auto text-sm underline"
+                      onclick={() => openExternalUrl(app.auth!.setupUrl!)}
+                      >{$_t('Where do I get this?')}</button
+                    >{/if}
                 </div>
               </div>
             {/if}
-          </div>
+          </article>
         {/each}
       </div>
     {/if}

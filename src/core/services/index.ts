@@ -26,6 +26,7 @@ import { createCredentialServices, type CredentialServiceDeps } from './credenti
 import { createDataSourceServices, type DataSourceServiceDeps } from './data-sources-services';
 import { createComponentServices, type ComponentServiceDeps } from './components-services';
 import { createPreviewServices, type PreviewServiceDeps } from './preview-services';
+import { createAppsServices, type AppsServiceDeps } from './apps-services';
 
 /**
  * Dependencies for registering all services.
@@ -50,6 +51,7 @@ export interface AllServiceDeps {
   dataSources?: DataSourceServiceDeps;
   components?: ComponentServiceDeps;
   preview?: PreviewServiceDeps;
+  apps?: AppsServiceDeps;
 }
 
 /**
@@ -79,6 +81,7 @@ export function registerAllServices(registry: ServiceRegistry, deps: AllServiceD
     ['dataSources', createDataSourceServices],
     ['components', createComponentServices],
     ['preview', createPreviewServices],
+    ['apps', createAppsServices],
   ];
 
   for (const [key, factory] of factories) {
@@ -114,3 +117,4 @@ export { createCredentialServices, type CredentialServiceDeps } from './credenti
 export { createDataSourceServices, type DataSourceServiceDeps } from './data-sources-services';
 export { createComponentServices, type ComponentServiceDeps } from './components-services';
 export { createPreviewServices, type PreviewServiceDeps } from './preview-services';
+export { createAppsServices, type AppsServiceDeps } from './apps-services';
