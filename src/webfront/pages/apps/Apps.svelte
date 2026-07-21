@@ -27,6 +27,52 @@
   let ready = $derived(
     access?.credentialStatus === 'ready' && access?.capabilityStatus === 'supported'
   );
+  let accessCard = $derived.by(() => {
+    if (access?.capabilityStatus === 'incompatible') {
+      return {
+        title: 'Apps service update required',
+        description:
+          'This OpenHub deployment does not support the Apps authentication contract required by WorkX.',
+        action: 'retry' as const,
+      };
+    }
+    if (access?.credentialStatus === 'unverified' || access?.backendStatus === 'unavailable') {
+      return {
+        title: 'Apps service unavailable',
+        description: 'WorkX could not verify Apps access. Check your connection and try again.',
+        action: 'retry' as const,
+      };
+    }
+    if (access?.credentialStatus === 'validating') {
+      return {
+        title: 'Checking Apps access',
+        description: 'WorkX is verifying your Apps credential.',
+        action: 'none' as const,
+      };
+    }
+    if (access?.credentialStatus === 'forbidden') {
+      return {
+        title: 'Apps access unavailable',
+        description: 'Your account does not have permission to use Apps.',
+        action: 'retry' as const,
+      };
+    }
+    if (access?.credentialStatus === 'invalid-credential') {
+      return {
+        title: access.authMethod === 'session-jwt' ? 'Sign in again to use Apps' : 'Reconnect Apps',
+        description:
+          access.authMethod === 'session-jwt'
+            ? 'Your Apps session is no longer valid.'
+            : 'OpenHub rejected the current Apps API key.',
+        action: 'setup' as const,
+      };
+    }
+    return {
+      title: policy?.setupCopy.title ?? 'Apps unavailable',
+      description: policy?.setupCopy.description ?? $appsStore.error ?? access?.reason ?? '',
+      action: 'setup' as const,
+    };
+  });
 
   let apps = $state<MarketplaceApp[]>([]);
   let icons = $state<Record<string, string>>({});
@@ -329,23 +375,23 @@
           : 'border-term-dim-green bg-[#0a0a0a] text-term-green'}"
       >
         <h2 class="m-0 text-base font-semibold">
-          {policy ? $_t(policy.setupCopy.title) : $_t('Apps unavailable')}
+          {$_t(accessCard.title)}
         </h2>
         <p
           class="text-sm {modern
             ? 'text-chat-text-muted dark:text-chat-text-muted-dark'
             : 'text-term-dim-green'}"
         >
-          {policy ? $_t(policy.setupCopy.description) : ($appsStore.error ?? access?.reason)}
+          {$_t(accessCard.description)}
         </p>
-        {#if access?.credentialStatus === 'unverified' || access?.capabilityStatus === 'incompatible'}
+        {#if accessCard.action === 'retry'}
           <button
             class="text-sm underline {modern
               ? 'text-chat-primary hover:opacity-80 dark:text-chat-primary-dark'
               : 'text-term-bright-green hover:text-term-green'}"
             onclick={() => refreshAppsStore()}>{$_t('Retry')}</button
           >
-        {:else}
+        {:else if accessCard.action === 'setup'}
           <button
             class="text-sm px-3 py-1.5 rounded {modern
               ? 'border border-chat-primary bg-chat-primary text-white hover:opacity-90 dark:border-chat-primary-dark dark:bg-chat-primary-dark'
