@@ -44,7 +44,9 @@ export const overlayScroll: Action<HTMLElement, OverlayScrollOptions | undefined
   let dragStartScrollTop = 0;
 
   function scrollable(): boolean {
-    return node.scrollHeight - node.clientHeight > 1;
+    // Require the container to be tall enough to host the minimum thumb height;
+    // otherwise maxThumbTop (track - thumbHeight) goes negative and the thumb overflows.
+    return node.scrollHeight - node.clientHeight > 1 && node.clientHeight >= MIN_THUMB_HEIGHT;
   }
 
   function layout(): void {

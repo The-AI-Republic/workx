@@ -180,6 +180,8 @@ body.terminal-mode {
   transition: opacity 200ms ease;
   will-change: transform;
   z-index: 5;
+  /* Let pointer-event listeners own drag gestures instead of native touch panning. */
+  touch-action: none;
 }
 .overlay-scroll-thumb.is-visible {
   opacity: 1;
