@@ -200,7 +200,6 @@ describe('MCPConfig Validation Schemas', () => {
     it('should accept supported auth modes', () => {
       expect(() => MCPAuthModeSchema.parse('none')).not.toThrow();
       expect(() => MCPAuthModeSchema.parse('api-key')).not.toThrow();
-      expect(() => MCPAuthModeSchema.parse('session-jwt')).not.toThrow();
     });
   });
 
@@ -252,19 +251,19 @@ describe('MCPConfig Validation Schemas', () => {
       expect(result.args).toEqual(['chrome-devtools-mcp']);
     });
 
-    it('should accept streamable HTTP with session JWT auth and static headers', () => {
+    it('should accept streamable HTTP with API-key auth and static headers', () => {
       const input = {
         name: 'gateway',
         url: 'https://gateway.example.com/mcp',
         transport: 'streamable-http' as const,
-        authMode: 'session-jwt' as const,
+        authMode: 'api-key' as const,
         headers: { 'X-Custom-Tool-Discovery': 'folded' },
       };
 
       const result = MCPServerConfigCreateSchema.parse(input);
 
       expect(result.transport).toBe('streamable-http');
-      expect(result.authMode).toBe('session-jwt');
+      expect(result.authMode).toBe('api-key');
       expect(result.headers).toEqual({ 'X-Custom-Tool-Discovery': 'folded' });
     });
 

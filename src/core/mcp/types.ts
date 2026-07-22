@@ -22,7 +22,7 @@ export type MCPTransportType = 'sse' | 'streamable-http' | 'stdio';
 /**
  * Authentication source for remote MCP servers.
  */
-export type MCPAuthMode = 'none' | 'api-key' | 'session-jwt';
+export type MCPAuthMode = 'none' | 'api-key';
 
 /**
  * Platform scope for MCP server visibility.

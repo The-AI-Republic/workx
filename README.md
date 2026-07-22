@@ -64,19 +64,10 @@ cp .env.example src/desktop/.env
 # Server mode — uses env vars or config.json (no .env file needed)
 ```
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `VITE_AUTH_BASE_URL` | Optional hosted login/account base URL | `https://auth.example.com` |
-| `VITE_BACKEND_API_BASE_URL` | Optional backend API endpoint | `https://api.example.com` |
-| `VITE_AUTH_COOKIE_DOMAIN` | Optional cookie domain for hosted auth | `.example.com` |
-| `VITE_AUTH_ACCESS_COOKIE_NAME` | Hosted auth access-token cookie name | `access_token` |
-| `VITE_AUTH_REFRESH_COOKIE_NAME` | Hosted auth refresh-token cookie name | `refresh_token` |
-| `VITE_AUTH_LOGIN_PATH` | Optional hosted login path | `/signin` |
-| `VITE_AUTH_PROFILE_PATH` | Optional hosted profile API path | `/profile` |
-| `VITE_AUTH_DESKTOP_SESSION_PATH` | Optional desktop session API path | `/desktop/session` |
-| `VITE_AUTH_DESKTOP_REFRESH_PATH` | Optional desktop token refresh API path | `/desktop/refresh` |
-| `VITE_AUTH_USER_CENTER_PATH` | Optional hosted account path | `/account` |
-| `VITE_AUTH_PRICING_PATH` | Optional hosted plan upgrade path | `/plans` |
+OSS WorkX uses model-provider API keys stored locally. OpenAI users may also
+connect a ChatGPT subscription through provider OAuth. Product account login,
+memberships, and credit-backed routing are distribution-specific and are not
+part of this repository.
 
 ---
 
@@ -148,18 +139,6 @@ For a normal desktop package:
 ```bash
 ./build.sh --install
 ```
-
-For local hosted-login testing:
-
-```bash
-VITE_AUTH_BASE_URL=https://auth.example.local ./build.sh --install
-```
-
-You can also set `VITE_AUTH_BASE_URL=https://auth.example.local` in
-`src/desktop/.env`. The desktop web UI and runtime sidecar read the hosted auth
-URL during the build, so changing it requires rebuilding the desktop package.
-
----
 
 ### WorkX Server (Headless Mode)
 

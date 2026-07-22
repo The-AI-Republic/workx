@@ -6,7 +6,6 @@
    */
   import { onMount } from 'svelte';
   import { AgentConfig } from '@/config/AgentConfig';
-  import { userStore } from '../../stores/userStore';
   import { uiTheme } from '../../stores/themeStore';
   import { selectedModelKey as modelKeyStore } from '../../stores/modelStore';
   import Tooltip from '../common/Tooltip.svelte';
@@ -23,7 +22,6 @@
   // State
   let isOpen = $state(false);
   let isLoading = $state(true);
-  let useOwnApiKey = $state(false);
   let currentTheme = $derived($uiTheme);
 
   // Reactive selected model — backed by AgentConfig 'config-changed' events so
@@ -47,24 +45,12 @@
     modelSelectionItems.find((m) => m.modelId === selectedModelKey)?.modelName ?? ''
   );
 
-  // Subscribe to stores
-  let isUserLoggedIn = $derived($userStore.isLoggedIn);
-  let accountTier = $derived($userStore.userType);
-
   function isModelLocked(modelKey: string, isCustom = false): boolean {
-    return modelAccessPolicy.isLocked(
-      { isAuthenticated: isUserLoggedIn, accountTier },
-      { modelKey, isCustom },
-    );
+    return modelAccessPolicy.isLocked({ modelKey, isCustom });
   }
 
 
-  // Filter models based on useOwnApiKey setting
-  let filteredModelItems = $derived(isUserLoggedIn && !useOwnApiKey
-    // Custom (BYOK) endpoints are direct-only but must remain selectable in
-    // backend mode — they run on the user's own key.
-    ? modelSelectionItems.filter(item => (item.supportBackendMode ?? 0) > 0 || item.isCustom)
-    : modelSelectionItems);
+  let filteredModelItems = $derived(modelSelectionItems);
 
   // Group models by name
   interface GroupedModel {
@@ -135,8 +121,6 @@
       const config = await AgentConfig.getInstance();
       const agentConfig = config.getConfig();
 
-      useOwnApiKey = agentConfig.preferences?.useOwnApiKey ?? false;
-
       // Build model selection array
       const tempModelItems: ModelSelectionItem[] = [];
       const providers = config.getProviders();
@@ -167,10 +151,7 @@
       // fires a 'model' change event, which the modelStore picks up.
       const currentKey = agentConfig.selectedModelKey;
       if (!currentKey || currentKey === '') {
-        const preferredModelId = modelAccessPolicy.getPreferredModelId(
-          { isAuthenticated: isUserLoggedIn, accountTier },
-          'initial',
-        );
+        const preferredModelId = modelAccessPolicy.getPreferredModelId('initial');
         const preferredModel = preferredModelId
           ? modelSelectionItems.find((model) => model.modelId === preferredModelId)
           : undefined;

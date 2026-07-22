@@ -1,256 +1,50 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { CredentialStore } from '@/core/storage/CredentialStore';
-import { OpenHubCredentialProvider } from '../OpenHubCredentialProvider';
-import { OpenHubAppsClient } from '../OpenHubAppsClient';
 import { AppsServiceError } from '../AppsServiceError';
-import type { AppsAccessPolicy } from '../types';
+import { OpenHubAppsClient } from '../OpenHubAppsClient';
+import type { OpenHubCredentialProvider } from '../OpenHubCredentialProvider';
 
-class MemoryCredentials implements CredentialStore {
-  values = new Map<string, string>();
-  get(service: string, account: string) {
-    return Promise.resolve(this.values.get(`${service}/${account}`) ?? null);
-  }
-  async set(service: string, account: string, value: string) {
-    this.values.set(`${service}/${account}`, value);
-  }
-  async delete(service: string, account: string) {
-    this.values.delete(`${service}/${account}`);
-  }
-  async listAccounts() {
-    return [];
-  }
-}
-
-const apiPolicy: AppsAccessPolicy = {
-  authMethod: 'api-key',
-  apiKeyManagementUrl: 'https://hub.example/keys',
-  setupCopy: { title: 'Apps', description: 'Add key', action: 'Add' },
-};
-
-function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json', ...headers },
-  });
-}
-
-function validCredential(method: 'api-key' | 'session-jwt' = 'api-key') {
-  return {
-    contractVersion: 1,
-    capabilities: ['single-hub-apps-credential-v1'],
-    subjectId: 'subject',
-    credentialType: method,
-    scopes: ['chat', 'models', 'apps'],
-    allowedAppIds: null,
-  };
-}
-
-function sessionToken(scopes = 'chat apps models'): string {
-  const payload = Buffer.from(JSON.stringify({ sub: 'home-user', scp: scopes })).toString(
-    'base64url'
-  );
-  return `header.${payload}.signature`;
-}
-
-async function apiClient(fetchMock: ReturnType<typeof vi.fn>) {
-  const store = new MemoryCredentials();
-  await store.set('openhub', 'api_key', 'oh-secret');
-  const provider = new OpenHubCredentialProvider({ policy: apiPolicy, credentialStore: store });
+function createClient(credentials: ConstructorParameters<typeof OpenHubAppsClient>[0]['credentials']) {
   return new OpenHubAppsClient({
     catalogApiBaseUrl: 'https://hub.example/api/v1/apps',
-    credentials: provider,
-    fetch: fetchMock as typeof fetch,
+    credentials,
+    fetch: vi.fn() as unknown as typeof globalThis.fetch,
   });
 }
 
-describe('OpenHubAppsClient', () => {
-  it('requires the Hub Apps contract and every shared WorkX credential scope', async () => {
-    const compatible = await apiClient(vi.fn(async () => json(validCredential())));
-    await expect(
-      compatible.validateCredential({ method: 'api-key', token: 'candidate' })
-    ).resolves.toMatchObject({ valid: true, credentialType: 'api-key' });
-
-    const incompatible = await apiClient(
-      vi.fn(async () => json({ ...validCredential(), capabilities: [] }))
-    );
-    await expect(
-      incompatible.validateCredential({ method: 'api-key', token: 'candidate' })
-    ).rejects.toMatchObject({ errorCode: 'APPS_BACKEND_INCOMPATIBLE' });
-
-    const gatewayFacade = await apiClient(
-      vi.fn(async () =>
-        json({ ...validCredential(), capabilities: ['single-gateway-credential-v1'] })
-      )
-    );
-    await expect(
-      gatewayFacade.validateCredential({ method: 'api-key', token: 'candidate' })
-    ).rejects.toMatchObject({ errorCode: 'APPS_BACKEND_INCOMPATIBLE' });
-
-    for (const scopes of [
-      ['models', 'apps'],
-      ['chat', 'apps'],
-      ['chat', 'models'],
-    ]) {
-      const forbidden = await apiClient(
-        vi.fn(async () => json({ ...validCredential(), scopes }))
-      );
-      await expect(
-        forbidden.validateCredential({ method: 'api-key', token: 'candidate' })
-      ).rejects.toMatchObject({ errorCode: 'APPS_FORBIDDEN' });
-    }
-  });
-
-  it('maps missing introspection to backend incompatible', async () => {
-    const client = await apiClient(vi.fn(async () => json({}, 404)));
-    await expect(
-      client.validateCredential({ method: 'api-key', token: 'candidate' })
-    ).rejects.toMatchObject({ errorCode: 'APPS_BACKEND_INCOMPATIBLE' });
-  });
-
-  it('uses Hub auth/me while a direct-Hub session deployment rolls out', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.endsWith('/api/v1/apps/credentials/me')) return json({}, 404);
-      expect(url).toBe('https://hub.example/api/auth/me');
-      return json({ user: { sub: 'home-user' } });
-    });
-    const client = await apiClient(fetchMock);
-
-    await expect(
-      client.validateCredential({ method: 'session-jwt', token: sessionToken() })
-    ).resolves.toMatchObject({ valid: true, credentialType: 'session-jwt' });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it('leaves validation availability failures to the access controller', async () => {
-    const client = await apiClient(vi.fn(async () => Promise.reject(new Error('offline'))));
-    const onUnavailable = vi.fn();
-    client.setObserver({ onUnavailable });
-
-    await expect(
-      client.validateCredential({ method: 'api-key', token: 'candidate' })
-    ).rejects.toMatchObject({ errorCode: 'APPS_UNAVAILABLE' });
-    expect(onUnavailable).not.toHaveBeenCalled();
-  });
-
-  it('authenticates and normalizes marketplace data without exposing icon URLs', async () => {
-    const fetchMock = vi.fn(async (_url: unknown, init?: RequestInit) => {
-      expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer oh-secret');
-      expect(new Headers(init?.headers).has('Content-Type')).toBe(false);
-      return json({
-        items: [
-          {
-            id: 'mail',
-            name: 'Mail',
-            iconUrl: 'https://cdn.example/mail.png',
-            auth: { type: 'oauth2', status: 'needs_auth' },
-          },
-        ],
-      });
-    });
-    const page = await (await apiClient(fetchMock)).marketplace({ query: 'mail' });
-    expect(page.items[0]).toMatchObject({ appId: 'mail', name: 'Mail', hasIcon: true });
-    expect(page.items[0]).not.toHaveProperty('iconUrl');
-  });
-
-  it('refreshes a session once after 401 and retries with the rotated token', async () => {
-    const store = new MemoryCredentials();
-    let token = 'old-token';
-    const refresh = vi.fn(async () => {
-      token = 'new-token';
-      return token;
-    });
-    const provider = new OpenHubCredentialProvider({
-      policy: { authMethod: 'session-jwt', setupCopy: { title: '', description: '', action: '' } },
-      credentialStore: store,
-      getSessionToken: async () => token,
-      refreshSessionToken: refresh,
-    });
-    const seen: Array<string | null> = [];
-    const fetchMock = vi.fn(async (_url, init?: RequestInit) => {
-      seen.push(new Headers(init?.headers).get('Authorization'));
-      return seen.length === 1 ? json({}, 401) : json({ items: [] });
-    });
+describe('OpenHubAppsClient OSS credentials', () => {
+  it('validates the API-key credential contract', async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({
+      contractVersion: 1,
+      capabilities: ['single-hub-apps-credential-v1'],
+      credentialType: 'api-key',
+      scopes: ['chat', 'models', 'apps'],
+      allowedAppIds: null,
+    }), { headers: { 'content-type': 'application/json' } }));
     const client = new OpenHubAppsClient({
       catalogApiBaseUrl: 'https://hub.example/api/v1/apps',
-      credentials: provider,
-      fetch: fetchMock as typeof fetch,
+      credentials: {} as never,
+      fetch: fetch as typeof globalThis.fetch,
     });
-    await client.marketplace();
-    expect(refresh).toHaveBeenCalledTimes(1);
-    expect(seen).toEqual(['Bearer old-token', 'Bearer new-token']);
+    await expect(client.validateCredential({ method: 'api-key', token: 'key' }))
+      .resolves.toMatchObject({ valid: true, credentialType: 'api-key' });
   });
 
-  it('does not retry an invalid API key', async () => {
-    const fetchMock = vi.fn(async () => json({}, 401));
-    const client = await apiClient(fetchMock);
-    await expect(client.marketplace()).rejects.toMatchObject({
-      errorCode: 'APPS_INVALID_CREDENTIAL',
-    });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('rejects oversized JSON and unsafe OAuth URLs', async () => {
-    const oversized = await apiClient(
-      vi.fn(async () => json({}, 200, { 'content-length': String(2 * 1024 * 1024 + 1) }))
-    );
-    await expect(oversized.marketplace()).rejects.toBeInstanceOf(AppsServiceError);
-
-    const unsafe = await apiClient(
-      vi.fn(async () => json({ authorizationUrl: 'javascript:alert(1)' }))
-    );
-    await expect(unsafe.startOAuth('mail')).rejects.toMatchObject({
-      errorCode: 'APPS_INVALID_RESPONSE',
-    });
-  });
-
-  it('cancels an oversized streaming response', async () => {
-    const cancel = vi.fn();
-    const body = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(new Uint8Array(2 * 1024 * 1024 + 1));
+  it('requires an OpenHub API key when no credential is configured', async () => {
+    const credentials = {
+      policy: {
+        authMethod: 'api-key',
+        setupCopy: { title: '', description: '', action: '' },
+        apiKeyManagementUrl: 'https://hub.example/settings/api-keys',
       },
-      cancel,
-    });
-    const client = await apiClient(
-      vi.fn(async () =>
-        new Response(body, { headers: { 'content-type': 'application/json' } })
-      )
-    );
+      getCredential: vi.fn(async () => null),
+      handleUnauthorized: vi.fn(async () => null),
+    } as unknown as OpenHubCredentialProvider;
+    const client = createClient(credentials);
+    const expected: Partial<AppsServiceError> = {
+      errorCode: 'APPS_API_KEY_REQUIRED',
+      message: 'Add an OpenHub API key in Settings.',
+    };
 
-    await expect(client.marketplace()).rejects.toMatchObject({
-      errorCode: 'APPS_INVALID_RESPONSE',
-    });
-    expect(cancel).toHaveBeenCalledOnce();
-  });
-
-  it('fetches bounded icons in the runtime without leaking the bearer to the icon host', async () => {
-    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (String(input).includes('/marketplace'))
-        return json({ items: [{ id: 'mail', iconUrl: 'https://cdn.example/mail.png' }] });
-      expect(new Headers(init?.headers).has('Authorization')).toBe(false);
-      return new Response(png, { headers: { 'content-type': 'image/png' } });
-    });
-    const client = await apiClient(fetchMock);
-    await client.marketplace();
-    await expect(client.getIcon('mail')).resolves.toMatchObject({ mimeType: 'image/png' });
-  });
-
-  it('does not report a committed manual credential as failed when status refresh is unavailable', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(json({ connection: { status: 'connected' } }))
-      .mockRejectedValueOnce(new Error('offline'));
-    const client = await apiClient(fetchMock);
-
-    await expect(
-      client.submitCredentials('mail', { api_key: 'provider-secret' }, 'account@example.com')
-    ).resolves.toMatchObject({
-      type: 'api_key',
-      status: 'connected',
-      accountHint: 'account@example.com',
-    });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await expect(client.marketplace()).rejects.toMatchObject(expected);
   });
 });

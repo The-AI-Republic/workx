@@ -6,7 +6,6 @@
    */
   import type { ConfiguredFeatures } from '@/config/types';
   import { onMount } from 'svelte';
-  import { userStore } from '../../stores/userStore';
   import Tooltip from '../../components/common/Tooltip.svelte';
   import { t, _t } from '../../lib/i18n';
   import { registerShortcut, registerShortcutContext } from '../../shortcuts/useShortcut';
@@ -44,14 +43,8 @@
   } = $props();
 
   // Subscribe to user store
-  let isUserLoggedIn = $derived($userStore.isLoggedIn);
-  let accountTier = $derived($userStore.userType);
-
   function isModelLocked(modelKey: string, isCustom = false): boolean {
-    return modelAccessPolicy.isLocked(
-      { isAuthenticated: isUserLoggedIn, accountTier },
-      { modelKey, isCustom },
-    );
+    return modelAccessPolicy.isLocked({ modelKey, isCustom });
   }
 
   let isOpen = $state(false);

@@ -112,21 +112,7 @@
       </div>
     </div>
   {:else}
-    <div class="card">
-      <h3>{policy ? t(policy.setupCopy.title) : t('Sign in to use Apps')}</h3>
-      <p>
-        {access?.credentialStatus === 'ready'
-          ? t('Your AI Republic session enables Apps.')
-          : policy
-            ? t(policy.setupCopy.description)
-            : ''}
-      </p>
-      {#if access?.credentialStatus !== 'ready'}<button
-          class="primary"
-          onclick={() => window.dispatchEvent(new CustomEvent('workx:request-login'))}
-          >{policy ? t(policy.setupCopy.action) : t('Sign in')}</button
-        >{/if}
-    </div>
+    <p>{t('OpenHub API-key access is unavailable in this build.')}</p>
   {/if}
   {#if message}<p class="success">{message}</p>{/if}
   {#if error}<p class="error">{error}</p>{/if}

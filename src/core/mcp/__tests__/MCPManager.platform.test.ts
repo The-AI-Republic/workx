@@ -162,7 +162,7 @@ describe('MCPManager Platform Features', () => {
     it('should seed gateway MCP with overlay-provided name and headers but policy-owned auth', async () => {
       process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
       process.env.WORKX_GATEWAY_MCP_NAME = 'first-party-gateway';
-      process.env.WORKX_GATEWAY_MCP_AUTH_MODE = 'session-jwt';
+      process.env.WORKX_GATEWAY_MCP_AUTH_MODE = 'none';
       process.env.WORKX_GATEWAY_MCP_TOOL_DISCOVERY_HEADER = 'X-Custom-Tool-Discovery';
       process.env.WORKX_GATEWAY_MCP_TOOL_DISCOVERY = 'folded';
 

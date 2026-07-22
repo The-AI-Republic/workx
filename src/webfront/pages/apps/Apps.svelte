@@ -53,17 +53,14 @@
     if (access?.credentialStatus === 'forbidden') {
       return {
         title: 'Apps access unavailable',
-        description: 'Your account does not have permission to use Apps.',
+        description: 'The current OpenHub API key does not have permission to use Apps.',
         action: 'retry' as const,
       };
     }
     if (access?.credentialStatus === 'invalid-credential') {
       return {
-        title: access.authMethod === 'session-jwt' ? 'Sign in again to use Apps' : 'Reconnect Apps',
-        description:
-          access.authMethod === 'session-jwt'
-            ? 'Your Apps session is no longer valid.'
-            : 'OpenHub rejected the current Apps API key.',
+        title: 'Reconnect Apps',
+        description: 'OpenHub rejected the current Apps API key.',
         action: 'setup' as const,
       };
     }
@@ -289,8 +286,7 @@
   }
 
   function openSetup() {
-    if (access?.authMethod === 'api-key') push('/settings?view=apps');
-    else window.dispatchEvent(new CustomEvent('workx:request-login'));
+    push('/settings?view=apps');
   }
 
   function refreshOnReturn() {

@@ -174,13 +174,10 @@ export class NetworkError extends ModelClientError {
  * Error thrown for authentication failures
  */
 export class AuthenticationError extends ModelClientError {
-  public readonly authSource: 'backend' | 'provider';
-
   constructor(
     message: string,
     statusCode: number = 401,
     provider?: string,
-    authSource: 'backend' | 'provider' = 'provider'
   ) {
     super(
       message,
@@ -189,67 +186,13 @@ export class AuthenticationError extends ModelClientError {
       false // Auth errors are not retryable without credential update
     );
     this.name = 'AuthenticationError';
-    this.authSource = authSource;
-  }
-
-  /**
-   * Check if error is from backend session (vs provider API key)
-   */
-  isBackendSessionError(): boolean {
-    return this.authSource === 'backend';
   }
 
   /**
    * Get user-friendly action message
    */
   getActionMessage(): string {
-    if (this.authSource === 'backend') {
-      return 'Please log in again to continue using the AI agent.';
-    }
     return 'Please check your API key in settings.';
-  }
-}
-
-/**
- * Error thrown specifically for backend routing failures
- */
-export class BackendRoutingError extends ModelClientError {
-  public readonly errorType: 'session_expired' | 'backend_unreachable' | 'backend_error';
-
-  constructor(
-    message: string,
-    errorType: 'session_expired' | 'backend_unreachable' | 'backend_error',
-    statusCode?: number
-  ) {
-    super(
-      message,
-      statusCode,
-      'Backend',
-      errorType === 'backend_unreachable' // Only unreachable errors are potentially retryable
-    );
-    this.name = 'BackendRoutingError';
-    this.errorType = errorType;
-  }
-
-  /**
-   * Check if error requires re-authentication
-   */
-  requiresReauth(): boolean {
-    return this.errorType === 'session_expired';
-  }
-
-  /**
-   * Get user-friendly action message
-   */
-  getActionMessage(): string {
-    switch (this.errorType) {
-      case 'session_expired':
-        return 'Your session has expired. Please log in again.';
-      case 'backend_unreachable':
-        return 'Unable to reach the server. Please check your connection and try again.';
-      case 'backend_error':
-        return 'The server encountered an error. Please try again later.';
-    }
   }
 }
 
@@ -404,7 +347,6 @@ export class ErrorFactory {
   static createAuthError(
     reason: 'invalid_key' | 'expired_key' | 'insufficient_permissions' | 'unknown' = 'unknown',
     provider?: string,
-    authSource: 'backend' | 'provider' = 'provider'
   ): AuthenticationError {
     const messages = {
       invalid_key: 'Invalid API key provided',
@@ -413,30 +355,7 @@ export class ErrorFactory {
       unknown: 'Authentication failed',
     };
 
-    return new AuthenticationError(messages[reason], 401, provider, authSource);
-  }
-
-  /**
-   * Create a backend routing error
-   */
-  static createBackendRoutingError(
-    errorType: 'session_expired' | 'backend_unreachable' | 'backend_error',
-    statusCode?: number
-  ): BackendRoutingError {
-    const messages = {
-      session_expired: 'Session expired - please log in again to continue using the AI agent',
-      backend_unreachable: 'Unable to reach the backend server - please check your connection',
-      backend_error: 'Backend server error - please try again later',
-    };
-
-    return new BackendRoutingError(messages[errorType], errorType, statusCode);
-  }
-
-  /**
-   * Create a backend session expired error (convenience method)
-   */
-  static createSessionExpiredError(): BackendRoutingError {
-    return ErrorFactory.createBackendRoutingError('session_expired', 401);
+    return new AuthenticationError(messages[reason], 401, provider);
   }
 
   /**
@@ -491,10 +410,6 @@ export class ErrorTypeGuards {
 
   static isAuthenticationError(error: unknown): error is AuthenticationError {
     return error instanceof AuthenticationError;
-  }
-
-  static isBackendRoutingError(error: unknown): error is BackendRoutingError {
-    return error instanceof BackendRoutingError;
   }
 
   static isQuotaError(error: unknown): error is QuotaExceededError {

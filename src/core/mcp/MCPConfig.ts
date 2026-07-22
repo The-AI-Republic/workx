@@ -63,7 +63,7 @@ export const MCPTransportTypeSchema = z.enum(['sse', 'streamable-http', 'stdio']
 /**
  * Schema for remote auth mode.
  */
-export const MCPAuthModeSchema = z.enum(['none', 'api-key', 'session-jwt']);
+export const MCPAuthModeSchema = z.enum(['none', 'api-key']);
 
 /**
  * Schema for platform scope.

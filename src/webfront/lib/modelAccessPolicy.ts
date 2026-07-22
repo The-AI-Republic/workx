@@ -6,11 +6,6 @@
  * to provide account-specific availability, preferred defaults, and copy.
  */
 
-export interface ModelAccessSubject {
-  isAuthenticated: boolean;
-  accountTier?: string | number | null;
-}
-
 export interface ModelAccessTarget {
   modelKey: string;
   isCustom?: boolean;
@@ -19,8 +14,8 @@ export interface ModelAccessTarget {
 export type PreferredModelPurpose = 'initial' | 'access-fallback';
 
 export interface ModelAccessPolicy {
-  isLocked(subject: ModelAccessSubject, target: ModelAccessTarget): boolean;
-  getPreferredModelId(subject: ModelAccessSubject, purpose: PreferredModelPurpose): string | null;
+  isLocked(target: ModelAccessTarget): boolean;
+  getPreferredModelId(purpose: PreferredModelPurpose): string | null;
   lockedCopy: {
     chatInline: string;
     chatTooltip: string;

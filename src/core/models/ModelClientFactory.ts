@@ -113,14 +113,6 @@ export class ModelClientFactory {
     this._chatGPTOAuth401Retries = 0;
   }
 
-  /**
-   * Check if using backend routing (useOwnApiKey=false)
-   * @returns true if requests should route through backend
-   */
-  isBackendRouting(): boolean {
-    return this.auth.current()?.shouldUseBackend() ?? false;
-  }
-
   async getGatewayCredential(): Promise<GatewayCredential | null> {
     return this.auth.gatewayCredentials()?.getCredential() ?? null;
   }
@@ -211,11 +203,7 @@ export class ModelClientFactory {
     const oauthActive = this.auth.current()?.isChatGPTOAuthActive?.() ? 'oauth' : 'direct';
     const isCustomProvider = this.isCustomProvider(provider);
     const gatewayRouting = await this.isGatewayRoutingAvailable(provider);
-    const routingType = gatewayRouting
-      ? 'gateway'
-      : !isCustomProvider && this.isBackendRouting()
-        ? 'backend'
-        : oauthActive;
+    const routingType = gatewayRouting ? 'gateway' : oauthActive;
     const constructionSignature = this.hashObject(this.getClientConstructionSignature(provider));
     const cacheKey = `${provider}-${selectedModelKey}-${routingType}-${constructionSignature}`;
 
@@ -241,7 +229,7 @@ export class ModelClientFactory {
    *
    * `modelKeyOverride` ("providerId:modelKey") makes every model-derived
    * construction detail — gateway slug, modelConfig (max tokens, reasoning),
-   * backend wire protocol/endpoint — resolve from that model instead of the
+   * wire protocol/endpoint — resolve from that model instead of the
    * globally selected task model. Patching only the model name after
    * construction (setModel) is NOT sufficient: gateway clients need the
    * "<providerId>/<modelKey>" slug and the wrong modelConfig produces invalid
@@ -249,17 +237,14 @@ export class ModelClientFactory {
    */
   private async buildClient(provider: ModelProvider, modelKeyOverride?: string): Promise<ModelClient> {
     // User-defined custom providers (BYOK) always use direct API-key mode — the
-    // backend gateway only knows about built-in providers, so never route a
-    // custom endpoint through it even when the user is logged in.
+    // OpenHub gateway only knows about built-in providers, so custom
+    // endpoints always use their own provider API key.
     const isCustomProvider = this.isCustomProvider(provider);
 
     if (!isCustomProvider) {
       const gatewayLlmBaseUrl = this.auth.current()?.getGatewayLlmBaseUrl?.();
       if (gatewayLlmBaseUrl && (await this.getGatewayCredential())) {
         return this.createGatewayRoutedClient(provider, gatewayLlmBaseUrl, modelKeyOverride);
-      }
-      if (this.isBackendRouting()) {
-        return this.createBackendRoutedClient(provider, modelKeyOverride);
       }
     }
 
@@ -278,8 +263,8 @@ export class ModelClientFactory {
    *    modelForTitleGenerate) — in own-API-key mode it must be from the
    *    same provider as the selected task model.
    * 2. Gateway default (env seam gatewayDefaultEfficientModel, e.g.
-   *    "deepseek-v4-flash") when the user is logged in (backend routing)
-   *    and made no explicit choice.
+   *    "deepseek-v4-flash") when API-key gateway routing is active and no
+   *    explicit choice was made.
    * 3. The task model provider's defaultEfficientModelKey from the model
    *    catalog (default.json / remote catalog).
    * 4. The selected task model (same client as the main conversation).
@@ -299,12 +284,10 @@ export class ModelClientFactory {
     const selectedProvider = selectedKey.split(':')[0];
     const isCustomProvider = this.isCustomProvider(selectedProvider);
     const remoteRouting =
-      !isCustomProvider &&
-      ((await this.isGatewayRoutingAvailable(selectedProvider)) || this.isBackendRouting());
+      !isCustomProvider && (await this.isGatewayRoutingAvailable(selectedProvider));
 
-    // 1. Explicit selection. Provider policy: gateway routing (logged in,
-    //    not using own API key) accepts any catalog model — one gateway
-    //    credential routes them all. Own-API-key mode requires the efficient
+    // 1. Explicit selection. Gateway routing accepts any catalog model because
+    //    one OpenHub API key routes them all. Direct provider-key mode requires the efficient
     //    model to share the task model's provider (different providers mean
     //    different keys/endpoints); violations fall back to the task model.
     let efficientKey = cfg.efficientModelKey ?? cfg.modelForTitleGenerate;
@@ -317,8 +300,8 @@ export class ModelClientFactory {
       efficientKey = undefined;
     }
 
-    // 2. Gateway default when logged in (single gateway credential routes any
-    //    catalog model, so this default may come from a different provider).
+    // 2. Gateway default when an OpenHub credential can route any catalog
+    //    model; this default may come from a different provider.
     if (!efficientKey && remoteRouting) {
       const { resolveRuntimeUrls } = await import('../../config/runtimeUrls');
       const defaultModel = resolveRuntimeUrls().gatewayDefaultEfficientModel;
@@ -372,131 +355,10 @@ export class ModelClientFactory {
   }
 
   /**
-   * Create a client that routes through the backend service
-   * Used when user is logged in
-   * @param provider The provider (used for model metadata)
-   * @returns Model client configured for backend routing
-   */
-  private async createBackendRoutedClient(provider: ModelProvider, modelKeyOverride?: string): Promise<ModelClient> {
-    const authManager = this.auth.current();
-    const backendUrl = authManager?.getBackendBaseUrl();
-    if (!backendUrl) {
-      throw new ModelClientError('Backend URL not available for backend routing');
-    }
-
-    // Get access token from auth manager (desktop provides JWT, extension uses cookies)
-    const accessToken = await authManager?.getAccessToken();
-    // Use real token if available (desktop), fall back to dummy key (extension uses cookies)
-    const apiKey = accessToken || 'backend-routed';
-
-    // Track 11: resolve the parallel-tool-calls flag from tools config.
-    const parallelToolCalls = this.resolveParallelToolCalls();
-
-    // Get model metadata for configuration
-    let modelConfig: any = undefined;
-    let supportsReasoning = false;
-    let supportsReasoningSummaries = false;
-    let selectedModel = 'gpt-5';
-    let supportBackendMode = 0;
-
-    if (this.config) {
-      const configData = this.config.getConfig();
-      const modelData = this.config.getModelByKey(modelKeyOverride ?? configData.selectedModelKey);
-      if (modelData?.model) {
-        modelConfig = modelData.model;
-        supportsReasoning = modelData.model.supportsReasoning ?? false;
-        supportsReasoningSummaries = modelData.model.supportsReasoningSummaries ?? false;
-        selectedModel = modelData.model.modelKey;
-        supportBackendMode = modelData.model.supportBackendMode ?? 0;
-      }
-    }
-
-    // Build model family configuration
-    const modelFamily = {
-      family: selectedModel,
-      base_instructions: 'You are a helpful coding assistant.',
-      supports_reasoning: supportsReasoning,
-      supports_reasoning_summaries: supportsReasoningSummaries,
-      needs_special_apply_patch_instructions: false,
-    };
-
-    // Build provider configuration for backend
-    const backendProvider = {
-      name: 'Backend',
-      base_url: backendUrl,
-      wire_api: 'Responses' as const,
-      requires_openai_auth: false, // Backend handles auth via cookies
-    };
-
-    // Generate conversation ID
-    const sessionId = this.generateConversationId();
-
-    // Get reasoning effort if supported
-    let reasoningEffort: string | undefined;
-    if (supportsReasoning) {
-      reasoningEffort = 'medium';
-    }
-
-    // Select client based on supportBackendMode value:
-    // 0 = not supported (should not reach here)
-    // 1 = OpenAI Responses API
-    // 2 = OpenAI Chat Completions API
-    // 3 = Google API
-    const geminiApiBaseUrl = backendUrl + '/gemini';
-
-    if (supportBackendMode === 3) {
-      // Google API
-      const googleProvider = {
-        name: 'Google AI Studio',
-        base_url: geminiApiBaseUrl,
-        wire_api: 'Chat' as const,
-        requires_openai_auth: false,
-      };
-
-      return new GoogleCompletionClient({
-        apiKey,
-        baseUrl: geminiApiBaseUrl,
-        provider: googleProvider,
-        modelFamily,
-        useCredentials: true,
-      });
-    }
-
-    const openAIClientBackendBaseUrl = backendUrl + '/openai';
-    if (supportBackendMode === 1) {
-      // OpenAI Responses API
-      return new OpenAIResponsesClient({
-        apiKey,
-        baseUrl: openAIClientBackendBaseUrl,
-        sessionId,
-        modelFamily,
-        provider: backendProvider,
-        modelConfig,
-        reasoningEffort: reasoningEffort as any,
-        reasoningSummary: supportsReasoningSummaries ? { enabled: true } : undefined,
-        useCredentials: true,
-        parallelToolCalls,
-      });
-    }
-
-    // supportBackendMode === 2 or fallback: OpenAI Chat Completions API
-    return new OpenAIChatCompletionClient({
-      apiKey,
-      baseUrl: openAIClientBackendBaseUrl,
-      sessionId,
-      modelFamily,
-      provider: backendProvider,
-      modelConfig,
-      useCredentials: true,
-      parallelToolCalls,
-    });
-  }
-
-  /**
    * Create a remote gateway client.
    *
    * The gateway exposes an OpenAI-compatible /v1 Chat Completions surface. Auth
-   * is resolved per request so cached clients do not pin an expired session JWT.
+   * is resolved per request so cached clients do not pin a rotated API key.
    */
   private async createGatewayRoutedClient(provider: ModelProvider, gatewayLlmBaseUrl: string, modelKeyOverride?: string): Promise<ModelClient> {
     let lastProvidedToken: string | null = null;

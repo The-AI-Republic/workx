@@ -86,16 +86,6 @@ export const settingsRegistry: SettingsSearchItem[] = [
     elementId: 'model-selection',
   },
   {
-    id: 'model.useOwnApiKey',
-    labelKey: 'Use Own API Key',
-    descriptionKey: 'LLM requests go directly to provider APIs',
-    section: SettingsSection.MODEL_CONFIG,
-    sectionLabelKey: 'Model Config',
-    keywords: ['backend', 'direct', 'api', 'mode', 'toggle', 'own key'],
-    navigationTarget: 'model-config',
-    elementId: 'use-own-api-key',
-  },
-  {
     id: 'model.apiKey',
     labelKey: 'API Key Configuration',
     descriptionKey: 'Enter your LLM API key',

@@ -819,13 +819,13 @@ describe('RepublicAgent', () => {
       expect(result.model).toBe('GPT-5');
     });
 
-    it('should return ready=true with authMode=login when using backend routing', async () => {
+    it('does not expose a product-login auth mode for a remote route', async () => {
       mockModelClientFactoryInstance.isBackendRouting.mockReturnValue(true);
 
       const result = await agent.isReady();
 
       expect(result.ready).toBe(true);
-      expect(result.authMode).toBe('login');
+      expect(result.authMode).toBe('api_key');
       expect(result.provider).toBe('OpenAI');
       expect(result.model).toBe('GPT-5');
     });

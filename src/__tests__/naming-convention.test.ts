@@ -145,7 +145,4 @@ describe('Deep links: workx:// canonical, applepi:// fallback', () => {
     expect(desktop).toContain('x-scheme-handler/applepi');
   });
 
-  it('login callback uses the canonical workx:// scheme', () => {
-    expect(readSource('src/config/runtimeUrls.ts')).toContain('workx://auth/callback');
-  });
 });

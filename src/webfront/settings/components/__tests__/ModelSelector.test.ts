@@ -4,8 +4,7 @@ import ModelSelector from '../ModelSelector.svelte';
 
 vi.mock('@/webfront/lib/modelAccessPolicy', () => ({
   modelAccessPolicy: {
-    isLocked: (_subject: unknown, target: { isCustom?: boolean }) =>
-      !target.isCustom,
+    isLocked: (target: { isCustom?: boolean }) => !target.isCustom,
     getPreferredModelId: () => null,
     lockedCopy: {
       chatInline: 'Loading...',

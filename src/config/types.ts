@@ -41,7 +41,7 @@ export interface IAgentConfig {
    * Format: "providerId:modelKey" (e.g., "openai:gpt-4o-mini")
    * If not specified, uses selectedModelKey (same as task model).
    * Must be from the same provider as selectedModelKey in API-key mode;
-   * gateway (logged-in) routing may supply a cross-provider default.
+   * API-key gateway routing may supply a cross-provider default.
    * Never used to run user-facing tasks.
    */
   efficientModelKey?: string;
@@ -411,13 +411,6 @@ export interface IUserPreferences {
    */
   uiTheme?: 'terminal' | 'modern-auto' | 'modern-light' | 'modern-dark';
   /**
-   * Whether to use own API key directly instead of backend routing
-   * - When true: LLM requests go directly to provider APIs using user's API key
-   * - When false: LLM requests route through AI Republic backend (requires login)
-   * - Default: false for logged-in users, true (forced) for non-logged-in users
-   */
-  useOwnApiKey?: boolean;
-  /**
    * Whether to show token usage information during task execution
    * - When true: Token consumption (input/output tokens) is displayed in task events
    * - When false: Token information is hidden from the UI
@@ -466,13 +459,6 @@ export interface IUserPreferences {
    *   keyword/relevance operations when an OpenAI key is available.
    */
   memoryEnabled?: boolean;
-  /**
-   * Routing for the cheap LLM used by memory keyword extraction and relevance ranking.
-   * - When true: Memory LLM requests go directly to OpenAI using the user's own API key.
-   * - When false: Memory LLM requests route through AI Republic backend (requires login + paid tier).
-   * - Default: true (own key); set to false by UI for logged-in paid-tier users.
-   */
-  memoryUseOwnApiKey?: boolean;
   /**
    * LLM model used for memory keyword extraction, relevance ranking, and core-memory merges.
    * Defaults to gpt-4o-mini for low cost. Independent of the user's selected chat model.

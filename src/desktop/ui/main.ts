@@ -104,9 +104,6 @@ async function init() {
           await client.serviceRequest('scheduler.trigger', { jobId });
           console.log(`[Desktop] Scheduler deeplink routed to runtime for job ${jobId}`);
         }
-        // /auth/callback deeplinks are handled by UserLoginStatus.svelte's
-        // own listener (it's the one expecting the login completion); routing
-        // here would race that listener.
       } catch (err) {
         console.warn('[Desktop] Failed to route deeplink:', err);
       }

@@ -75,7 +75,7 @@
   }
 
   // Close the drawer whenever the route changes (covers navigation triggered
-  // from inside the panel, e.g. UserLoginStatus → Settings). Same-route
+  // from inside the panel, for example MoreMenu → Settings. Same-route
   // re-clicks are handled by LeftPanel's `onNavigate` callback below.
   $effect(() => {
     void $location;
