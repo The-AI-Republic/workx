@@ -38,14 +38,6 @@ Both schemes are registered in `tauri.conf.json`, `Info.plist`, and the Linux
 `.desktop` `MimeType`, and both are accepted by `is_app_deep_link` in
 `tauri/src/main.rs`.
 
-### External coordination note
-
-The hosted-auth login flow now sends `redirect_url=workx://auth/callback`
-(`src/config/runtimeUrls.ts`, `src/webfront/stores/userStore.ts`). The hosted
-auth provider must allow the `workx://auth/callback` redirect URL, otherwise
-login will fail. If the provider enforces an allow-list, add `workx://` (and
-keep `applepi://` until all clients are updated) before shipping.
-
 ## Enforcement
 
 `src/__tests__/naming-convention.test.ts` asserts the unified `workx` naming

@@ -1,18 +1,13 @@
-import { resolveAuthConfig } from './authConfig';
-
 export type RuntimeUrlSource = 'env' | 'default';
 
 export interface RuntimeUrlConfig {
-  homePageBaseUrl: string | null;
-  backendApiBaseUrl: string | null;
-  llmApiUrl: string | null;
   gatewayBaseUrl: string | null;
   gatewayLlmApiUrl: string | null;
   gatewayMcpUrl: string | null;
   gatewayCatalogUrl: string | null;
   gatewayCatalogApiBaseUrl: string | null;
   gatewayMcpName: string;
-  gatewayMcpAuthMode: 'none' | 'api-key' | 'session-jwt';
+  gatewayMcpAuthMode: 'none' | 'api-key';
   gatewayMcpApiKey: string | null;
   gatewayMcpToolDiscoveryHeader: string | null;
   gatewayMcpToolDiscovery: string | null;
@@ -24,11 +19,7 @@ export interface RuntimeUrlConfig {
    */
   gatewayDefaultEfficientModel: string | null;
   llmRoutingMode: 'legacy' | 'gateway';
-  deeplinkRedirectUrl: 'workx://auth/callback';
   source: {
-    homePageBaseUrl: RuntimeUrlSource;
-    backendApiBaseUrl: RuntimeUrlSource;
-    llmApiUrl: RuntimeUrlSource;
     gatewayBaseUrl: RuntimeUrlSource;
     gatewayLlmApiUrl: RuntimeUrlSource;
     gatewayMcpUrl: RuntimeUrlSource;
@@ -40,7 +31,6 @@ export interface RuntimeUrlConfig {
     gatewayMcpToolDiscoveryHeader: RuntimeUrlSource;
     gatewayMcpToolDiscovery: RuntimeUrlSource;
     llmRoutingMode: RuntimeUrlSource;
-    deeplinkRedirectUrl: 'default';
   };
 }
 
@@ -80,27 +70,18 @@ function normalizeRoutingMode(value: string | undefined): 'legacy' | 'gateway' |
   return null;
 }
 
-function normalizeMcpAuthMode(value: string | undefined): 'none' | 'api-key' | 'session-jwt' | null {
+function normalizeMcpAuthMode(value: string | undefined): 'none' | 'api-key' | null {
   if (!value) return null;
   const normalized = value.trim().toLowerCase();
   if (normalized === 'none' || normalized === 'off') return 'none';
   if (normalized === 'api-key' || normalized === 'apikey' || normalized === 'bearer') return 'api-key';
-  if (normalized === 'session-jwt' || normalized === 'jwt' || normalized === 'session') return 'session-jwt';
   return null;
 }
 
 export function resolveRuntimeUrls(): RuntimeUrlConfig {
   const env = processEnv();
   const vite = viteEnv();
-  const authConfig = resolveAuthConfig();
 
-  const backendFromEnv = firstNonEmpty(
-    env.WORKX_BACKEND_API_BASE_URL,
-    env.VITE_BACKEND_API_BASE_URL,
-    vite.VITE_BACKEND_API_BASE_URL,
-  );
-
-  const backendApiBaseUrl = backendFromEnv ?? null;
   const gatewayBaseUrl = firstNonEmpty(
     env.WORKX_GATEWAY_BASE_URL,
     env.WORKX_GATEWAY_API_BASE_URL,
@@ -178,9 +159,6 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
   const llmRoutingMode = requestedRoutingMode ?? (gatewayLlmApiUrl ? 'gateway' : 'legacy');
 
   return {
-    homePageBaseUrl: authConfig.authBaseUrl,
-    backendApiBaseUrl,
-    llmApiUrl: backendApiBaseUrl ? `${backendApiBaseUrl}/api/llm` : '/api/llm',
     gatewayBaseUrl,
     gatewayLlmApiUrl,
     gatewayMcpUrl,
@@ -193,11 +171,7 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
     gatewayMcpToolDiscovery,
     gatewayDefaultEfficientModel,
     llmRoutingMode,
-    deeplinkRedirectUrl: 'workx://auth/callback',
     source: {
-      homePageBaseUrl: authConfig.source.authBaseUrl,
-      backendApiBaseUrl: backendFromEnv ? 'env' : 'default',
-      llmApiUrl: backendFromEnv ? 'env' : 'default',
       gatewayBaseUrl: gatewayBaseUrl ? 'env' : 'default',
       gatewayLlmApiUrl: gatewayLlmFromEnv || gatewayBaseUrl ? 'env' : 'default',
       gatewayMcpUrl: gatewayMcpFromEnv || gatewayBaseUrl ? 'env' : 'default',
@@ -209,7 +183,6 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
       gatewayMcpToolDiscoveryHeader: gatewayMcpToolDiscoveryHeaderFromEnv ? 'env' : 'default',
       gatewayMcpToolDiscovery: gatewayMcpToolDiscovery ? 'env' : 'default',
       llmRoutingMode: requestedRoutingMode ? 'env' : 'default',
-      deeplinkRedirectUrl: 'default',
     },
   };
 }

@@ -2,7 +2,6 @@ import { AppsServiceError } from './AppsServiceError';
 import type { OpenHubAppsClient } from './OpenHubAppsClient';
 import type { OpenHubCredentialProvider } from './OpenHubCredentialProvider';
 import type {
-  AppsAccessReason,
   AppsAccessState,
   AppsCredentialValidationResult,
   AppsAccessPolicy,
@@ -28,21 +27,13 @@ export class AppsAccessController {
     const now = Date.now();
     this.state = {
       configured: options.configured,
-      credentialStatus: options.configured
-        ? options.policy.authMethod === 'api-key'
-          ? 'needs-api-key'
-          : 'needs-login'
-        : 'unconfigured',
+      credentialStatus: options.configured ? 'needs-api-key' : 'unconfigured',
       backendStatus: 'unknown',
       capabilityStatus: 'unknown',
       authMethod: options.policy.authMethod,
       credentialSource: 'none',
       hasCredential: false,
-      reason: options.configured
-        ? options.policy.authMethod === 'api-key'
-          ? 'api_key_missing'
-          : 'login_required'
-        : 'catalog_unconfigured',
+      reason: options.configured ? 'api_key_missing' : 'catalog_unconfigured',
       revision: this.revision,
       updatedAt: now,
     };
@@ -81,8 +72,6 @@ export class AppsAccessController {
     if (this.state.credentialStatus === 'ready') return;
     if (this.state.credentialStatus === 'needs-api-key')
       throw new AppsServiceError('APPS_API_KEY_REQUIRED', 'Add an OpenHub API key in Settings.');
-    if (this.state.credentialStatus === 'needs-login')
-      throw new AppsServiceError('APPS_LOGIN_REQUIRED', 'Sign in to use Apps.');
     if (this.state.credentialStatus === 'forbidden')
       throw new AppsServiceError(
         'APPS_FORBIDDEN',
@@ -166,25 +155,6 @@ export class AppsAccessController {
     await this.reconnectMcpBestEffort();
   }
 
-  async sessionEnded(reason: AppsAccessReason = 'login_required'): Promise<AppsAccessState> {
-    return this.enqueue(async () => {
-      if (this.options.policy.authMethod === 'api-key') {
-        // First-party login is unrelated to OSS Apps access. Re-read the
-        // stored/managed key instead of publishing a false needs-login state.
-        return this.refreshUnlocked();
-      }
-      this.options.provider.bumpGeneration();
-      await this.disconnectMcpBestEffort();
-      return this.commit({
-        credentialStatus: 'needs-login',
-        credentialSource: 'none',
-        hasCredential: false,
-        allowedAppIds: undefined,
-        reason,
-      });
-    });
-  }
-
   private async refreshUnlocked(): Promise<AppsAccessState> {
     if (!this.options.configured || !this.options.client) {
       return this.commit({
@@ -198,12 +168,11 @@ export class AppsAccessController {
     if (!credential) {
       await this.disconnectMcpBestEffort();
       return this.commit({
-        credentialStatus:
-          this.options.policy.authMethod === 'api-key' ? 'needs-api-key' : 'needs-login',
+        credentialStatus: 'needs-api-key',
         credentialSource: 'none',
         hasCredential: false,
         allowedAppIds: undefined,
-        reason: this.options.policy.authMethod === 'api-key' ? 'api_key_missing' : 'login_required',
+        reason: 'api_key_missing',
       });
     }
     const wasReady = this.state.credentialStatus === 'ready';
@@ -311,22 +280,8 @@ export class AppsAccessController {
       ) {
         return;
       }
-      if (!current && !(status === 401 && this.options.policy.authMethod === 'session-jwt')) {
-        return;
-      }
+      if (!current) return;
       await this.disconnectMcpBestEffort();
-      if (status === 401 && this.options.policy.authMethod === 'session-jwt') {
-        this.options.provider.bumpGeneration();
-        await this.commit({
-          credentialStatus: 'needs-login',
-          backendStatus: 'reachable',
-          credentialSource: 'none',
-          hasCredential: false,
-          allowedAppIds: undefined,
-          reason: 'session_expired',
-        });
-        return;
-      }
       await this.commit(
         status === 401
           ? {

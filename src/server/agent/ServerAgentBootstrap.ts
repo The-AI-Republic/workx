@@ -18,9 +18,7 @@ import { RepublicAgent } from '@/core/RepublicAgent';
 import { AgentConfig, CREDENTIAL_SECURED_MARKER } from '@/config/AgentConfig';
 import { getConfigStorage, setConfigStorage } from '@/core/storage/ConfigStorageProvider';
 import { getCredentialStore } from '@/core/storage';
-import { AuthManager, type IAuthManager } from '@/core/models/types/Auth';
 import { createMutableAuthContext } from '@/core/auth/AuthContext';
-import type { AuthChangeReason } from '@/core/auth/AuthContext';
 import { FileConfigStorageProvider } from '../storage/FileConfigStorageProvider';
 import { normalizeAgentMode, type RuntimeContext } from '@/prompts/PromptComposer';
 import { ServerAgentAssembler } from './ServerAgentAssembler';
@@ -161,7 +159,6 @@ export class ServerAgentBootstrap {
   private schedulerAlarms: ServerSchedulerAlarms | null = null;
   private runningSchedulerJobId: string | null = null;
   private runningJobStartTime: number = 0;
-  private currentAuthManager: IAuthManager | null = null;
   private readonly authContext = createMutableAuthContext(null);
   private runtimeState: RuntimeStateController | null = null;
   private appsAccess: import('@/core/apps/AppsAccessController').AppsAccessController | null = null;
@@ -1053,12 +1050,6 @@ export class ServerAgentBootstrap {
       const { MCPManager } = await import('@/core/mcp/MCPManager');
       const mcpManager = await MCPManager.getInstance(platformScope);
       runtimeMcpManager = mcpManager;
-      if (profile === 'desktop-runtime') {
-        mcpManager.setSessionTokenProvider(async () =>
-          getCredentialStore().get('auth', 'access_token')
-        );
-        mcpManager.setSessionTokenRefreshProvider(() => this.refreshDesktopRuntimeSessionTokens());
-      }
       mcpDeps = { mcpManager: mcpManager as any };
     } catch (error) {
       console.warn(
@@ -1076,8 +1067,6 @@ export class ServerAgentBootstrap {
       appsRuntime = createAppsRuntime({
         urls,
         credentialStore: getCredentialStore(),
-        getSessionToken: async () => getCredentialStore().get('auth', 'access_token'),
-        refreshSessionToken: () => this.refreshDesktopRuntimeSessionTokens(),
         reconnectMcp: async () => {
           await this.disconnectDesktopRuntimeHubMcp();
           await this.ensureDesktopRuntimeHubMcpConnected();
@@ -1526,27 +1515,6 @@ export class ServerAgentBootstrap {
         ? {
             registry: this.registry,
             handleConfigUpdate: () => this.handleConfigUpdate(),
-            createAuthManager:
-              profile === 'desktop-runtime'
-                ? (shouldUseBackend, backendBaseUrl) => {
-                    const tokenGetter = shouldUseBackend
-                      ? async () => getCredentialStore().get('auth', 'access_token')
-                      : undefined;
-                    const urls = runtimeState?.getUrls();
-                    const gatewayLlmBaseUrl =
-                      urls?.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null;
-                    return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, {
-                      gatewayLlmBaseUrl,
-                      refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
-                    });
-                  }
-                : undefined,
-            updateAuthContext:
-              profile === 'desktop-runtime'
-                ? (authManager) => {
-                    this.updateAuthManager(authManager);
-                  }
-                : undefined,
             runtimeState,
             // Desktop runtime: persist approval config from the Settings picker
             // (approval.updateConfig service) into the runtime's config storage,
@@ -1567,66 +1535,11 @@ export class ServerAgentBootstrap {
                 : undefined,
           }
         : undefined,
-      // Track 43: runtime-owned auth services (auth.completeLogin / getState /
-      // logout + ChatGPT OAuth). Desktop runtime only — server mode handles
-      // auth differently.
+      // ChatGPT provider OAuth remains available in OSS. Product-account
+      // login is supplied only by private compositions.
       auth:
         profile === 'desktop-runtime' && this.registry
           ? {
-              registry: this.registry,
-              createAuthManager: (shouldUseBackend, backendBaseUrl) => {
-                const tokenGetter = shouldUseBackend
-                  ? async () => getCredentialStore().get('auth', 'access_token')
-                  : undefined;
-                const urls = runtimeState?.getUrls();
-                const gatewayLlmBaseUrl =
-                  urls?.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null;
-                return new AuthManager(shouldUseBackend, backendBaseUrl, tokenGetter, {
-                  gatewayLlmBaseUrl,
-                  refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
-                });
-              },
-              updateAuthContext: (authManager) => {
-                this.updateAuthManager(authManager);
-              },
-              getCredentialStore: () => getCredentialStore(),
-              runtimeState,
-              refreshAccessState: () => this.refreshDesktopRuntimeAccessState(),
-              afterLogin: async () => {
-                await this.appsAccess?.refresh();
-              },
-              afterLogout: async () => {
-                await this.appsAccess?.sessionEnded();
-              },
-              // The runtime owns the access token after cutover; the UI must not
-              // receive it. The runtime performs the profile fetch itself and
-              // returns only the redacted profile shape the UI needs.
-              fetchUserProfile: async (accessToken: string) => {
-                try {
-                  const { fetchUserProfileServerSide } =
-                    await import('@/desktop-runtime/auth/runtimeProfileFetch');
-                  return await fetchUserProfileServerSide(accessToken);
-                } catch (err) {
-                  console.warn('[ServerAgentBootstrap] runtime profile fetch failed:', err);
-                  return null;
-                }
-              },
-              refreshAuthTokens: async (refreshToken: string) => {
-                try {
-                  const { refreshDesktopAuthTokens } =
-                    await import('@/desktop-runtime/auth/runtimeProfileFetch');
-                  return await refreshDesktopAuthTokens(
-                    refreshToken,
-                    await this.readPersistedOidcConfig()
-                  );
-                } catch (err) {
-                  console.warn('[ServerAgentBootstrap] runtime token refresh failed:', err);
-                  return null;
-                }
-              },
-              // ChatGPT OAuth: runtime owns the 127.0.0.1:1455 callback server
-              // (was Rust `start_oauth_callback_server`, now deleted) and the token
-              // storage (was WebView `ChatGPTOAuthDesktopStorage` → keytar).
               chatgptFlow,
               getChatGPTStorage: chatgptStorage ? () => chatgptStorage! : undefined,
             }
@@ -1689,7 +1602,7 @@ export class ServerAgentBootstrap {
     await appsRuntime?.access.initialize();
 
     if (profile === 'desktop-runtime') {
-      await this.hydrateDesktopRuntimeAuthState();
+      await this.refreshDesktopRuntimeAccessState();
     }
   }
 
@@ -1708,9 +1621,6 @@ export class ServerAgentBootstrap {
         const config = agentConfig.getConfig();
         return {
           selectedModelKey: config.selectedModelKey,
-          preferences: {
-            useOwnApiKey: config.preferences?.useOwnApiKey,
-          },
           policy: config.policy
             ? {
                 lockedKeys: config.policy.lockedKeys,
@@ -1723,15 +1633,6 @@ export class ServerAgentBootstrap {
     return this.runtimeState;
   }
 
-  private updateAuthManager(authManager: IAuthManager | null, reason?: AuthChangeReason): void {
-    const previous = this.currentAuthManager;
-    this.currentAuthManager = authManager;
-    this.authContext.update(
-      authManager,
-      reason ?? (authManager === null ? 'logout' : previous === null ? 'login' : 'routing')
-    );
-  }
-
   private async refreshDesktopRuntimeAccessState() {
     if (!this.runtimeState) {
       return undefined;
@@ -1741,29 +1642,6 @@ export class ServerAgentBootstrap {
     const selected = config.getModelByKey(selectedModelKey);
     const provider = selected?.provider.name;
     const model = selected?.model.name;
-    const auth = this.currentAuthManager;
-    const usesBackend = auth?.shouldUseBackend() ?? false;
-    if (usesBackend) {
-      const token = await auth?.getAccessToken().catch(() => null);
-      return this.runtimeState.setAccessState(
-        token
-          ? {
-              status: 'ready',
-              mode: 'login',
-              ready: true,
-              provider,
-              model,
-            }
-          : {
-              status: 'needs_login',
-              mode: 'login',
-              ready: false,
-              provider,
-              model,
-              reason: 'Sign in to continue.',
-            }
-      );
-    }
     if (!selected) {
       return this.runtimeState.setAccessState({
         status: 'error',
@@ -1785,68 +1663,6 @@ export class ServerAgentBootstrap {
             reason: 'Configure an API key in Settings.',
           }
     );
-  }
-
-  /**
-   * Read the OIDC client config captured at login. The sidecar's process.env
-   * has no access to the WebView-only auth vars, so the token-refresh path must
-   * reuse the clientId+tokenUrl persisted at login — otherwise it can't rebuild
-   * the OIDC token request and falls back to legacy refresh, which the gateway
-   * rejects as "Invalid JWT".
-   */
-  private async readPersistedOidcConfig(): Promise<{
-    clientId: string | null;
-    tokenUrl: string | null;
-  }> {
-    const credentialStore = getCredentialStore();
-    const [clientId, tokenUrl] = await Promise.all([
-      credentialStore.get('auth', 'oidc_client_id').catch(() => null),
-      credentialStore.get('auth', 'oidc_token_url').catch(() => null),
-    ]);
-    return { clientId, tokenUrl };
-  }
-
-  private async refreshDesktopRuntimeSessionTokens(): Promise<string | null> {
-    const credentialStore = getCredentialStore();
-    const refreshToken = await credentialStore.get('auth', 'refresh_token').catch(() => null);
-    if (!refreshToken) return null;
-
-    try {
-      const { refreshDesktopAuthTokensDetailed } =
-        await import('@/desktop-runtime/auth/runtimeProfileFetch');
-      const result = await refreshDesktopAuthTokensDetailed(
-        refreshToken,
-        await this.readPersistedOidcConfig()
-      );
-      const refreshed = result.tokens;
-      if (!refreshed?.accessToken || !refreshed.refreshToken) {
-        if (result.unrecoverable) {
-          // The refresh token is expired/revoked — no silent recovery is
-          // possible. Signal the WebView (via access state) to re-open login
-          // instead of surfacing a dead "Invalid JWT" task failure. The
-          // `session_expired` reason is a stable sentinel the UI matches on to
-          // auto-trigger the login flow exactly once.
-          await this.runtimeState
-            ?.setAccessState({
-              status: 'needs_login',
-              mode: 'login',
-              ready: false,
-              reason: 'session_expired',
-            })
-            .catch(() => undefined);
-        }
-        return null;
-      }
-      await Promise.all([
-        credentialStore.set('auth', 'access_token', refreshed.accessToken),
-        credentialStore.set('auth', 'refresh_token', refreshed.refreshToken),
-      ]);
-      await this.refreshDesktopRuntimeAccessState().catch(() => undefined);
-      return refreshed.accessToken;
-    } catch (err) {
-      console.warn('[ServerAgentBootstrap] runtime token refresh failed:', err);
-      return null;
-    }
   }
 
   private async ensureDesktopRuntimeHubMcpConnected(targetAgent?: RepublicAgent): Promise<void> {
@@ -1952,128 +1768,6 @@ export class ServerAgentBootstrap {
       await mcpManager.disconnect(hubServer.id);
     } catch (error) {
       console.warn('[ServerAgentBootstrap] Failed to disconnect gateway MCP:', error);
-    }
-  }
-
-  private async hydrateDesktopRuntimeAuthState(): Promise<void> {
-    if (
-      !this.runtimeState ||
-      !this.registry ||
-      (this.options.profile ?? 'server') !== 'desktop-runtime'
-    )
-      return;
-    const agentConfig = await AgentConfig.getInstance();
-    const config = agentConfig.getConfig();
-    const useOwnApiKey = config.preferences?.useOwnApiKey === true;
-    const credentialStore = getCredentialStore();
-    let accessToken = await credentialStore.get('auth', 'access_token').catch(() => null);
-    const refreshToken = await credentialStore.get('auth', 'refresh_token').catch(() => null);
-    const hadStoredAuth = Boolean(accessToken || refreshToken);
-    let profile: Awaited<
-      ReturnType<
-        typeof import('@/desktop-runtime/auth/runtimeProfileFetch').fetchUserProfileServerSide
-      >
-    > = null;
-    let profileError: string | undefined;
-
-    if (hadStoredAuth) {
-      await this.runtimeState.setAuthState({
-        mode: useOwnApiKey ? 'own_api_key' : 'login',
-        hasToken: true,
-        profileStatus: 'loading',
-        lastError: undefined,
-      });
-      try {
-        const { fetchUserProfileServerSide, refreshDesktopAuthTokens } =
-          await import('@/desktop-runtime/auth/runtimeProfileFetch');
-        profile = accessToken ? await fetchUserProfileServerSide(accessToken) : null;
-        if (!profile && refreshToken) {
-          const refreshed = await refreshDesktopAuthTokens(
-            refreshToken,
-            await this.readPersistedOidcConfig()
-          );
-          if (refreshed?.accessToken && refreshed.refreshToken) {
-            await Promise.all([
-              credentialStore.set('auth', 'access_token', refreshed.accessToken),
-              credentialStore.set('auth', 'refresh_token', refreshed.refreshToken),
-            ]);
-            accessToken = refreshed.accessToken;
-            profile = await fetchUserProfileServerSide(accessToken);
-          }
-        }
-      } catch (error) {
-        profileError = error instanceof Error ? error.message : String(error);
-      }
-    }
-
-    const hasUsableLogin = Boolean(accessToken && profile);
-
-    // Auth-state consistency (desktop): the stored login is only valid if BOTH
-    // (1) a token exists in the vault AND (2) it still authenticates against the
-    // home page (the profile fetch above). When that fails and the access token
-    // is actually expired (or absent), the session is dead — evict it from the
-    // vault so workx never shows a stale "logged in" while the home page is
-    // logged out. A non-expired token that merely failed to validate is kept
-    // (treated as a transient/network error, not a logout).
-    if (hadStoredAuth && !hasUsableLogin) {
-      const { isAccessTokenExpired } = await import('@/desktop-runtime/auth/runtimeProfileFetch');
-      const accessExpired = accessToken ? isAccessTokenExpired(accessToken) : true;
-      if (accessExpired) {
-        await Promise.all([
-          credentialStore.delete('auth', 'access_token').catch(() => undefined),
-          credentialStore.delete('auth', 'refresh_token').catch(() => undefined),
-        ]);
-        accessToken = null;
-      }
-    }
-
-    const shouldUseBackend = Boolean(hasUsableLogin && !useOwnApiKey);
-    const tokenGetter = shouldUseBackend
-      ? async () => getCredentialStore().get('auth', 'access_token')
-      : undefined;
-    const authManager = new AuthManager(
-      shouldUseBackend,
-      shouldUseBackend ? this.runtimeState.getUrls().llmApiUrl : null,
-      tokenGetter,
-      {
-        gatewayLlmBaseUrl:
-          this.runtimeState.getUrls().llmRoutingMode === 'gateway'
-            ? this.runtimeState.getUrls().gatewayLlmApiUrl
-            : null,
-        refreshAccessToken: () => this.refreshDesktopRuntimeSessionTokens(),
-      }
-    );
-    this.updateAuthManager(authManager, hasUsableLogin ? 'login' : 'routing');
-
-    if (hadStoredAuth) {
-      await this.runtimeState.setAuthState({
-        mode: hasUsableLogin
-          ? useOwnApiKey
-            ? 'own_api_key'
-            : 'login'
-          : useOwnApiKey
-            ? 'own_api_key'
-            : 'none',
-        hasToken: hasUsableLogin,
-        profile,
-        profileStatus: hasUsableLogin ? 'ready' : 'failed',
-        lastError: hasUsableLogin
-          ? undefined
-          : (profileError ?? 'Stored desktop login expired or profile unavailable'),
-      });
-    } else {
-      await this.runtimeState.setAuthState({
-        mode: useOwnApiKey ? 'own_api_key' : 'none',
-        hasToken: false,
-        profile: null,
-        profileStatus: 'idle',
-        lastError: undefined,
-      });
-    }
-
-    await this.refreshDesktopRuntimeAccessState();
-    if (hasUsableLogin && !useOwnApiKey) {
-      await this.ensureDesktopRuntimeHubMcpConnected();
     }
   }
 

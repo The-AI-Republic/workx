@@ -30,7 +30,6 @@ export const DEFAULT_USER_PREFERENCES: IUserPreferences = {
   shortcuts: {},
   experimental: {},
   memoryEnabled: false,
-  memoryUseOwnApiKey: true,
   defaultMode: DEFAULT_MODE,
 };
 

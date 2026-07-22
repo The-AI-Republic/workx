@@ -9,8 +9,6 @@ import type { AppsAccessState, OpenHubCredential } from './types';
 export interface CreateAppsRuntimeOptions {
   urls: RuntimeUrlConfig;
   credentialStore: CredentialStore;
-  getSessionToken?: () => Promise<string | null>;
-  refreshSessionToken?: () => Promise<string | null>;
   emitState?: (state: AppsAccessState) => void | Promise<void>;
   reconnectMcp?: () => void | Promise<void>;
   disconnectMcp?: () => void | Promise<void>;
@@ -30,9 +28,7 @@ export function createAppsRuntime(options: CreateAppsRuntimeOptions): {
   const provider = new OpenHubCredentialProvider({
     policy: appsAccessPolicy,
     credentialStore: options.credentialStore,
-    managedApiKey: appsAccessPolicy.authMethod === 'api-key' ? options.urls.gatewayMcpApiKey : null,
-    getSessionToken: options.getSessionToken,
-    refreshSessionToken: options.refreshSessionToken,
+    managedApiKey: options.urls.gatewayMcpApiKey,
   });
   const baseUrl = options.urls.gatewayCatalogApiBaseUrl;
   const client = baseUrl

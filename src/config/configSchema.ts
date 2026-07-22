@@ -166,7 +166,6 @@ export const SECTIONS: Record<string, Section> = {
       workspaceRoot: configField(z.string().optional()),
       autoSync: configField(z.boolean().default(true)),
       telemetryEnabled: configField(z.boolean().default(false)),
-      useOwnApiKey: configField(z.boolean().optional()),
       showTokenUsage: configField(z.boolean().optional()),
       maxConcurrentSessions: configField(z.number().optional()),
       autoStartEnabled: configField(z.boolean().default(false)),

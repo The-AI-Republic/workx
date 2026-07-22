@@ -12,9 +12,6 @@ const credentialStore: CredentialStore = {
 
 function urls(overrides: Partial<RuntimeUrlConfig> = {}): RuntimeUrlConfig {
   return {
-    homePageBaseUrl: null,
-    backendApiBaseUrl: null,
-    llmApiUrl: null,
     gatewayBaseUrl: null,
     gatewayLlmApiUrl: null,
     gatewayMcpUrl: 'https://gateway.example/mcp',
@@ -27,7 +24,6 @@ function urls(overrides: Partial<RuntimeUrlConfig> = {}): RuntimeUrlConfig {
     gatewayMcpToolDiscovery: null,
     gatewayDefaultEfficientModel: null,
     llmRoutingMode: 'legacy',
-    deeplinkRedirectUrl: 'workx://auth/callback',
     source: {} as RuntimeUrlConfig['source'],
     ...overrides,
   };

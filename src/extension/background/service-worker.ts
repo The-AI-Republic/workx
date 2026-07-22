@@ -24,12 +24,7 @@ import { AgentConfig } from '../../config/AgentConfig';
 import { normalizeAgentMode } from '../../prompts/PromptComposer';
 import { STORAGE_KEYS } from '../../config/defaults';
 import { DEFAULT_APPROVAL_CONFIG } from '../../core/approval/types';
-import { LLM_API_URL } from '../../config/constants';
 import { resolveRuntimeUrls } from '../../config/runtimeUrls';
-import {
-  getSessionAccessToken,
-  refreshSessionAccessToken,
-} from '../auth/extensionSessionToken';
 // Track 22: MCP/A2A are gated behind compile-time feature flags. Manager
 // classes and tool-adapter helpers load via dynamic import() inside the
 // feature-gated init blocks, so an OFF build tree-shakes core/mcp +
@@ -475,57 +470,28 @@ async function doInitialize(): Promise<void> {
 }
 
 /**
- * Build an AuthManager for the extension service worker.
- *
- * Gateway URL selection is independent of account-credits mode: private builds use
- * the login JWT, while OSS own-key builds use the saved OpenHub API key. The shared
- * credential provider decides whether gateway routing is actually available.
+ * Build the OSS auth manager. Product account routing is supplied by private
+ * compositions; OSS supports direct provider keys, OpenHub API keys, and
+ * ChatGPT provider OAuth only.
  */
-async function buildExtensionAuthManager(
-  shouldUseBackend: boolean,
-  backendBaseUrl: string | null
-): Promise<AuthManager> {
+async function buildExtensionAuthManager(): Promise<AuthManager> {
   const urls = resolveRuntimeUrls();
-  return new AuthManager(
-    shouldUseBackend,
-    backendBaseUrl,
-    shouldUseBackend ? getSessionAccessToken : undefined,
-    {
-      gatewayLlmBaseUrl:
-        urls.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null,
-      refreshAccessToken: refreshSessionAccessToken,
-    }
-  );
+  return new AuthManager({
+    gatewayLlmBaseUrl:
+      urls.llmRoutingMode === 'gateway' ? urls.gatewayLlmApiUrl : null,
+  });
 }
 
 /**
- * Initialize AuthManager from stored config preferences
- * This ensures useOwnApiKey setting is respected on service worker startup
+ * Initialize direct/API-key routing and restore optional ChatGPT provider OAuth.
  */
 async function initializeAuthFromConfig(): Promise<void> {
   if (!agentConfig || !registry) return;
 
   try {
-    const config = agentConfig.getConfig();
-
-    // Default useOwnApiKey=false (backend mode) if not explicitly set
-    const useOwnApiKey = config.preferences?.useOwnApiKey ?? true;
-
-    // useOwnApiKey=false means use backend routing
-    const shouldUseBackend = useOwnApiKey === false;
-    const backendBaseUrl = shouldUseBackend ? LLM_API_URL : null;
-
-    console.log('[ServiceWorker] Initializing auth from config:', {
-      useOwnApiKey,
-      shouldUseBackend,
-      backendBaseUrl,
-    });
-
-    const authManager = await buildExtensionAuthManager(shouldUseBackend, backendBaseUrl);
+    const authManager = await buildExtensionAuthManager();
     currentAuthManager = authManager;
     authContext.update(authManager, 'routing');
-
-    console.log('[ServiceWorker] Auth initialized, shouldUseBackend:', shouldUseBackend);
 
     // Check for ChatGPT OAuth tokens and configure token getter
     try {
@@ -542,7 +508,7 @@ async function initializeAuthFromConfig(): Promise<void> {
     }
   } catch (error) {
     console.error('[ServiceWorker] Failed to initialize auth from config:', error);
-    // Continue without backend routing - will use direct API key mode
+    // Continue in direct API-key mode.
   }
 }
 
@@ -728,8 +694,6 @@ async function registerServiceHandlers(): Promise<void> {
     const appsRuntime = createAppsRuntime({
       urls: appsUrls,
       credentialStore: getCredentialStore(),
-      getSessionToken: getSessionAccessToken,
-      refreshSessionToken: refreshSessionAccessToken,
       reconnectMcp: async () => {
         await disconnectGatewayMcp();
         await connectGatewayMcp();
@@ -830,17 +794,6 @@ async function registerServiceHandlers(): Promise<void> {
               updatedAt: Date.now(),
             };
           }
-          const auth = authContext.current();
-          if (auth?.shouldUseBackend()) {
-            return {
-              status: 'ready' as const,
-              mode: 'login' as const,
-              ready: true,
-              provider: modelData.provider.name,
-              model: modelData.model.name,
-              updatedAt: Date.now(),
-            };
-          }
           const apiKey = await config.getProviderApiKey(modelData.provider.id);
           return {
             status: apiKey?.trim() ? ('ready' as const) : ('needs_api_key' as const),
@@ -902,23 +855,6 @@ async function registerServiceHandlers(): Promise<void> {
         console.error('Failed to reload configuration:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
-    });
-
-    serviceRegistry.register('agent.initAuth', async (params) => {
-      const { backendBaseUrl, useOwnApiKey } = params as {
-        backendBaseUrl?: string | null;
-        useOwnApiKey?: boolean;
-      };
-
-      const shouldUseBackend = useOwnApiKey === false;
-      const authManager = await buildExtensionAuthManager(
-        shouldUseBackend,
-        shouldUseBackend ? (backendBaseUrl ?? null) : null
-      );
-      currentAuthManager = authManager;
-      authContext.update(authManager, 'routing');
-
-      return { success: true, isBackendRouting: shouldUseBackend };
     });
 
     console.log(

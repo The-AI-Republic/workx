@@ -8,11 +8,8 @@
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { ConfiguredFeatures } from '@/config/types';
   import ModelSelector from './components/ModelSelector.svelte';
-  import { userStore } from '../stores/userStore';
-  import { LLM_API_URL } from '../lib/constants';
   import { t, _t } from '../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
-  import type { AgentAccessState } from '@/core/services/runtime-state';
   import { highlightSetting } from './utils/highlightSetting';
   import './utils/highlight-pulse.css';
   import { platform } from '../stores/platformStore';
@@ -64,9 +61,6 @@
   let currentProviderName = $state('OpenAI');
   let currentProviderOrganization: string | null = $state(null);
 
-  // Backend mode toggle
-  let useOwnApiKey = $state(false);
-
   // API key validation warning (only show after save attempt)
   let showApiKeyWarning = $state(false);
 
@@ -93,15 +87,8 @@
   }
   let customEndpoints: CustomEndpointItem[] = $state([]);
 
-  // Derived state from user store
-  let isUserLoggedIn = $derived($userStore.isLoggedIn);
-  let accountTier = $derived($userStore.userType);
-
   function isModelLocked(modelKey: string, isCustom = false): boolean {
-    return modelAccessPolicy.isLocked(
-      { isAuthenticated: isUserLoggedIn, accountTier },
-      { modelKey, isCustom },
-    );
+    return modelAccessPolicy.isLocked({ modelKey, isCustom });
   }
 
   // Model selection array
@@ -132,27 +119,14 @@
   }
   let modelSelectionItems: ModelSelectionItem[] = $state([]);
 
-  // Filtered model items based on backend mode
-  // supportBackendMode > 0 means the model supports backend routing
-  let filteredModelItems = $derived(
-    isUserLoggedIn && !useOwnApiKey
-      // Custom (BYOK) endpoints are direct-only (supportBackendMode 0) but must
-      // still be selectable in backend mode — they run on the user's own key.
-      ? modelSelectionItems.filter(item => (item.supportBackendMode ?? 0) > 0 || item.isCustom)
-      : modelSelectionItems
-  );
+  let filteredModelItems = $derived(modelSelectionItems);
 
-  // Efficient-model candidates. Gateway routing (logged in, not using own
-  // API key) routes any catalog model through one credential, so the provider
-  // doesn't matter — offer everything the main selector offers. Own-API-key
-  // mode requires the efficient model to share the task model's provider
-  // (different providers mean different keys/endpoints).
+  // Direct API-key mode requires the efficient model to share the task
+  // model's provider because different providers use different credentials.
   let efficientModelOptions = $derived(
-    isUserLoggedIn && !useOwnApiKey
-      ? filteredModelItems
-      : filteredModelItems.filter(
-          (item) => item.providerId === selectedModelKey.split(':')[0]
-        )
+    filteredModelItems.filter(
+      (item) => item.providerId === selectedModelKey.split(':')[0]
+    )
   );
 
   // Displayed value: a stored selection that is no longer offered (e.g. a
@@ -324,9 +298,6 @@
       efficientModelKey = config.efficientModelKey ?? '';
       console.log('[ModelSettings] loadSettings - selectedModelKey from config:', selectedModelKey);
 
-      // Load useOwnApiKey preference (default false for logged-in users)
-      useOwnApiKey = config.preferences?.useOwnApiKey ?? false;
-
       // Build model selection array
       const tempModelItems: ModelSelectionItem[] = [];
       const providers = settingsConfig.getProviders();
@@ -382,10 +353,7 @@
       if (!selectedModelKey || selectedModelKey === '') {
         console.log('[ModelSettings] selectedModelKey is empty, selecting default model');
         if (modelSelectionItems.length > 0) {
-          const preferredModelId = modelAccessPolicy.getPreferredModelId(
-            { isAuthenticated: isUserLoggedIn, accountTier },
-            'initial',
-          );
+          const preferredModelId = modelAccessPolicy.getPreferredModelId('initial');
           const preferredModel = preferredModelId
             ? modelSelectionItems.find((model) => model.modelId === preferredModelId)
             : undefined;
@@ -623,10 +591,7 @@
       // available by the distribution's access policy.
       if (selectedModelKey.startsWith(`${id}:`)) {
         const candidates = modelSelectionItems.filter((m) => !m.modelId.startsWith(`${id}:`));
-        const preferredModelId = modelAccessPolicy.getPreferredModelId(
-          { isAuthenticated: isUserLoggedIn, accountTier },
-          'access-fallback',
-        );
+        const preferredModelId = modelAccessPolicy.getPreferredModelId('access-fallback');
         const fallback =
           (preferredModelId
             ? candidates.find((model) => model.modelId === preferredModelId)
@@ -781,56 +746,6 @@
     onBack?.();
   }
 
-  async function handleUseOwnApiKeyToggle() {
-    if (!settingsConfig || !isUserLoggedIn) return;
-
-    try {
-      const newValue = !useOwnApiKey;
-      showApiKeyWarning = false; // Reset warning when switching modes
-
-      // Send updated auth state to service worker
-      // useOwnApiKey=false means route through backend
-      const authPayload = {
-        backendBaseUrl: newValue ? null : LLM_API_URL, // null when using own API key
-        useOwnApiKey: newValue,
-      };
-
-      const response = await (await getInitializedUIClient()).serviceRequest<{
-        success: boolean;
-        access?: AgentAccessState;
-      }>('agent.initAuth', authPayload);
-      if (!response?.success) {
-        throw new Error('Runtime rejected API mode update');
-      }
-
-      // Persist the user's preference after the runtime confirms the effective
-      // access state. The runtime remains the source of truth for display.
-      const config = settingsConfig.getConfig();
-      await settingsConfig.updateConfigAndPersist({
-        preferences: {
-          ...config.preferences,
-          useOwnApiKey: newValue,
-        },
-      });
-        useOwnApiKey = response.access ? response.access.mode === 'api_key' : newValue;
-
-      getInitializedUIClient().then(c => c.serviceRequest('agent.configUpdate')).catch(err => console.warn('[ModelSettings] Failed to send configUpdate:', err));
-
-      const message = newValue
-        ? t('Switched to direct API mode. Please configure your API key.')
-        : t('Switched to backend mode. LLM requests will route through AI Republic server.');
-      showMessage(message, 'success');
-
-      onAuthUpdated?.({
-        isAuthenticated: isAuthenticated,
-        mode: newValue ? 'api_key' : 'login',
-      });
-    } catch (error) {
-      console.error('[ModelSettings] Failed to toggle useOwnApiKey:', error);
-      showMessage(t('Failed to update API mode'), 'error');
-    }
-  }
-
   function handleKeydown(event: KeyboardEvent) {
     if (
       event.key === 'Enter' &&
@@ -977,11 +892,7 @@
           {/each}
         </select>
         <div class="help-text">
-          {#if isUserLoggedIn && !useOwnApiKey}
-            {t("Lightweight model used for internal tasks like chat titles and summaries.")}
-          {:else}
-            {t("Lightweight model used for internal tasks like chat titles and summaries. Must be from the same provider as the task model.")}
-          {/if}
+          {t("Lightweight model used for internal tasks like chat titles and summaries. Must be from the same provider as the task model.")}
         </div>
       </div>
 
@@ -1019,41 +930,11 @@
     </div>
   </div>
 
-  <!-- Use Own API Key Toggle (only shown when logged in) -->
-  {#if isUserLoggedIn}
-    <div class="settings-section settings-card" data-setting-id="use-own-api-key">
-      <div class="toggle-row">
-        <div class="toggle-info">
-          <span class="toggle-label">{t("Use Own API Key")}</span>
-          <span class="toggle-description">
-            {useOwnApiKey
-              ? t('LLM requests go directly to provider APIs')
-              : t('LLM requests route through AI Republic backend')}
-          </span>
-        </div>
-        <button
-          class="toggle-switch {useOwnApiKey ? 'active' : ''}"
-          onclick={handleUseOwnApiKeyToggle}
-          aria-label={t("Toggle use own API key")}
-        >
-          <span class="toggle-slider"></span>
-        </button>
-      </div>
-    </div>
-  {/if}
-
   <!-- API Key Section -->
   <div class="settings-section settings-card">
     <div class="section-header">
       <h3 class="section-title">{t("API Key Configuration")}</h3>
-      {#if isUserLoggedIn && !useOwnApiKey}
-        <span class="auth-status backend-mode">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-          </svg>
-          {t("Backend Mode")}
-        </span>
-      {:else if isAuthenticated}
+      {#if isAuthenticated}
         <span class="auth-status authenticated">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <polyline points="20,6 9,17 4,12"></polyline>
@@ -1072,8 +953,8 @@
       {/if}
     </div>
 
-    <!-- ChatGPT OAuth Section (OpenAI only, direct API mode) -->
-    {#if currentProvider === 'openai' && (!isUserLoggedIn || useOwnApiKey)}
+    <!-- ChatGPT provider OAuth remains available alongside direct API keys. -->
+    {#if currentProvider === 'openai'}
       <div class="form-group chatgpt-oauth-section">
         <label class="form-label">{t("ChatGPT Subscription")}</label>
         {#if chatgptOAuthConnected}
@@ -1188,13 +1069,7 @@
           {/if}
         </button>
       </div>
-      <div class="help-text">
-        {#if isUserLoggedIn && !useOwnApiKey}
-          {t("Chat uses backend routing. An OpenAI key here is still needed for Agent Memory.")}
-        {:else}
-          {t("Enter your LLM API key")}
-        {/if}
-      </div>
+      <div class="help-text">{t("Enter your LLM API key")}</div>
 
       {#if showApiKeyWarning && !apiKey.trim()}
         <div class="message warning">
@@ -1217,7 +1092,7 @@
           bind:value={serviceTier}
           onchange={handleServiceTierChange}
           class="form-select"
-          disabled={isInitializing || isSaving || (isUserLoggedIn && !useOwnApiKey)}
+          disabled={isInitializing || isSaving}
         >
           <option value="default">{$_t("Default")}</option>
           <option value="flex">{$_t("Flex")}</option>
@@ -1234,7 +1109,7 @@
       <button
         class="btn btn-primary"
         onclick={saveApiKey}
-        disabled={isInitializing || isSaving || !apiKey.trim() || (isUserLoggedIn && !useOwnApiKey)}
+        disabled={isInitializing || isSaving || !apiKey.trim()}
       >
         {#if isSaving}
           <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
@@ -1272,7 +1147,7 @@
       <button
         class="btn btn-secondary"
         onclick={testConnection}
-        disabled={isTesting || !apiKey.trim() || (isUserLoggedIn && !useOwnApiKey)}
+        disabled={isTesting || !apiKey.trim()}
       >
         {#if isTesting}
           <svg class="spinner" width="16" height="16" viewBox="0 0 24 24">
@@ -1307,11 +1182,11 @@
         {/if}
       </button>
 
-      {#if isAuthenticated && (!isUserLoggedIn || useOwnApiKey)}
+      {#if isAuthenticated}
         <button
           class="btn btn-danger"
           onclick={clearAuth}
-          disabled={isInitializing || isSaving || (isUserLoggedIn && !useOwnApiKey)}
+          disabled={isInitializing || isSaving}
         >
           {t("Remove API Key")}
         </button>
@@ -1475,31 +1350,17 @@
   <!-- Security Notice -->
   <div class="settings-section settings-card">
     <h3 class="section-title">{t("Security & Privacy")}</h3>
-    {#if isUserLoggedIn && !useOwnApiKey}
-      <div class="security-notice backend-notice">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-        </svg>
-        <div>
-          <div class="security-title">{t("Backend Mode Active")}</div>
-          <div class="security-text">
-            {t("The agent is currently using backend mode. LLM requests will route through AI Republic server. Your conversations are processed securely through our infrastructure.")}
-          </div>
+    <div class="security-notice">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      </svg>
+      <div>
+        <div class="security-title">{t("Your API key is encrypted")}</div>
+        <div class="security-text">
+          {t("API keys are encrypted and stored locally in your browser. They are never sent to external servers except for API calls.")}
         </div>
       </div>
-    {:else}
-      <div class="security-notice">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-        </svg>
-        <div>
-          <div class="security-title">{t("Your API key is encrypted")}</div>
-          <div class="security-text">
-            {t("API keys are encrypted and stored locally in your browser. They are never sent to external servers except for API calls.")}
-          </div>
-        </div>
-      </div>
-    {/if}
+    </div>
   </div>
 </div>
 

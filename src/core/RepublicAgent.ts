@@ -205,7 +205,7 @@ export class RepublicAgent {
     // Initialize model client factory with config
     await this.modelClientFactory.initialize(this.config);
 
-    // Validate API key for selected model's provider (only if not using backend routing)
+    // Validate the API key for the selected model's provider.
     const configData = this.config.getConfig();
     const selectedModelKey = configData.selectedModelKey;
     const modelData = this.config.getModelByKey(selectedModelKey);
@@ -1475,15 +1475,12 @@ export class RepublicAgent {
       const gatewayRouting =
         !isCustomProvider &&
         (await this.modelClientFactory.isGatewayRoutingAvailable(providerId));
-      const gatewayCredential = gatewayRouting
-        ? await this.modelClientFactory.getGatewayCredential()
-        : null;
       if ((!isCustomProvider && this.modelClientFactory.isBackendRouting()) || gatewayRouting) {
         return {
           ready: true,
           provider: modelData.provider.name,
           model: modelData.model.name,
-          authMode: gatewayCredential?.method === 'api-key' ? 'api_key' : 'login',
+          authMode: 'api_key',
         };
       }
 

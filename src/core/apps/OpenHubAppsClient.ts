@@ -110,34 +110,6 @@ function validateAppId(appId: string): string {
   return encodeURIComponent(appId);
 }
 
-function jwtScopes(token: string): string[] {
-  const payload = token.split('.')[1];
-  if (!payload) return [];
-  try {
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-    const decoded =
-      typeof Buffer !== 'undefined'
-        ? Buffer.from(padded, 'base64').toString('utf8')
-        : decodeURIComponent(
-            Array.from(atob(padded), (char) =>
-              `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`
-            ).join('')
-          );
-    const claims = JSON.parse(decoded) as Record<string, unknown>;
-    const values = [claims.scp, claims.scopes].flatMap((value) =>
-      typeof value === 'string'
-        ? value.replace(/,/g, ' ').split(/\s+/)
-        : Array.isArray(value)
-          ? value.filter((item): item is string => typeof item === 'string')
-          : []
-    );
-    return [...new Set(values.filter(Boolean))];
-  } catch {
-    return [];
-  }
-}
-
 function safeAuthorizationUrl(value: unknown): string {
   if (typeof value !== 'string' || value.length > 8192)
     throw new AppsServiceError(
@@ -210,9 +182,6 @@ export class OpenHubAppsClient {
     // re-entering that queue through the normal request observer.
     const response = await this.sendRaw('credentials/me', { method: 'GET' }, credential, false);
     if (response.status === 404 || response.status === 405) {
-      if (credential.method === 'session-jwt') {
-        return this.validateLegacyHubSession(credential);
-      }
       throw new AppsServiceError(
         'APPS_BACKEND_INCOMPATIBLE',
         'This OpenHub deployment does not support WorkX Apps credentials.',
@@ -233,10 +202,7 @@ export class OpenHubAppsClient {
         response.status
       );
     }
-    const credentialType =
-      raw?.credentialType === 'api-key' || raw?.credentialType === 'session-jwt'
-        ? raw.credentialType
-        : null;
+    const credentialType = raw?.credentialType === 'api-key' ? raw.credentialType : null;
     if (!credentialType || credentialType !== credential.method)
       throw new AppsServiceError(
         'APPS_INVALID_CREDENTIAL',
@@ -261,37 +227,6 @@ export class OpenHubAppsClient {
           ? raw.allowedAppIds.filter((v): v is string => typeof v === 'string').slice(0, 1000)
           : null;
     return { valid: true, credentialType, grantedScopes: scopes, allowedAppIds };
-  }
-
-  private async validateLegacyHubSession(
-    credential: Pick<OpenHubCredential, 'method' | 'token'>
-  ): Promise<AppsCredentialValidationResult> {
-    // Migration bridge for Hub versions that accept Home OIDC bearer tokens
-    // but predate /api/v1/apps/credentials/me. /api/auth/me verifies the same
-    // signed token server-side; WorkX then enforces its signed scope claims.
-    const response = await this.sendRaw('../../auth/me', { method: 'GET' }, credential, false);
-    if (!response.ok) throw appsErrorForStatus(response.status);
-    const raw = (await boundedJson(response)) as Record<string, unknown> | null;
-    const user = raw?.user;
-    if (!user || typeof user !== 'object') {
-      throw new AppsServiceError('APPS_INVALID_CREDENTIAL', 'OpenHub rejected the credential.');
-    }
-    const scopes = jwtScopes(credential.token);
-    const missingScopes = REQUIRED_SCOPES.filter((scope) => !scopes.includes(scope));
-    if (missingScopes.length > 0) {
-      throw new AppsServiceError(
-        'APPS_FORBIDDEN',
-        `This OpenHub credential is missing required permission: ${missingScopes.join(', ')}.`,
-        false,
-        403
-      );
-    }
-    return {
-      valid: true,
-      credentialType: 'session-jwt',
-      grantedScopes: scopes,
-      allowedAppIds: null,
-    };
   }
 
   async marketplace(

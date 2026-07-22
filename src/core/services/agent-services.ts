@@ -3,14 +3,13 @@
  *
  * Platform-agnostic service handlers for agent lifecycle operations.
  * Per-session operations (e.g. interrupt) require a sessionId.
- * Global operations (e.g. configUpdate, initAuth) apply to all sessions
+ * Global operations (for example configUpdate) apply to all sessions
  * via the registry.
  *
  * @module core/services/agent-services
  */
 
 import type { ServiceHandler } from '@/core/channels/ServiceRegistry';
-import type { IAuthManager } from '@/core/models/types/Auth';
 import type { AgentAccessState, RuntimeStateController } from './runtime-state';
 import { stripLockedWrites } from '@/core/config/policy/guards';
 import type { ApprovalMode } from '@/core/approval/types';
@@ -77,12 +76,6 @@ export interface AgentServiceDeps {
 
   /** Reload configuration and recreate agent */
   handleConfigUpdate?: () => Promise<unknown>;
-
-  /** Create an auth manager from settings */
-  createAuthManager?: (shouldUseBackend: boolean, backendBaseUrl: string | null) => IAuthManager;
-
-  /** Preserve auth manager for agent recreation */
-  updateAuthContext?: (authManager: IAuthManager | null) => void;
 
   /** Runtime-owned desktop access state contract (Track 44). */
   runtimeState?: RuntimeStateController;
@@ -185,34 +178,6 @@ export function createAgentServices(deps: AgentServiceDeps): Record<string, Serv
      */
     'agent.ping': async () => {
       return { type: 'PONG', timestamp: Date.now() };
-    },
-
-    /**
-     * Initialize auth — global, applies to all sessions.
-     */
-    'agent.initAuth': async (params) => {
-      const { backendBaseUrl, useOwnApiKey } = params as {
-        backendBaseUrl?: string | null;
-        useOwnApiKey?: boolean;
-      };
-
-      if (!deps.createAuthManager || !deps.updateAuthContext) {
-        throw new Error('Auth initialization not supported on this platform');
-      }
-
-      const shouldUseBackend = useOwnApiKey === false;
-      const authManager = deps.createAuthManager(shouldUseBackend, shouldUseBackend ? (backendBaseUrl ?? null) : null);
-
-      deps.updateAuthContext(authManager);
-
-      const access = await publishAccessState({
-        status: shouldUseBackend ? 'ready' : 'needs_api_key',
-        mode: shouldUseBackend ? 'login' : 'api_key',
-        ready: shouldUseBackend,
-        reason: shouldUseBackend ? undefined : 'Configure an API key in Settings.',
-      });
-
-      return { success: true, isBackendRouting: shouldUseBackend, access };
     },
 
     /**

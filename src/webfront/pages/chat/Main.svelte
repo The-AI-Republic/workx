@@ -36,8 +36,6 @@
   // Token usage visibility store
   import { showTokenUsage } from '../../stores/tokenUsageStore';
   import { AgentConfig } from '@/config/AgentConfig';
-  // User components and store
-  import { getLoginPageUrl, userStore } from '../../stores/userStore';
   // Agent store for auth mode tracking
   import { agentStore } from '../../stores/agentStore';
   // Scheduler store (for scheduling result feedback)
@@ -105,11 +103,6 @@
   let previewToggleButton: HTMLButtonElement | null = $state(null);
   let chatSplitPercent = $state(DEFAULT_CHAT_SPLIT_PERCENT);
 
-  // Guards the auto-relogin so an expired desktop session opens the login flow
-  // exactly once per expiry (reset when access returns to ready), rather than
-  // popping the browser on every subsequent access-state emission.
-  let sessionReloginPrompted = false;
-
   function applyAccessState(access: AgentAccessState): void {
     isConnected = true;
     agentReady = access.ready;
@@ -122,19 +115,6 @@
     };
     agentStore.updateFromAccessState(access);
 
-    // Auto-relogin: when the runtime reports the desktop session expired
-    // (refresh token revoked/expired), re-open the login flow instead of
-    // leaving the user on a dead "Invalid JWT" error. The `session_expired`
-    // reason is the runtime's stable sentinel for "must re-login" (as opposed
-    // to a fresh logout or a transient failure, which must not auto-pop login).
-    if (access.status === 'needs_login' && access.reason === 'session_expired') {
-      if (!sessionReloginPrompted) {
-        sessionReloginPrompted = true;
-        requestLogin();
-      }
-    } else if (access.ready) {
-      sessionReloginPrompted = false;
-    }
   }
 
   function onZoomChanged(e: Event) {
@@ -153,16 +133,6 @@
       .catch(() => {});
   }
 
-  function requestLogin() {
-    if (platform.platformName === 'desktop') {
-      window.dispatchEvent(new CustomEvent('workx:request-login'));
-      return;
-    }
-    const loginUrl = getLoginPageUrl();
-    if (loginUrl) {
-      window.open(loginUrl, '_blank', 'noopener,noreferrer');
-    }
-  }
   let compactionNotification: {
     show: boolean;
     tokensSaved: number;
@@ -1768,23 +1738,10 @@
               <span class="text-lg">⚠️</span>
               <span class="font-semibold {currentTheme === 'modern' ? 'text-chat-status-warning dark:text-chat-status-warning-dark' : 'text-term-yellow'}">{$_t("No Access Configured")}</span>
             </div>
-            <p class="m-0 mb-2 text-sm {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark' : 'text-term-dim-green'}">
-              {$_t("To use the AI agent, please either:")}
-            </p>
-            <ul class="m-0 pl-6 list-disc">
-              <li class="mb-1">
-                <button onclick={requestLogin}
-                  class="bg-none border-none p-0 underline cursor-pointer text-left text-[inherit] {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
-                  {$_t("Log in to your account")}
-                </button>
-              </li>
-              <li class="mb-1">
-                <button onclick={() => push('/settings')}
-                  class="bg-none border-none p-0 underline cursor-pointer text-[inherit] {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
-                  {$_t("Configure an API key in Settings")}
-                </button>
-              </li>
-            </ul>
+            <button onclick={() => push('/settings')}
+              class="bg-none border-none p-0 underline cursor-pointer text-left text-sm text-[inherit] {currentTheme === 'modern' ? 'text-chat-primary dark:text-chat-primary-dark hover:text-chat-text dark:hover:text-chat-text-dark' : 'text-term-bright-green hover:text-term-yellow'}">
+              {$_t("Configure an API key in Settings")}
+            </button>
           </div>
         {/if}
 
@@ -1883,10 +1840,6 @@
                 : 'flex flex-col items-start gap-3 p-6 border border-term-dim-green rounded bg-[rgba(0,0,0,0.6)]'}"
               role="presentation"
             >
-              {#if $userStore.isLoggedIn && ($userStore.userName || $userStore.userEmail)}
-                <p class="m-0 mb-2 font-semibold text-lg
-                  {currentTheme === 'modern' ? 'text-chat-text dark:text-chat-text-dark text-xl' : 'text-term-bright-green'}">{$_t("Hello $NAME$", { substitutions: [$userStore.userName || $userStore.userEmail] })}</p>
-              {/if}
               <pre class="welcome-ascii m-0 font-terminal text-ascii leading-none whitespace-pre">{#each welcomeAsciiLines as line, index (index)}<span class={line.color}>{line.text}</span>{/each}</pre>
               <p class="m-0 text-base text-term-blue">
                 {platform.platformName === 'extension' ? $_t("General in-browser AI agent for work tasks") : $_t("Your personal AI assistant")}

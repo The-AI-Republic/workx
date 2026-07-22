@@ -3,7 +3,6 @@
   import type { AgentConfig } from '@/config/AgentConfig';
   import type { IUserPreferences } from '@/config/types';
   import { uiTheme } from '../stores/themeStore';
-  import { userStore } from '../stores/userStore';
   import Switch from '../components/common/Switch.svelte';
   import { _t } from '../lib/i18n';
   import { getInitializedUIClient } from '@/core/messaging';
@@ -64,12 +63,7 @@
   // Memory API key status
   let hasOpenAIKey = $state(false);
 
-  // User tier (reactive)
-  let isLoggedIn = $derived($userStore.isLoggedIn);
-  let isFreeUser = $derived($userStore.userType === 0);
-  let isPaidUser = $derived(isLoggedIn && !isFreeUser);
-  let memoryUseOwnApiKey = $derived(currentPreferences.memoryUseOwnApiKey ?? true);
-  let showMemoryKeyWarning = $derived(currentPreferences.memoryEnabled && memoryUseOwnApiKey && !hasOpenAIKey);
+  let showMemoryKeyWarning = $derived(currentPreferences.memoryEnabled && !hasOpenAIKey);
 
   $effect(() => {
     if (highlightSettingId) {
@@ -187,20 +181,8 @@
   async function handleMemoryEnabledChange(value: boolean) {
     currentPreferences.memoryEnabled = value;
 
-    if (value && isPaidUser) {
-      currentPreferences.memoryUseOwnApiKey = false;
-    } else if (value && (isFreeUser || !isLoggedIn)) {
-      currentPreferences.memoryUseOwnApiKey = true;
-    }
-
     await autoSave();
     await loadMemorySnapshot();
-  }
-
-  function handleMemoryUseOwnKeyChange(value: boolean) {
-    if (!isPaidUser) return;
-    currentPreferences.memoryUseOwnApiKey = value;
-    autoSave();
   }
 
   function handleBack() {
@@ -253,45 +235,6 @@
         </div>
 
         {#if currentPreferences.memoryEnabled}
-          <!-- Memory routing: use own key vs backend -->
-          {#if isPaidUser}
-            <div class="mt-3 flex items-center justify-between gap-4 p-2.5 rounded-lg border
-              {currentTheme === 'modern'
-                ? 'border-chat-border/50 dark:border-chat-border-dark/50'
-                : 'border-term-dim-green/30'}"
-            >
-              <div class="flex flex-col gap-0.5">
-                <span class="text-sm font-medium
-                  {currentTheme === 'modern'
-                    ? 'font-chat text-chat-text dark:text-chat-text-dark'
-                    : 'font-terminal text-term-green'}"
-                >{$_t("Use own OpenAI API key")}</span>
-                <span class="text-meta font-normal
-                  {currentTheme === 'modern'
-                    ? 'font-chat text-chat-text-secondary dark:text-chat-text-secondary-dark'
-                    : 'font-terminal text-term-dim-green'}"
-                >{$_t("When off, memory uses your account credits via backend routing.")}</span>
-              </div>
-              <Switch
-                state={memoryUseOwnApiKey}
-                onChange={handleMemoryUseOwnKeyChange}
-              />
-            </div>
-          {:else if isLoggedIn && isFreeUser}
-            <div class="mt-3 flex items-start gap-2 p-2.5 rounded-lg text-sm
-              {currentTheme === 'modern'
-                ? 'font-chat text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-400/10'
-                : 'font-terminal text-cyan-400 bg-cyan-400/10'}"
-            >
-              <svg class="mt-0.5 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="16" x2="12" y2="12"/>
-                <line x1="12" y1="8" x2="12.01" y2="8"/>
-              </svg>
-              <span>{$_t("Free tier requires your own OpenAI API key for memory. Upgrade to use account credits.")}</span>
-            </div>
-          {/if}
-
           <!-- Info: own key mode but no OpenAI key configured — will fall back to main LLM -->
           {#if showMemoryKeyWarning}
             <div class="mt-3 flex items-start gap-2 p-2.5 rounded-lg text-sm

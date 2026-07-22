@@ -1,7 +1,7 @@
 import type { IAuthManager } from '../models/types/Auth';
 
 export interface GatewayCredential {
-  method: 'api-key' | 'session-jwt';
+  method: 'api-key';
   token: string;
 }
 
@@ -10,11 +10,7 @@ export interface GatewayCredentialProvider {
   handleUnauthorized(failedToken: string | null): Promise<string | null>;
 }
 
-export type AuthChangeReason =
-  | 'login'
-  | 'logout'
-  | 'routing'
-  | 'credentials-refreshed';
+export type AuthChangeReason = 'login' | 'logout' | 'routing' | 'credentials-refreshed';
 
 export interface AuthChangedEvent {
   generation: number;

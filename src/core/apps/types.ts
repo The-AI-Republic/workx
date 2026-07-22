@@ -1,4 +1,4 @@
-export type AppsAuthMethod = 'api-key' | 'session-jwt';
+export type AppsAuthMethod = 'api-key';
 
 export interface AppsPolicyCopy {
   title: string;
@@ -6,21 +6,15 @@ export interface AppsPolicyCopy {
   action: string;
 }
 
-export type AppsAccessPolicy =
-  | {
-      authMethod: 'api-key';
-      setupCopy: AppsPolicyCopy;
-      apiKeyManagementUrl: string;
-    }
-  | {
-      authMethod: 'session-jwt';
-      setupCopy: AppsPolicyCopy;
-    };
+export interface AppsAccessPolicy {
+  authMethod: 'api-key';
+  setupCopy: AppsPolicyCopy;
+  apiKeyManagementUrl: string;
+}
 
 export type AppsCredentialStatus =
   | 'unconfigured'
   | 'needs-api-key'
-  | 'needs-login'
   | 'validating'
   | 'unverified'
   | 'ready'
@@ -29,13 +23,11 @@ export type AppsCredentialStatus =
 
 export type AppsBackendStatus = 'unknown' | 'reachable' | 'unavailable';
 export type AppsCapabilityStatus = 'unknown' | 'supported' | 'incompatible';
-export type AppsCredentialSource = 'none' | 'stored-api-key' | 'managed-api-key' | 'session';
+export type AppsCredentialSource = 'none' | 'stored-api-key' | 'managed-api-key';
 export type AppsAccessReason =
   | 'catalog_unconfigured'
   | 'runtime_surface_unsupported'
   | 'api_key_missing'
-  | 'login_required'
-  | 'session_expired'
   | 'credential_rejected'
   | 'insufficient_scope'
   | 'validation_unavailable'

@@ -11,7 +11,7 @@ export interface AgentReadyState {
   provider?: string;
   model?: string;
   /** Current authentication mode */
-  authMode: 'login' | 'api_key' | 'chatgpt_oauth' | 'none';
+  authMode: 'api_key' | 'chatgpt_oauth' | 'none';
 }
 
 /**
@@ -19,38 +19,10 @@ export interface AgentReadyState {
  */
 export interface IAuthManager {
   /**
-   * Check if requests should be routed through backend
-   * This is determined by useOwnApiKey setting (false = use backend)
-   * @returns true if requests should route through backend
-   */
-  shouldUseBackend(): boolean;
-
-  /**
-   * Get backend LLM API URL
-   * @returns Backend URL or null if not using backend routing
-   */
-  getBackendBaseUrl(): string | null;
-
-  /**
    * Get the OpenAI-compatible gateway base URL when gateway routing is enabled.
    * The URL is expected to be the API root (for example, https://hub.example.com/v1).
    */
   getGatewayLlmBaseUrl?(): string | null;
-
-  /**
-   * Get the current access token for backend authentication.
-   * Desktop apps must provide this since they don't have browser cookies.
-   * Chrome extension can return null (cookies are sent via credentials: 'include').
-   * @returns Access token or null
-   */
-  getAccessToken(): Promise<string | null>;
-
-  /**
-   * Refresh the session access token and return the new value when possible.
-   * Desktop runtime implementations use the stored refresh token and update the
-   * credential store before returning.
-   */
-  refreshAccessToken?(): Promise<string | null>;
 
   /**
    * Check if ChatGPT OAuth is the active authentication method
@@ -66,60 +38,18 @@ export interface IAuthManager {
 }
 
 /**
- * Auth manager implementation for LLM routing decisions
- *
- * Routing is determined by useOwnApiKey setting:
- * - useOwnApiKey=false → route through backend (shouldUseBackend=true)
- * - useOwnApiKey=true → use direct API with user's own key (shouldUseBackend=false)
+ * OSS credential state for API-key gateway routing and ChatGPT provider OAuth.
+ * Product-account sessions are implemented by private distributions.
  */
 export class AuthManager implements IAuthManager {
-  private _shouldUseBackend: boolean;
-  private _backendBaseUrl: string | null;
-  private _tokenGetter: (() => Promise<string | null>) | null;
-  private _tokenRefresher: (() => Promise<string | null>) | null;
   private _gatewayLlmBaseUrl: string | null;
   private _chatGPTOAuthActive: boolean;
   private _chatGPTTokenGetter: (() => Promise<string | null>) | null;
 
-  /**
-   * Create an AuthManager
-   * @param shouldUseBackend - Whether to route through backend (derived from !useOwnApiKey)
-   * @param backendBaseUrl - Backend URL to use when routing through backend
-   * @param tokenGetter - Optional async function to retrieve the access token (required for desktop)
-   */
-  constructor(
-    shouldUseBackend: boolean,
-    backendBaseUrl: string | null,
-    tokenGetter?: () => Promise<string | null>,
-    options?: {
-      gatewayLlmBaseUrl?: string | null;
-      refreshAccessToken?: () => Promise<string | null>;
-    },
-  ) {
-    this._shouldUseBackend = shouldUseBackend;
-    // Only set backend URL if using backend routing
-    this._backendBaseUrl = shouldUseBackend ? backendBaseUrl : null;
-    this._tokenGetter = tokenGetter ?? null;
-    this._tokenRefresher = options?.refreshAccessToken ?? null;
-    // OSS own-key mode can also route through OpenHub. The shared credential
-    // provider decides whether the gateway is selected for a request.
+  constructor(options?: { gatewayLlmBaseUrl?: string | null }) {
     this._gatewayLlmBaseUrl = options?.gatewayLlmBaseUrl ?? null;
     this._chatGPTOAuthActive = false;
     this._chatGPTTokenGetter = null;
-  }
-
-  /**
-   * Check if requests should be routed through backend
-   */
-  shouldUseBackend(): boolean {
-    return this._shouldUseBackend;
-  }
-
-  /**
-   * Get backend LLM API URL
-   */
-  getBackendBaseUrl(): string | null {
-    return this._backendBaseUrl;
   }
 
   /**
@@ -127,24 +57,6 @@ export class AuthManager implements IAuthManager {
    */
   getGatewayLlmBaseUrl(): string | null {
     return this._gatewayLlmBaseUrl;
-  }
-
-  /**
-   * Get the current access token.
-   * Returns token from tokenGetter if provided, null otherwise (Chrome extension uses cookies).
-   */
-  async getAccessToken(): Promise<string | null> {
-    if (this._tokenGetter) {
-      return this._tokenGetter();
-    }
-    return null;
-  }
-
-  async refreshAccessToken(): Promise<string | null> {
-    if (this._tokenRefresher) {
-      return this._tokenRefresher();
-    }
-    return this.getAccessToken();
   }
 
   /**
