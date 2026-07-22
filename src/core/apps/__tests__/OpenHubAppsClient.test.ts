@@ -37,7 +37,7 @@ function json(body: unknown, status = 200, headers: Record<string, string> = {})
 function validCredential(method: 'api-key' | 'session-jwt' = 'api-key') {
   return {
     contractVersion: 1,
-    capabilities: ['single-gateway-credential-v1'],
+    capabilities: ['single-hub-apps-credential-v1'],
     subjectId: 'subject',
     credentialType: method,
     scopes: ['chat', 'models', 'apps'],
@@ -45,22 +45,38 @@ function validCredential(method: 'api-key' | 'session-jwt' = 'api-key') {
   };
 }
 
+function sessionToken(scopes = 'chat apps models'): string {
+  const payload = Buffer.from(JSON.stringify({ sub: 'home-user', scp: scopes })).toString(
+    'base64url'
+  );
+  return `header.${payload}.signature`;
+}
+
 async function apiClient(fetchMock: ReturnType<typeof vi.fn>) {
   const store = new MemoryCredentials();
   await store.set('openhub', 'api_key', 'oh-secret');
   const provider = new OpenHubCredentialProvider({ policy: apiPolicy, credentialStore: store });
   return new OpenHubAppsClient({
-    catalogApiBaseUrl: 'https://gateway.example/api/v1/apps',
+    catalogApiBaseUrl: 'https://hub.example/api/v1/apps',
     credentials: provider,
     fetch: fetchMock as typeof fetch,
   });
 }
 
 describe('OpenHubAppsClient', () => {
-  it('requires the unified gateway contract and every WorkX gateway scope', async () => {
+  it('requires the Hub Apps contract and every shared WorkX credential scope', async () => {
     const compatible = await apiClient(vi.fn(async () => json(validCredential())));
     await expect(
       compatible.validateCredential({ method: 'api-key', token: 'candidate' })
+    ).resolves.toMatchObject({ valid: true, credentialType: 'api-key' });
+
+    const legacyCompatible = await apiClient(
+      vi.fn(async () =>
+        json({ ...validCredential(), capabilities: ['single-gateway-credential-v1'] })
+      )
+    );
+    await expect(
+      legacyCompatible.validateCredential({ method: 'api-key', token: 'candidate' })
     ).resolves.toMatchObject({ valid: true, credentialType: 'api-key' });
 
     const incompatible = await apiClient(
@@ -89,6 +105,21 @@ describe('OpenHubAppsClient', () => {
     await expect(
       client.validateCredential({ method: 'api-key', token: 'candidate' })
     ).rejects.toMatchObject({ errorCode: 'APPS_BACKEND_INCOMPATIBLE' });
+  });
+
+  it('uses Hub auth/me while a direct-Hub session deployment rolls out', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/api/v1/apps/credentials/me')) return json({}, 404);
+      expect(url).toBe('https://hub.example/api/auth/me');
+      return json({ user: { sub: 'home-user' } });
+    });
+    const client = await apiClient(fetchMock);
+
+    await expect(
+      client.validateCredential({ method: 'session-jwt', token: sessionToken() })
+    ).resolves.toMatchObject({ valid: true, credentialType: 'session-jwt' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('leaves validation availability failures to the access controller', async () => {
@@ -141,7 +172,7 @@ describe('OpenHubAppsClient', () => {
       return seen.length === 1 ? json({}, 401) : json({ items: [] });
     });
     const client = new OpenHubAppsClient({
-      catalogApiBaseUrl: 'https://gateway.example/api/v1/apps',
+      catalogApiBaseUrl: 'https://hub.example/api/v1/apps',
       credentials: provider,
       fetch: fetchMock as typeof fetch,
     });

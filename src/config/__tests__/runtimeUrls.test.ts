@@ -170,7 +170,7 @@ describe('resolveRuntimeUrls', () => {
     const urls = resolveRuntimeUrls();
 
     expect(urls.gatewayCatalogUrl).toBe('https://hub.example.com/apps');
-    expect(urls.gatewayCatalogApiBaseUrl).toBe('https://gateway.example.com/api/v1/apps');
+    expect(urls.gatewayCatalogApiBaseUrl).toBe('https://hub.example.com/api/v1/apps');
   });
 
   it('honors explicit gateway overlay settings', () => {

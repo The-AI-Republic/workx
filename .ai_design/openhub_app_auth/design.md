@@ -1,6 +1,15 @@
 # Runtime-Owned OpenHub Apps
 
-Status: reviewed; implementation-ready with unified gateway authentication
+Status: superseded by direct Hub Apps authentication
+
+> Architecture correction (2026-07-21): this document records the original
+> Gateway-facade design and is retained only as implementation history. It is
+> not authoritative for the Apps control plane. WorkX now calls
+> `hub.airepublic.com/api/v1/apps` directly. Private WorkX presents the Home OIDC
+> access token to both Hub (Apps control plane) and Gateway (LLM/MCP execution);
+> OSS WorkX presents the same Hub-minted `air_...` key to both services. Each
+> service validates the credential independently. Gateway must not proxy the
+> human-facing marketplace, installation, OAuth, connection, or credential APIs.
 
 ## Review Outcome
 
