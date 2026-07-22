@@ -29,6 +29,7 @@
     onNewConversation = () => {},
     tabId = -1,
     isProcessing = false,
+    recentUserMessages = [],
     onModelChanged,
     onTabSelected,
     onCommandOutput,
@@ -48,6 +49,10 @@
     onNewConversation?: () => void;
     tabId?: number;
     isProcessing?: boolean;
+    /** Recent user inputs for the active session, most-recent-first, supplied by
+     *  the page from the already-rendered conversation timeline. Drives Up/Down
+     *  recall; scoped per session so switching threads recalls the right history. */
+    recentUserMessages?: string[];
     onModelChanged?: (data: { modelId: string; modelName: string }) => void;
     onTabSelected?: (data: { tabId: number }) => void;
     onCommandOutput?: (data: { title: string; content: string }) => void;
@@ -63,15 +68,25 @@
   // Bound textarea element — used to read/reposition the caret for message recall.
   let textareaEl = $state<HTMLTextAreaElement | undefined>();
 
-  // Recent-message recall (shell-style Up/Down history). We keep the last few
-  // messages the user actually sent so pressing Up in the composer walks back
-  // through them. `messageHistory[0]` is the most recent.
-  const MAX_MESSAGE_HISTORY = 5;
-  let messageHistory: string[] = [];
-  // -1 means "editing the live draft"; 0..len-1 indexes into messageHistory.
+  // Recent-message recall (shell-style Up/Down history). The list of recent
+  // sent messages comes from `recentUserMessages` (derived by the page from the
+  // rendered conversation timeline), so it needs no separate buffer here and is
+  // already scoped to the active session. `recentUserMessages[0]` is the most
+  // recent. Only the recall cursor is local.
+  // -1 means "editing the live draft"; 0..len-1 indexes into recentUserMessages.
   let historyIndex = -1;
   // Stash of the in-progress draft, restored when Down walks back to the bottom.
   let historyDraft = '';
+
+  // Reset the recall cursor when the composer swaps to another session/tab so
+  // Up starts from the newly-loaded session's most recent message.
+  let recallTabId = tabId;
+  $effect(() => {
+    if (tabId !== recallTabId) {
+      recallTabId = tabId;
+      resetRecall();
+    }
+  });
 
   // Track 13: screenshots captured from the web clipboard, sent alongside
   // the prompt as `image` InputItems (the core funnel disk-backs them).
@@ -100,16 +115,8 @@
     suggestion = null;
   }
 
-  /**
-   * Record a sent message into the rolling recall history. Empty inputs are
-   * ignored and a consecutive duplicate is not stored twice; either way the
-   * recall cursor is reset so the next Up starts from the most recent message.
-   */
-  function recordSentMessage(text: string): void {
-    const trimmed = text.trim();
-    if (trimmed && messageHistory[0] !== trimmed) {
-      messageHistory = [trimmed, ...messageHistory].slice(0, MAX_MESSAGE_HISTORY);
-    }
+  /** Reset the recall cursor so the next Up starts from the most recent message. */
+  function resetRecall(): void {
     historyIndex = -1;
     historyDraft = '';
   }
@@ -143,12 +150,12 @@
    * lines. Returns true when the key was consumed.
    */
   function recallPreviousMessage(): boolean {
-    if (isCommandMode || messageHistory.length === 0) return false;
+    if (isCommandMode || recentUserMessages.length === 0) return false;
     if (!caretAtStart()) return false;
     if (historyIndex === -1) historyDraft = value;
-    if (historyIndex < messageHistory.length - 1) {
+    if (historyIndex < recentUserMessages.length - 1) {
       historyIndex += 1;
-      value = messageHistory[historyIndex];
+      value = recentUserMessages[historyIndex];
       void moveCaretToEnd();
     }
     // Consume even at the oldest entry so the caret doesn't jump unexpectedly.
@@ -169,7 +176,7 @@
       historyDraft = '';
     } else {
       historyIndex -= 1;
-      value = messageHistory[historyIndex];
+      value = recentUserMessages[historyIndex];
     }
     void moveCaretToEnd();
     return true;
@@ -178,7 +185,7 @@
   /** Submit the current value plus any pending attachments, then reset. */
   async function submitWithAttachments(): Promise<void> {
     suggestion = null; // Track 24.3: a sent message invalidates the prediction.
-    recordSentMessage(value); // capture for Up/Down recall before the field clears
+    resetRecall(); // the sent message enters the timeline; recall starts fresh
     if (pendingReads.length) {
       await Promise.all(pendingReads);
     }

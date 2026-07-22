@@ -151,37 +151,29 @@ describe('MessageInput Component', () => {
     });
   });
 
-  // Up/Down recall of recent sent messages
+  // Up/Down recall of recent messages. The recall list is supplied by the page
+  // via `recentUserMessages` (most-recent-first), derived from the rendered
+  // conversation timeline — so it is naturally per-session with no local buffer.
   describe('Message recall (Up/Down history)', () => {
-    async function sendMessage(textarea: HTMLTextAreaElement, text: string) {
-      await fireEvent.input(textarea, { target: { value: text } });
-      await fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
-    }
-
-    async function clearField(textarea: HTMLTextAreaElement) {
-      await fireEvent.input(textarea, { target: { value: '' } });
-      textarea.selectionStart = textarea.selectionEnd = 0;
-    }
-
-    it('recalls the previous sent message on ArrowUp', async () => {
-      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+    it('recalls the most recent message on ArrowUp', async () => {
+      render(MessageInput, {
+        props: { value: '', onSubmit: vi.fn(), recentUserMessages: ['hello world'] },
+      });
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
-
-      await sendMessage(textarea, 'hello world');
-      await clearField(textarea);
 
       await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
       expect(textarea.value).toBe('hello world');
     });
 
-    it('walks older then newer through the last messages', async () => {
-      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+    it('walks older then newer through the recall list', async () => {
+      render(MessageInput, {
+        props: {
+          value: '',
+          onSubmit: vi.fn(),
+          recentUserMessages: ['third', 'second', 'first'],
+        },
+      });
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
-
-      await sendMessage(textarea, 'first');
-      await sendMessage(textarea, 'second');
-      await sendMessage(textarea, 'third');
-      await clearField(textarea);
 
       await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
       expect(textarea.value).toBe('third');
@@ -197,11 +189,25 @@ describe('MessageInput Component', () => {
       expect(textarea.value).toBe('second');
     });
 
-    it('restores the in-progress draft when Down returns to the bottom', async () => {
-      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+    it('stays at the oldest entry when walking past the top', async () => {
+      render(MessageInput, {
+        props: { value: '', onSubmit: vi.fn(), recentUserMessages: ['newer', 'older'] },
+      });
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
 
-      await sendMessage(textarea, 'sent message');
+      for (let i = 0; i < 4; i++) {
+        await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+        textarea.selectionStart = textarea.selectionEnd = 0;
+      }
+      expect(textarea.value).toBe('older');
+    });
+
+    it('restores the in-progress draft when Down returns to the bottom', async () => {
+      render(MessageInput, {
+        props: { value: '', onSubmit: vi.fn(), recentUserMessages: ['sent message'] },
+      });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
       // In-progress draft the user was typing.
       await fireEvent.input(textarea, { target: { value: 'draft in progress' } });
       textarea.selectionStart = textarea.selectionEnd = 0;
@@ -213,23 +219,6 @@ describe('MessageInput Component', () => {
       expect(textarea.value).toBe('draft in progress');
     });
 
-    it('keeps only the 5 most recent messages', async () => {
-      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
-      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
-
-      for (const msg of ['m1', 'm2', 'm3', 'm4', 'm5', 'm6']) {
-        await sendMessage(textarea, msg);
-      }
-      await clearField(textarea);
-
-      // Walk up 6 times: reaches m2 (oldest kept) and stays there — m1 was dropped.
-      for (let i = 0; i < 6; i++) {
-        await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
-        textarea.selectionStart = textarea.selectionEnd = 0;
-      }
-      expect(textarea.value).toBe('m2');
-    });
-
     it('does not recall when there is no history', async () => {
       render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
@@ -239,10 +228,11 @@ describe('MessageInput Component', () => {
     });
 
     it('does not hijack ArrowUp when the caret is not at the start', async () => {
-      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+      render(MessageInput, {
+        props: { value: '', onSubmit: vi.fn(), recentUserMessages: ['recorded'] },
+      });
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
 
-      await sendMessage(textarea, 'recorded');
       // Multi-line draft with the caret at the end (second line) → Up should
       // move the cursor, not replace the text.
       await fireEvent.input(textarea, { target: { value: 'line one\nline two' } });
@@ -253,10 +243,11 @@ describe('MessageInput Component', () => {
     });
 
     it('does not hijack ArrowUp in the middle of a visually wrapped line', async () => {
-      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+      render(MessageInput, {
+        props: { value: '', onSubmit: vi.fn(), recentUserMessages: ['recorded'] },
+      });
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
 
-      await sendMessage(textarea, 'recorded');
       await fireEvent.input(textarea, {
         target: { value: 'a single line long enough to wrap in a narrow composer' },
       });
