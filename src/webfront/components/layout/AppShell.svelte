@@ -28,8 +28,13 @@
 
   function loadStoredWidth(): number {
     if (typeof localStorage === 'undefined') return BASE_PANEL_WIDTH;
-    const raw = Number(localStorage.getItem(PANEL_WIDTH_STORAGE_KEY));
-    return Number.isFinite(raw) && raw > 0 ? clampWidth(raw) : BASE_PANEL_WIDTH;
+    try {
+      const raw = Number(localStorage.getItem(PANEL_WIDTH_STORAGE_KEY));
+      return Number.isFinite(raw) && raw > 0 ? clampWidth(raw) : BASE_PANEL_WIDTH;
+    } catch {
+      // Storage access can throw (private mode / blocked by policy) — fall back.
+      return BASE_PANEL_WIDTH;
+    }
   }
 
   let panelWidth = $state(loadStoredWidth());
@@ -38,7 +43,11 @@
 
   function persistWidth(): void {
     if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(panelWidth));
+    try {
+      localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(panelWidth));
+    } catch {
+      // Storage disabled/full (private mode / quota) — the width just won't persist.
+    }
   }
 
   // Keyboard resize for the separator (a11y): arrows nudge, Home/End snap.

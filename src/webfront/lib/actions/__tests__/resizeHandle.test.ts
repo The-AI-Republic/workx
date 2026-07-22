@@ -82,6 +82,24 @@ describe('resizeHandle action', () => {
     handle?.destroy?.();
   });
 
+  it('resets the drag when pointer capture is lost', () => {
+    const node = document.createElement('div');
+    document.body.appendChild(node);
+    const onEnd = vi.fn();
+
+    const handle = resizeHandle(node, { onEnd });
+
+    firePointer(node, 'pointerdown', { clientX: 0 });
+    expect(node.classList.contains('is-dragging')).toBe(true);
+
+    firePointer(node, 'lostpointercapture', { clientX: 0 });
+    expect(onEnd).toHaveBeenCalledTimes(1);
+    expect(node.classList.contains('is-dragging')).toBe(false);
+    expect(document.body.style.cursor).toBe('');
+
+    handle?.destroy?.();
+  });
+
   it('detaches listeners on destroy', () => {
     const node = document.createElement('div');
     document.body.appendChild(node);
