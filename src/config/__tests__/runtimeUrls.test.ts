@@ -10,6 +10,7 @@ const ENV_KEYS = [
   'WORKX_GATEWAY_LLM_API_URL',
   'WORKX_GATEWAY_MCP_URL',
   'WORKX_GATEWAY_CATALOG_URL',
+  'WORKX_GATEWAY_CATALOG_API_URL',
   'WORKX_GATEWAY_MCP_NAME',
   'WORKX_GATEWAY_MCP_AUTH_MODE',
   'WORKX_GATEWAY_MCP_API_KEY',
@@ -24,6 +25,7 @@ const ENV_KEYS = [
   'VITE_GATEWAY_LLM_API_URL',
   'VITE_GATEWAY_MCP_URL',
   'VITE_GATEWAY_CATALOG_URL',
+  'VITE_GATEWAY_CATALOG_API_URL',
   'VITE_GATEWAY_MCP_NAME',
   'VITE_GATEWAY_MCP_AUTH_MODE',
   'VITE_GATEWAY_MCP_TOOL_DISCOVERY_HEADER',
@@ -163,14 +165,34 @@ describe('resolveRuntimeUrls', () => {
     });
   });
 
-  it('keeps the Hub browser page separate from the authenticated gateway Apps API', () => {
+  it('derives the Apps API from the Hub catalog page, not Gateway', () => {
     process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
     process.env.WORKX_GATEWAY_CATALOG_URL = 'https://hub.example.com/apps';
 
     const urls = resolveRuntimeUrls();
 
     expect(urls.gatewayCatalogUrl).toBe('https://hub.example.com/apps');
-    expect(urls.gatewayCatalogApiBaseUrl).toBe('https://gateway.example.com/api/v1/apps');
+    expect(urls.gatewayCatalogApiBaseUrl).toBe('https://hub.example.com/api/v1/apps');
+  });
+
+  it('does not invent an Apps control-plane route from Gateway alone', () => {
+    process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
+
+    const urls = resolveRuntimeUrls();
+
+    expect(urls.gatewayLlmApiUrl).toBe('https://gateway.example.com/v1');
+    expect(urls.gatewayMcpUrl).toBe('https://gateway.example.com/mcp');
+    expect(urls.gatewayCatalogApiBaseUrl).toBeNull();
+  });
+
+  it('honors an explicit Hub Apps API URL', () => {
+    process.env.WORKX_GATEWAY_BASE_URL = 'https://gateway.example.com';
+    process.env.WORKX_GATEWAY_CATALOG_API_URL = 'https://hub-api.example.com/api/v1/apps';
+
+    const urls = resolveRuntimeUrls();
+
+    expect(urls.gatewayCatalogApiBaseUrl).toBe('https://hub-api.example.com/api/v1/apps');
+    expect(urls.source.gatewayCatalogApiBaseUrl).toBe('env');
   });
 
   it('honors explicit gateway overlay settings', () => {

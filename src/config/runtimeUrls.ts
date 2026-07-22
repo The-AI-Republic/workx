@@ -126,9 +126,8 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
   ) ?? null;
   const gatewayLlmApiUrl = gatewayLlmFromEnv ?? (gatewayBaseUrl ? joinUrl(gatewayBaseUrl, 'v1') : null);
   const gatewayMcpUrl = gatewayMcpFromEnv ?? (gatewayBaseUrl ? joinUrl(gatewayBaseUrl, 'mcp') : null);
-  // Authenticated Apps API root on the OpenHub gateway. The catalog URL remains
-  // a browser-facing Hub page and must not determine the runtime API host when
-  // a gateway base is configured.
+  // Apps is Hub's user-facing control plane. The catalog page and API share the
+  // Hub origin; Gateway remains the LLM/MCP execution plane.
   const gatewayCatalogApiFromEnv = firstNonEmpty(
     env.WORKX_GATEWAY_CATALOG_API_URL,
     env.VITE_GATEWAY_CATALOG_API_URL,
@@ -136,10 +135,9 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
   );
   const gatewayCatalogApiBaseUrl =
     gatewayCatalogApiFromEnv ??
-    (gatewayBaseUrl
-      ? joinUrl(originOf(gatewayBaseUrl) ?? gatewayBaseUrl, 'api/v1/apps')
-      : null) ??
-    (gatewayCatalogUrl ? joinUrl(originOf(gatewayCatalogUrl) ?? gatewayCatalogUrl, 'api/v1/apps') : null);
+    (gatewayCatalogUrl
+      ? joinUrl(originOf(gatewayCatalogUrl) ?? gatewayCatalogUrl, 'api/v1/apps')
+      : null);
   const gatewayMcpNameFromEnv = firstNonEmpty(
     env.WORKX_GATEWAY_MCP_NAME,
     env.VITE_GATEWAY_MCP_NAME,
