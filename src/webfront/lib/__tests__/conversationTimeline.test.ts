@@ -8,6 +8,7 @@ import {
   historyPageToEvents,
   prependHistoryPage,
   reconcileAttachedTimeline,
+  recentUserInputs,
   timelineEvents,
   upsertTimelineEvent,
 } from '../conversationTimeline';
@@ -179,5 +180,42 @@ describe('conversation timeline reducer', () => {
     } as unknown as HistoryPage;
 
     expect(historyPageToEvents(page)).toMatchObject([{ content: 'hello' }]);
+  });
+});
+
+describe('recentUserInputs', () => {
+  function agentEvent(id: string, content = id): ProcessedEvent {
+    return { ...event(id, content), title: 'workx' };
+  }
+
+  it('returns user inputs most-recent-first', () => {
+    const events = [event('user:1', 'first'), event('user:2', 'second'), event('user:3', 'third')];
+    expect(recentUserInputs(events)).toEqual(['third', 'second', 'first']);
+  });
+
+  it('ignores agent messages and non-message events', () => {
+    const events = [event('user:1', 'ask'), agentEvent('a:1', 'reply'), event('user:2', 'again')];
+    expect(recentUserInputs(events)).toEqual(['again', 'ask']);
+  });
+
+  it('collapses consecutive duplicates and ignores empty/whitespace', () => {
+    const events = [
+      event('user:1', 'hi'),
+      event('user:2', 'hi'),
+      event('user:3', '   '),
+      event('user:4', 'bye'),
+    ];
+    expect(recentUserInputs(events)).toEqual(['bye', 'hi']);
+  });
+
+  it('caps the list at the given limit (default 5)', () => {
+    const events = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'].map((m, i) => event(`user:${i}`, m));
+    expect(recentUserInputs(events)).toEqual(['m6', 'm5', 'm4', 'm3', 'm2']);
+    expect(recentUserInputs(events, 2)).toEqual(['m6', 'm5']);
+  });
+
+  it('returns an empty list when there are no user messages', () => {
+    expect(recentUserInputs([agentEvent('a:1', 'reply')])).toEqual([]);
+    expect(recentUserInputs([])).toEqual([]);
   });
 });

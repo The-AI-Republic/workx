@@ -15,6 +15,8 @@ export const DEFAULT_SHORTCUT_BINDINGS: ShortcutBindingBlock[] = [
     bindings: {
       enter: 'chat:submit',
       'shift+enter': 'chat:newline',
+      up: 'chat:historyPrevious',
+      down: 'chat:historyNext',
     },
   },
   {

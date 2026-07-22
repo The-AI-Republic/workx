@@ -28,6 +28,27 @@ export function timelineEvents(timeline: ConversationTimeline): ProcessedEvent[]
   return timeline.order.flatMap((id) => timeline.byId[id]?.event ?? []);
 }
 
+/**
+ * Recent user-submitted message texts, most-recent-first, for composer Up/Down
+ * recall. Derived from the already-rendered timeline events so the recall list
+ * is naturally scoped to the active session and includes its loaded history —
+ * no separate per-composer buffer to keep in sync or leak across sessions.
+ * Consecutive duplicates are collapsed and empty/whitespace inputs ignored.
+ */
+export function recentUserInputs(
+  events: readonly ProcessedEvent[],
+  limit = 5,
+): string[] {
+  const chronological: string[] = [];
+  for (const event of events) {
+    if (event.category !== 'message' || event.title !== 'user') continue;
+    const text = typeof event.content === 'string' ? event.content.trim() : '';
+    if (!text || chronological[chronological.length - 1] === text) continue;
+    chronological.push(text);
+  }
+  return chronological.slice(-limit).reverse();
+}
+
 export function upsertTimelineEvent(
   timeline: ConversationTimeline,
   event: ProcessedEvent,

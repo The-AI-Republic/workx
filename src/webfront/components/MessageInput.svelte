@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { push } from 'svelte-spa-router';
   import TabContext from './common/TabContext.svelte';
   import ModelSelection from './chat/ModelSelection.svelte';
@@ -29,6 +29,7 @@
     onNewConversation = () => {},
     tabId = -1,
     isProcessing = false,
+    recentUserMessages = [],
     onModelChanged,
     onTabSelected,
     onCommandOutput,
@@ -48,6 +49,10 @@
     onNewConversation?: () => void;
     tabId?: number;
     isProcessing?: boolean;
+    /** Recent user inputs for the active session, most-recent-first, supplied by
+     *  the page from the already-rendered conversation timeline. Drives Up/Down
+     *  recall; scoped per session so switching threads recalls the right history. */
+    recentUserMessages?: string[];
     onModelChanged?: (data: { modelId: string; modelName: string }) => void;
     onTabSelected?: (data: { tabId: number }) => void;
     onCommandOutput?: (data: { title: string; content: string }) => void;
@@ -59,6 +64,29 @@
   } = $props();
 
   let isFocused = $state(false);
+
+  // Bound textarea element — used to read/reposition the caret for message recall.
+  let textareaEl = $state<HTMLTextAreaElement | undefined>();
+
+  // Recent-message recall (shell-style Up/Down history). The list of recent
+  // sent messages comes from `recentUserMessages` (derived by the page from the
+  // rendered conversation timeline), so it needs no separate buffer here and is
+  // already scoped to the active session. `recentUserMessages[0]` is the most
+  // recent. Only the recall cursor is local.
+  // -1 means "editing the live draft"; 0..len-1 indexes into recentUserMessages.
+  let historyIndex = -1;
+  // Stash of the in-progress draft, restored when Down walks back to the bottom.
+  let historyDraft = '';
+
+  // Reset the recall cursor when the composer swaps to another session/tab so
+  // Up starts from the newly-loaded session's most recent message.
+  let recallTabId = tabId;
+  $effect(() => {
+    if (tabId !== recallTabId) {
+      recallTabId = tabId;
+      resetRecall();
+    }
+  });
 
   // Track 13: screenshots captured from the web clipboard, sent alongside
   // the prompt as `image` InputItems (the core funnel disk-backs them).
@@ -87,9 +115,77 @@
     suggestion = null;
   }
 
+  /** Reset the recall cursor so the next Up starts from the most recent message. */
+  function resetRecall(): void {
+    historyIndex = -1;
+    historyDraft = '';
+  }
+
+  /** True when the selection starts at the beginning of the textarea. */
+  function caretAtStart(): boolean {
+    const el = textareaEl;
+    if (!el) return true;
+    return (el.selectionStart ?? 0) === 0;
+  }
+
+  /** True when the selection ends at the end of the textarea. */
+  function caretAtEnd(): boolean {
+    const el = textareaEl;
+    if (!el) return true;
+    return (el.selectionEnd ?? value.length) === value.length;
+  }
+
+  /** Place the caret at the very end once Svelte has flushed the new value. */
+  async function moveCaretToEnd(): Promise<void> {
+    await tick();
+    const el = textareaEl;
+    if (!el) return;
+    const end = el.value.length;
+    el.setSelectionRange(end, end);
+  }
+
+  /**
+   * Up: recall an older sent message. Only fires at the start of the field so
+   * normal cursor movement is preserved for both explicit and visually wrapped
+   * lines. Returns true when the key was consumed.
+   */
+  function recallPreviousMessage(): boolean {
+    if (isCommandMode || recentUserMessages.length === 0) return false;
+    if (!caretAtStart()) return false;
+    if (historyIndex === -1) historyDraft = value;
+    if (historyIndex < recentUserMessages.length - 1) {
+      historyIndex += 1;
+      value = recentUserMessages[historyIndex];
+      void moveCaretToEnd();
+    }
+    // Consume even at the oldest entry so the caret doesn't jump unexpectedly.
+    return true;
+  }
+
+  /**
+   * Down: walk back toward newer messages and finally restore the live draft.
+   * Only fires while recalling and at the end of the field. Returns true when
+   * the key was consumed.
+   */
+  function recallNextMessage(): boolean {
+    if (isCommandMode || historyIndex === -1) return false;
+    if (!caretAtEnd()) return false;
+    if (historyIndex === 0) {
+      historyIndex = -1;
+      value = historyDraft;
+      historyDraft = '';
+    } else {
+      historyIndex -= 1;
+      value = recentUserMessages[historyIndex];
+    }
+    void moveCaretToEnd();
+    return true;
+  }
+
   /** Submit the current value plus any pending attachments, then reset. */
   async function submitWithAttachments(): Promise<void> {
     suggestion = null; // Track 24.3: a sent message invalidates the prediction.
+    resetRecall(); // the sent message enters the timeline; recall starts fresh
     if (pendingReads.length) {
       await Promise.all(pendingReads);
     }
@@ -286,6 +382,20 @@
       }
     }
 
+    // Up/Down recall recent sent messages (mirrors the registered
+    // chat:historyPrevious/Next shortcuts; kept here so the behavior also works
+    // without the global ShortcutProvider, e.g. in unit tests). Plain arrows
+    // only — Shift/Alt/Ctrl/Meta keep their native selection/word behavior.
+    const noMods = !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey;
+    if (event.key === 'ArrowUp' && noMods && recallPreviousMessage()) {
+      event.preventDefault();
+      return;
+    }
+    if (event.key === 'ArrowDown' && noMods && recallNextMessage()) {
+      event.preventDefault();
+      return;
+    }
+
     // Track 24.3: Tab accepts the suggestion only when the command palette is
     // closed AND the input is empty OR the typed text is a prefix of the
     // suggestion. Guarantees Tab never hijacks the palette (handled above) or
@@ -344,6 +454,10 @@
 
   function handleInput(): void {
     ensureBuiltins();
+
+    // Typing diverges from a recalled message → leave recall mode; the edited
+    // text becomes the live draft again.
+    historyIndex = -1;
 
     // Clear error on input
     if (errorMessage) {
@@ -485,6 +599,12 @@
       submitCurrentInput();
     });
     const unregisterNewline = registerShortcut('chat:newline', 'Chat', () => false);
+    const unregisterHistoryPrevious = registerShortcut('chat:historyPrevious', 'Chat', () =>
+      recallPreviousMessage(),
+    );
+    const unregisterHistoryNext = registerShortcut('chat:historyNext', 'Chat', () =>
+      recallNextMessage(),
+    );
     const unregisterSlashNext = registerShortcut('slash:next', 'SlashCommand', () => {
       if (filteredCommands.length > 0) {
         selectedIndex = (selectedIndex + 1) % filteredCommands.length;
@@ -507,6 +627,8 @@
       unregisterSlashContext();
       unregisterSubmit();
       unregisterNewline();
+      unregisterHistoryPrevious();
+      unregisterHistoryNext();
       unregisterSlashNext();
       unregisterSlashPrevious();
       unregisterSlashDismiss();
@@ -615,6 +737,7 @@
           : 'border border-term-dim-green rounded bg-black/70 focus-within:border-term-bright-green focus-within:shadow-[0_0_0_1px_var(--color-term-bright-green)]'}"
     >
       <textarea
+        bind:this={textareaEl}
         bind:value
         {placeholder}
         onkeydown={handleKeyDown}

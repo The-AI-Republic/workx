@@ -151,6 +151,113 @@ describe('MessageInput Component', () => {
     });
   });
 
+  // Up/Down recall of recent messages. The recall list is supplied by the page
+  // via `recentUserMessages` (most-recent-first), derived from the rendered
+  // conversation timeline — so it is naturally per-session with no local buffer.
+  describe('Message recall (Up/Down history)', () => {
+    it('recalls the most recent message on ArrowUp', async () => {
+      render(MessageInput, {
+        props: { value: '', onSubmit: vi.fn(), recentUserMessages: ['hello world'] },
+      });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('hello world');
+    });
+
+    it('walks older then newer through the recall list', async () => {
+      render(MessageInput, {
+        props: {
+          value: '',
+          onSubmit: vi.fn(),
+          recentUserMessages: ['third', 'second', 'first'],
+        },
+      });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('third');
+      textarea.selectionStart = textarea.selectionEnd = 0;
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('second');
+      textarea.selectionStart = textarea.selectionEnd = 0;
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('first');
+
+      // Down walks back toward newer entries.
+      await fireEvent.keyDown(textarea, { key: 'ArrowDown' });
+      expect(textarea.value).toBe('second');
+    });
+
+    it('stays at the oldest entry when walking past the top', async () => {
+      render(MessageInput, {
+        props: { value: '', onSubmit: vi.fn(), recentUserMessages: ['newer', 'older'] },
+      });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      for (let i = 0; i < 4; i++) {
+        await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+        textarea.selectionStart = textarea.selectionEnd = 0;
+      }
+      expect(textarea.value).toBe('older');
+    });
+
+    it('restores the in-progress draft when Down returns to the bottom', async () => {
+      render(MessageInput, {
+        props: { value: '', onSubmit: vi.fn(), recentUserMessages: ['sent message'] },
+      });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      // In-progress draft the user was typing.
+      await fireEvent.input(textarea, { target: { value: 'draft in progress' } });
+      textarea.selectionStart = textarea.selectionEnd = 0;
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('sent message');
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowDown' });
+      expect(textarea.value).toBe('draft in progress');
+    });
+
+    it('does not recall when there is no history', async () => {
+      render(MessageInput, { props: { value: '', onSubmit: vi.fn() } });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('');
+    });
+
+    it('does not hijack ArrowUp when the caret is not at the start', async () => {
+      render(MessageInput, {
+        props: { value: '', onSubmit: vi.fn(), recentUserMessages: ['recorded'] },
+      });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      // Multi-line draft with the caret at the end (second line) → Up should
+      // move the cursor, not replace the text.
+      await fireEvent.input(textarea, { target: { value: 'line one\nline two' } });
+      textarea.selectionStart = textarea.selectionEnd = 'line one\nline two'.length;
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('line one\nline two');
+    });
+
+    it('does not hijack ArrowUp in the middle of a visually wrapped line', async () => {
+      render(MessageInput, {
+        props: { value: '', onSubmit: vi.fn(), recentUserMessages: ['recorded'] },
+      });
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+      await fireEvent.input(textarea, {
+        target: { value: 'a single line long enough to wrap in a narrow composer' },
+      });
+      textarea.selectionStart = textarea.selectionEnd = 12;
+
+      await fireEvent.keyDown(textarea, { key: 'ArrowUp' });
+      expect(textarea.value).toBe('a single line long enough to wrap in a narrow composer');
+    });
+  });
+
   // Value binding test
   describe('Value Binding', () => {
     it('should reflect value prop in textarea', () => {

@@ -64,6 +64,7 @@
     noteDelivery,
     prependHistoryPage,
     reconcileAttachedTimeline,
+    recentUserInputs,
     timelineEvents,
     upsertTimelineEvent,
     type ConversationTimeline,
@@ -78,6 +79,9 @@
   let eventProcessor: EventProcessor;
   let timeline: ConversationTimeline = $state(emptyTimeline());
   let processedEvents = $derived(timelineEvents(timeline));
+  // Recent user inputs of the active session, reused from the rendered timeline
+  // for composer Up/Down recall (per-session; no separate cache to maintain).
+  let recentUserMessages = $derived(recentUserInputs(processedEvents));
   let inputText: string = $state('');
   // Track 24.3: predicted next user message (bound into MessageInput).
   let nextSuggestion: string | null = $state(null);
@@ -1932,6 +1936,7 @@
               onNewConversation={startNewConversation}
               tabId={currentTabId}
               {isProcessing}
+              {recentUserMessages}
               placeholder={$_t(">> Enter command...")}
               onTabSelected={handleTabSelected}
               onCommandOutput={handleCommandOutput}
