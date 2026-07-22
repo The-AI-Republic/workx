@@ -113,11 +113,6 @@ export class ModelClientFactory {
     this._chatGPTOAuth401Retries = 0;
   }
 
-  /** Private distributions may override this factory with account routing. */
-  isBackendRouting(): boolean {
-    return false;
-  }
-
   async getGatewayCredential(): Promise<GatewayCredential | null> {
     return this.auth.gatewayCredentials()?.getCredential() ?? null;
   }

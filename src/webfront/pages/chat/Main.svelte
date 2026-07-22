@@ -95,7 +95,7 @@
     message?: string;
     provider?: string;
     model?: string;
-    authMode?: 'login' | 'api_key' | 'none';
+    authMode?: AgentAccessState['mode'];
   } = $state({ ready: false, authMode: 'none' });
   let zoomLevel: number = $state(parseInt(document.documentElement.style.fontSize) || 100);
   let loadingOlderHistory = $state(false);

@@ -3,9 +3,9 @@ import { ModelClientFactory } from '../ModelClientFactory';
 import type { AuthContext } from '@/core/auth/AuthContext';
 
 describe('ModelClientFactory OSS routing', () => {
-  it('never enables hosted backend routing', () => {
+  it('requires an explicit API-key gateway credential', async () => {
     const factory = new ModelClientFactory();
-    expect(factory.isBackendRouting()).toBe(false);
+    await expect(factory.isGatewayRoutingAvailable('openai')).resolves.toBe(false);
   });
 
   it('retains ChatGPT provider OAuth retry handling', () => {

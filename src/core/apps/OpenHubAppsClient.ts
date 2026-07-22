@@ -340,10 +340,9 @@ export class OpenHubAppsClient {
   private async requestJson(path: string, init: RequestInit): Promise<unknown> {
     let credential = await this.options.credentials.getCredential();
     if (!credential) {
-      const policy = this.options.credentials.policy.authMethod;
       throw new AppsServiceError(
-        policy === 'api-key' ? 'APPS_API_KEY_REQUIRED' : 'APPS_LOGIN_REQUIRED',
-        policy === 'api-key' ? 'Add an OpenHub API key in Settings.' : 'Sign in to use Apps.'
+        'APPS_API_KEY_REQUIRED',
+        'Add an OpenHub API key in Settings.'
       );
     }
     let response = await this.sendRaw(path, init, credential);

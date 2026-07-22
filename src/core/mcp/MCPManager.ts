@@ -84,8 +84,6 @@ export class MCPManager implements IMCPManager {
   private eventHandlers: Set<(event: MCPManagerEvent) => void> = new Set();
   private initialized: boolean = false;
   private platform: MCPPlatformScope;
-  private sessionTokenProvider: (() => Promise<string | null>) | null = null;
-  private sessionTokenRefreshProvider: (() => Promise<string | null>) | null = null;
   private gatewayCredentialProvider: (() => Promise<string | null>) | null = null;
   private gatewayUnauthorizedProvider:
     | ((failedToken: string | null) => Promise<string | null>)
@@ -305,19 +303,6 @@ export class MCPManager implements IMCPManager {
       }
     }
     return undefined;
-  }
-
-  /**
-   * Set the runtime-owned session token provider used by built-in session-JWT
-   * MCP servers. The token is resolved per request and is never persisted into
-   * the MCP server configuration.
-   */
-  setSessionTokenProvider(provider: (() => Promise<string | null>) | null): void {
-    this.sessionTokenProvider = provider;
-  }
-
-  setSessionTokenRefreshProvider(provider: (() => Promise<string | null>) | null): void {
-    this.sessionTokenRefreshProvider = provider;
   }
 
   setGatewayCredentialProvider(
@@ -645,8 +630,6 @@ export class MCPManager implements IMCPManager {
       return new StreamableHttpMCPClient({
         config,
         apiKey,
-        tokenProvider: this.sessionTokenProvider ?? undefined,
-        refreshTokenProvider: this.sessionTokenRefreshProvider ?? undefined,
         credentialProvider:
           config.id === BUILTIN_GATEWAY_SERVER_ID
             ? (this.gatewayCredentialProvider ?? undefined)
@@ -766,7 +749,7 @@ export class MCPManager implements IMCPManager {
       name: serverName,
       url: urls.gatewayMcpUrl,
       transport: 'streamable-http',
-      authMode: appsAccessPolicy.authMethod,
+      authMode: 'api-key',
       headers,
       platform: this.platform,
       builtin: true,

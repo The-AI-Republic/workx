@@ -29,7 +29,7 @@
     highlightSettingId?: string | undefined;
     onBack?: () => void;
     onSaved?: (detail: { success: boolean; error?: string }) => void;
-    onAuthUpdated?: (detail: { isAuthenticated: boolean; mode: 'login' | 'api_key' | null }) => void;
+    onAuthUpdated?: (detail: { isAuthenticated: boolean; mode: 'api_key' | null }) => void;
     onNavigateToAdvanced?: (detail: { modelId: string; providerId: string }) => void;
   } = $props();
 

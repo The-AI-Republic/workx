@@ -7,7 +7,7 @@
 
 import { writable, type Writable } from 'svelte/store';
 import { t } from '../lib/i18n';
-import type { AgentAccessState } from '@/core/services/runtime-state';
+import type { AgentAccessMode, AgentAccessState } from '@/core/services/runtime-state';
 
 /**
  * Agent state interface
@@ -16,7 +16,7 @@ export interface AgentState {
   /** Whether the agent is ready to process requests */
   ready: boolean;
   /** Current authentication mode */
-  authMode: 'login' | 'api_key' | 'none';
+  authMode: AgentAccessMode;
   /** Status message for the user */
   message?: string;
   /** Current provider name */
@@ -41,19 +41,6 @@ function createAgentStore() {
     subscribe,
 
     /**
-     * Set agent as ready with login mode
-     */
-    setLoggedIn: (provider?: string, model?: string) => {
-      set({
-        ready: true,
-        authMode: 'login',
-        message: undefined,
-        provider,
-        model,
-      });
-    },
-
-    /**
      * Set agent as ready with API key mode
      */
     setApiKeyMode: (provider?: string, model?: string) => {
@@ -73,7 +60,7 @@ function createAgentStore() {
       set({
         ready: false,
         authMode: 'none',
-        message: message || t('No access configured. Please log in or configure an API key.'),
+        message: message || t('No access configured. Please configure an API key.'),
         provider,
         model,
       });
@@ -87,7 +74,7 @@ function createAgentStore() {
       message?: string;
       provider?: string;
       model?: string;
-      authMode?: 'login' | 'api_key' | 'none';
+      authMode?: AgentAccessMode;
     }) => {
       set({
         ready: response.ready,

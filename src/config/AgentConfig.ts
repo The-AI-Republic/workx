@@ -335,9 +335,9 @@ export class AgentConfig implements IConfigService {
    * and fall back to "same as task model".
    *
    * Provider policy is NOT enforced here — the config layer doesn't know the
-   * routing mode. In gateway routing (logged in, not using own API key) any
-   * backend-supported model is allowed; in own-API-key mode the efficient
-   * model must share the task model's provider, enforced by the settings UI
+   * routing mode. In API-key gateway routing any catalog model is allowed; in
+   * direct API-key mode the efficient model must share the task model's provider,
+   * enforced by the settings UI
    * (dropdown contents) and at call time by
    * ModelClientFactory.createEfficientClient (fallback to the task model).
    * @param compositeKey - Model key "providerId:modelKey", or null to clear

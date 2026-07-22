@@ -39,7 +39,6 @@ export interface IAuthManager {
 
 /**
  * OSS credential state for API-key gateway routing and ChatGPT provider OAuth.
- * Product-account sessions are implemented by private distributions.
  */
 export class AuthManager implements IAuthManager {
   private _gatewayLlmBaseUrl: string | null;

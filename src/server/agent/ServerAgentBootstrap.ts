@@ -1535,8 +1535,7 @@ export class ServerAgentBootstrap {
                 : undefined,
           }
         : undefined,
-      // ChatGPT provider OAuth remains available in OSS. Product-account
-      // login is supplied only by private compositions.
+      // ChatGPT provider OAuth remains available in OSS.
       auth:
         profile === 'desktop-runtime' && this.registry
           ? {

@@ -37,7 +37,7 @@ function config(overrides: Partial<IMCPServerConfig> = {}): IMCPServerConfig {
     enabled: true,
     timeout: 30000,
     transport: 'streamable-http',
-    authMode: 'session-jwt',
+    authMode: 'api-key',
     headers: { 'X-Custom-Tool-Discovery': 'folded' },
     platform: 'desktop',
     createdAt: Date.now(),
@@ -78,12 +78,12 @@ describe('StreamableHttpMCPClient', () => {
     }));
   });
 
-  it('injects the session JWT and configured headers into transport fetches', async () => {
+  it('injects the API key and configured headers into transport fetches', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response('{}'));
     vi.stubGlobal('fetch', fetchMock);
     const client = new StreamableHttpMCPClient({
       config: config(),
-      tokenProvider: async () => 'jwt-123',
+      tokenProvider: async () => 'api-key-123',
     });
 
     await client.connect();
@@ -93,14 +93,14 @@ describe('StreamableHttpMCPClient', () => {
 
     const [, requestInit] = fetchMock.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit];
     const headers = requestInit.headers as Headers;
-    expect(headers.get('Authorization')).toBe('Bearer jwt-123');
+    expect(headers.get('Authorization')).toBe('Bearer api-key-123');
     expect(headers.get('X-Custom-Tool-Discovery')).toBe('folded');
   });
 
   it('reports the negotiated protocol version after connect', async () => {
     const client = new StreamableHttpMCPClient({
       config: config(),
-      tokenProvider: async () => 'jwt-123',
+      tokenProvider: async () => 'api-key-123',
     });
 
     await client.connect();
@@ -108,16 +108,16 @@ describe('StreamableHttpMCPClient', () => {
     expect(client.getProtocolVersion()).toBe('2025-01-01');
   });
 
-  it('refreshes and retries session JWT fetches once after a 401', async () => {
+  it('refreshes and retries dynamic API-key fetches once after a 401', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response('{}', { status: 401 }))
       .mockResolvedValueOnce(new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
-    const refreshTokenProvider = vi.fn(async () => 'jwt-new');
+    const refreshTokenProvider = vi.fn(async () => 'api-key-new');
     const client = new StreamableHttpMCPClient({
       config: config(),
-      tokenProvider: async () => 'jwt-old',
+      tokenProvider: async () => 'api-key-old',
       refreshTokenProvider,
     });
 
@@ -128,14 +128,14 @@ describe('StreamableHttpMCPClient', () => {
     expect(refreshTokenProvider).toHaveBeenCalledTimes(1);
     const firstHeaders = fetchMock.mock.calls[0][1].headers as Headers;
     const secondHeaders = fetchMock.mock.calls[1][1].headers as Headers;
-    expect(firstHeaders.get('Authorization')).toBe('Bearer jwt-old');
-    expect(secondHeaders.get('Authorization')).toBe('Bearer jwt-new');
+    expect(firstHeaders.get('Authorization')).toBe('Bearer api-key-old');
+    expect(secondHeaders.get('Authorization')).toBe('Bearer api-key-new');
   });
 
   it('refreshes tools after app activation changes folded discovery output', async () => {
     const client = new StreamableHttpMCPClient({
       config: config(),
-      tokenProvider: async () => 'jwt-123',
+      tokenProvider: async () => 'api-key-123',
     });
 
     await client.connect();

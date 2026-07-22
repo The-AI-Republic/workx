@@ -13,9 +13,9 @@ export interface RuntimeUrlConfig {
   gatewayMcpToolDiscovery: string | null;
   /**
    * Default efficient model (bare model key, e.g. "deepseek-v4-flash") applied
-   * when the user is logged in (gateway routing) and has not explicitly chosen
-   * an efficient model. Unset in OSS builds — the efficient model then defaults
-   * to the selected task model.
+   * for API-key gateway routing when the user has not explicitly chosen an
+   * efficient model. Unset in OSS builds, where the efficient model defaults to
+   * the selected task model.
    */
   gatewayDefaultEfficientModel: string | null;
   llmRoutingMode: 'legacy' | 'gateway';

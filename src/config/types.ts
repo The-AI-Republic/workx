@@ -41,7 +41,7 @@ export interface IAgentConfig {
    * Format: "providerId:modelKey" (e.g., "openai:gpt-4o-mini")
    * If not specified, uses selectedModelKey (same as task model).
    * Must be from the same provider as selectedModelKey in API-key mode;
-   * gateway (logged-in) routing may supply a cross-provider default.
+   * API-key gateway routing may supply a cross-provider default.
    * Never used to run user-facing tasks.
    */
   efficientModelKey?: string;

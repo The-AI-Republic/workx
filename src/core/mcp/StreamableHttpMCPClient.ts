@@ -295,7 +295,7 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
           if (!headers.has(key)) headers.set(key, value);
         }
 
-        if (authMode === 'session-jwt' || authMode === 'api-key') {
+        if (authMode === 'api-key') {
           const value = credential ?? this.options.apiKey;
           if (!value) throw new Error(`MCP ${authMode} auth requires a credential`);
           headers.set('Authorization', `Bearer ${value}`);
@@ -315,7 +315,7 @@ export class StreamableHttpMCPClient implements IMCPClientAdapter {
           ? async () => this.options.refreshTokenProvider!()
           : undefined);
       let token = await provider?.();
-      if (!token && authMode === 'session-jwt') {
+      if (!token) {
         token = await this.options.refreshTokenProvider?.();
       }
       const response = await send(token);

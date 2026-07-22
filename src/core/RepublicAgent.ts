@@ -1475,7 +1475,7 @@ export class RepublicAgent {
       const gatewayRouting =
         !isCustomProvider &&
         (await this.modelClientFactory.isGatewayRoutingAvailable(providerId));
-      if ((!isCustomProvider && this.modelClientFactory.isBackendRouting()) || gatewayRouting) {
+      if (gatewayRouting) {
         return {
           ready: true,
           provider: modelData.provider.name,
