@@ -75,6 +75,9 @@ export const resizeHandle: Action<HTMLElement, ResizeHandleOptions | undefined> 
   node.addEventListener('pointermove', onPointerMove);
   node.addEventListener('pointerup', endDrag);
   node.addEventListener('pointercancel', endDrag);
+  // If capture is yanked away (element detached, browser reclaim), pointerup may
+  // never reach us — reset here so the drag state and body cursor don't stick.
+  node.addEventListener('lostpointercapture', endDrag);
 
   return {
     update(next) {
@@ -85,6 +88,7 @@ export const resizeHandle: Action<HTMLElement, ResizeHandleOptions | undefined> 
       node.removeEventListener('pointermove', onPointerMove);
       node.removeEventListener('pointerup', endDrag);
       node.removeEventListener('pointercancel', endDrag);
+      node.removeEventListener('lostpointercapture', endDrag);
       // Restore document styling if we're torn down mid-drag.
       if (dragging) setDragCursor(false);
     },
