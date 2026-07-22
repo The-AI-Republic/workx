@@ -135,9 +135,8 @@ export function resolveRuntimeUrls(): RuntimeUrlConfig {
   );
   const gatewayCatalogApiBaseUrl =
     gatewayCatalogApiFromEnv ??
-    (gatewayCatalogUrl ? joinUrl(originOf(gatewayCatalogUrl) ?? gatewayCatalogUrl, 'api/v1/apps') : null) ??
-    (gatewayBaseUrl
-      ? joinUrl(originOf(gatewayBaseUrl) ?? gatewayBaseUrl, 'api/v1/apps')
+    (gatewayCatalogUrl
+      ? joinUrl(originOf(gatewayCatalogUrl) ?? gatewayCatalogUrl, 'api/v1/apps')
       : null);
   const gatewayMcpNameFromEnv = firstNonEmpty(
     env.WORKX_GATEWAY_MCP_NAME,

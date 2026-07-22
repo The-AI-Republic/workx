@@ -70,20 +70,20 @@ describe('OpenHubAppsClient', () => {
       compatible.validateCredential({ method: 'api-key', token: 'candidate' })
     ).resolves.toMatchObject({ valid: true, credentialType: 'api-key' });
 
-    const legacyCompatible = await apiClient(
-      vi.fn(async () =>
-        json({ ...validCredential(), capabilities: ['single-gateway-credential-v1'] })
-      )
-    );
-    await expect(
-      legacyCompatible.validateCredential({ method: 'api-key', token: 'candidate' })
-    ).resolves.toMatchObject({ valid: true, credentialType: 'api-key' });
-
     const incompatible = await apiClient(
       vi.fn(async () => json({ ...validCredential(), capabilities: [] }))
     );
     await expect(
       incompatible.validateCredential({ method: 'api-key', token: 'candidate' })
+    ).rejects.toMatchObject({ errorCode: 'APPS_BACKEND_INCOMPATIBLE' });
+
+    const gatewayFacade = await apiClient(
+      vi.fn(async () =>
+        json({ ...validCredential(), capabilities: ['single-gateway-credential-v1'] })
+      )
+    );
+    await expect(
+      gatewayFacade.validateCredential({ method: 'api-key', token: 'candidate' })
     ).rejects.toMatchObject({ errorCode: 'APPS_BACKEND_INCOMPATIBLE' });
 
     for (const scopes of [

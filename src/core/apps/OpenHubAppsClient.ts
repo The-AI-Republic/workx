@@ -18,12 +18,7 @@ import type { OpenHubCredentialProvider } from './OpenHubCredentialProvider';
 const JSON_LIMIT = 2 * 1024 * 1024;
 const ICON_LIMIT = 256 * 1024;
 const REQUIRED_SCOPES = ['chat', 'models', 'apps'] as const;
-const SUPPORTED_AUTH_CAPABILITIES = [
-  'single-hub-apps-credential-v1',
-  // Kept during the direct-Hub rollout so an older server response does not
-  // strand an already-installed WorkX build.
-  'single-gateway-credential-v1',
-] as const;
+const HUB_APPS_AUTH_CAPABILITY = 'single-hub-apps-credential-v1';
 const APP_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 
 export interface OpenHubAppsClientObserver {
@@ -230,10 +225,7 @@ export class OpenHubAppsClient {
     const capabilities = Array.isArray(raw?.capabilities)
       ? raw.capabilities.filter((v): v is string => typeof v === 'string')
       : [];
-    if (
-      raw?.contractVersion !== 1 ||
-      !SUPPORTED_AUTH_CAPABILITIES.some((capability) => capabilities.includes(capability))
-    ) {
+    if (raw?.contractVersion !== 1 || !capabilities.includes(HUB_APPS_AUTH_CAPABILITY)) {
       throw new AppsServiceError(
         'APPS_BACKEND_INCOMPATIBLE',
         'This OpenHub deployment does not support WorkX Apps authentication.',
