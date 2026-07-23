@@ -41,7 +41,6 @@ export interface AppsAccessState {
   authMethod: AppsAuthMethod;
   credentialSource: AppsCredentialSource;
   hasCredential: boolean;
-  allowedAppIds?: string[] | null;
   reason?: AppsAccessReason;
   revision: number;
   updatedAt: number;
@@ -58,7 +57,6 @@ export interface AppsCredentialValidationResult {
   valid: true;
   credentialType: AppsAuthMethod;
   grantedScopes: string[];
-  allowedAppIds: string[] | null;
 }
 
 export interface ManualSetupField {

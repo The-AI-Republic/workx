@@ -36,7 +36,6 @@ function credentialContract() {
       capabilities: ['single-hub-apps-credential-v1'],
       credentialType: 'api-key',
       scopes: ['chat', 'models', 'apps'],
-      allowedAppIds: null,
     }),
     { headers: { 'content-type': 'application/json' } }
   );
@@ -96,7 +95,6 @@ describe('createAppsRuntime', () => {
           capabilities: ['single-hub-apps-credential-v1'],
           credentialType: 'api-key',
           scopes: ['apps'],
-          allowedAppIds: null,
         }),
         { headers: { 'content-type': 'application/json' } }
       )

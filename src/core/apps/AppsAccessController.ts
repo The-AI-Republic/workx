@@ -49,12 +49,7 @@ export class AppsAccessController {
   }
 
   getState(): AppsAccessState {
-    return {
-      ...this.state,
-      allowedAppIds: this.state.allowedAppIds
-        ? [...this.state.allowedAppIds]
-        : this.state.allowedAppIds,
-    };
+    return { ...this.state };
   }
 
   async initialize(): Promise<AppsAccessState> {
@@ -113,9 +108,8 @@ export class AppsAccessController {
       const normalized = this.normalizeCandidate(candidate);
       if (!this.options.client)
         throw new AppsServiceError('APPS_NOT_CONFIGURED', 'The Apps catalog is not configured.');
-      let result: AppsCredentialValidationResult;
       try {
-        result = await this.options.client.validateCredential({
+        await this.options.client.validateCredential({
           method: 'api-key',
           token: normalized,
         });
@@ -130,7 +124,6 @@ export class AppsAccessController {
         capabilityStatus: 'supported',
         credentialSource: 'stored-api-key',
         hasCredential: true,
-        allowedAppIds: result.allowedAppIds,
         reason: undefined,
       });
       await this.reconnectMcpBestEffort();
@@ -171,7 +164,6 @@ export class AppsAccessController {
         credentialStatus: 'needs-api-key',
         credentialSource: 'none',
         hasCredential: false,
-        allowedAppIds: undefined,
         reason: 'api_key_missing',
       });
     }
@@ -185,14 +177,13 @@ export class AppsAccessController {
       });
     }
     try {
-      const result = await this.options.client.validateCredential(credential);
+      await this.options.client.validateCredential(credential);
       await this.commit({
         credentialStatus: 'ready',
         backendStatus: 'reachable',
         capabilityStatus: 'supported',
         credentialSource: credential.source,
         hasCredential: true,
-        allowedAppIds: result.allowedAppIds,
         reason: undefined,
       });
       if (!wasReady) await this.reconnectMcpBestEffort();

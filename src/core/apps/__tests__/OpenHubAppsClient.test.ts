@@ -18,7 +18,6 @@ describe('OpenHubAppsClient OSS credentials', () => {
       capabilities: ['single-hub-apps-credential-v1'],
       credentialType: 'api-key',
       scopes: ['chat', 'models', 'apps'],
-      allowedAppIds: null,
     }), { headers: { 'content-type': 'application/json' } }));
     const client = new OpenHubAppsClient({
       catalogApiBaseUrl: 'https://hub.example/api/v1/apps',
