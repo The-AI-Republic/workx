@@ -220,13 +220,7 @@ export class OpenHubAppsClient {
         403
       );
     }
-    const allowedAppIds =
-      raw?.allowedAppIds === null
-        ? null
-        : Array.isArray(raw?.allowedAppIds)
-          ? raw.allowedAppIds.filter((v): v is string => typeof v === 'string').slice(0, 1000)
-          : null;
-    return { valid: true, credentialType, grantedScopes: scopes, allowedAppIds };
+    return { valid: true, credentialType, grantedScopes: scopes };
   }
 
   async marketplace(
