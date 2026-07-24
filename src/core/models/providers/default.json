@@ -5,7 +5,7 @@
     "apiKey": "",
     "organization": null,
     "baseUrl": "https://api.x.ai/v1",
-    "defaultEfficientModelKey": "grok-4-1-fast-reasoning",
+    "defaultEfficientModelKey": "grok-4.3",
     "version": null,
     "headers": {},
     "timeout": 30000,
@@ -17,31 +17,57 @@
     },
     "models": [
       {
-        "name": "Grok 4.1 Fast Reasoning",
-        "modelKey": "grok-4-1-fast-reasoning",
+        "name": "Grok 4.3",
+        "modelKey": "grok-4.3",
         "openHubRoute": {
-          "modelSlug": "x-ai/grok-4-1-fast-reasoning",
+          "modelSlug": "x-ai/grok-4.3",
           "providerSlug": "xai"
         },
         "creator": "xAI",
-        "contextWindow": 2000000,
+        "contextWindow": 1000000,
         "maxOutputTokens": 16384,
         "supportsReasoning": true,
         "reasoningEfforts": [
-          "minimal",
           "low",
           "medium",
-          "high",
-          "ultra"
+          "high"
         ],
         "supportsReasoningSummaries": false,
         "supportsVerbosity": false,
         "supportsImage": true,
-        "releaseDate": "2024-11-15",
+        "releaseDate": "2026-05-15",
         "deprecated": false,
         "pricing": {
-          "inputToken": "$0.20 / 1M tokens",
-          "outputToken": "$0.50 / 1M tokens",
+          "inputToken": "$1.25 / 1M tokens",
+          "outputToken": "$2.50 / 1M tokens",
+          "link": "https://docs.x.ai/docs/models"
+        },
+        "supportBackendMode": 1
+      },
+      {
+        "name": "Grok 4.5",
+        "modelKey": "grok-4.5",
+        "openHubRoute": {
+          "modelSlug": "xai/grok-4.5",
+          "providerSlug": "xai"
+        },
+        "creator": "xAI",
+        "contextWindow": 500000,
+        "maxOutputTokens": 16384,
+        "supportsReasoning": true,
+        "reasoningEfforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": true,
+        "releaseDate": "2026-07-08",
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "$2.00 / 1M tokens",
+          "outputToken": "$6.00 / 1M tokens",
           "link": "https://docs.x.ai/docs/models"
         },
         "supportBackendMode": 1
@@ -65,6 +91,118 @@
       "backoffMultiplier": 2
     },
     "models": [
+      {
+        "name": "GPT-5.6 Sol",
+        "modelKey": "gpt-5.6-sol",
+        "openHubRoute": {
+          "modelSlug": "openai/gpt-5.6-sol",
+          "providerSlug": "openai"
+        },
+        "creator": "OpenAI",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "fallbackModelKey": "openai:gpt-5.6-terra",
+        "supportsReasoning": true,
+        "reasoningEfforts": [
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "supportsReasoningSummaries": true,
+        "supportsVerbosity": true,
+        "verbosityLevels": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "supportsImage": true,
+        "supportsWebSearch": true,
+        "releaseDate": "2026-07-09",
+        "deprecated": false,
+        "serviceTier": "default",
+        "pricing": {
+          "inputToken": "$5.00 / 1M tokens",
+          "outputToken": "$30.00 / 1M tokens",
+          "link": "https://openai.com/api/pricing/"
+        },
+        "supportBackendMode": 1
+      },
+      {
+        "name": "GPT-5.6 Terra",
+        "modelKey": "gpt-5.6-terra",
+        "openHubRoute": {
+          "modelSlug": "openai/gpt-5.6-terra",
+          "providerSlug": "openai"
+        },
+        "creator": "OpenAI",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "supportsReasoning": true,
+        "reasoningEfforts": [
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "supportsReasoningSummaries": true,
+        "supportsVerbosity": true,
+        "verbosityLevels": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "supportsImage": true,
+        "supportsWebSearch": true,
+        "releaseDate": "2026-07-09",
+        "deprecated": false,
+        "serviceTier": "default",
+        "pricing": {
+          "inputToken": "$2.50 / 1M tokens",
+          "outputToken": "$15.00 / 1M tokens",
+          "link": "https://openai.com/api/pricing/"
+        },
+        "supportBackendMode": 1
+      },
+      {
+        "name": "GPT-5.6 Luna",
+        "modelKey": "gpt-5.6-luna",
+        "openHubRoute": {
+          "modelSlug": "openai/gpt-5.6-luna",
+          "providerSlug": "openai"
+        },
+        "creator": "OpenAI",
+        "contextWindow": 1050000,
+        "maxOutputTokens": 128000,
+        "supportsReasoning": true,
+        "reasoningEfforts": [
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "supportsReasoningSummaries": true,
+        "supportsVerbosity": true,
+        "verbosityLevels": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "supportsImage": true,
+        "supportsWebSearch": true,
+        "releaseDate": "2026-07-09",
+        "deprecated": false,
+        "serviceTier": "default",
+        "pricing": {
+          "inputToken": "$1.00 / 1M tokens",
+          "outputToken": "$6.00 / 1M tokens",
+          "link": "https://openai.com/api/pricing/"
+        },
+        "supportBackendMode": 1
+      },
       {
         "name": "GPT-5.5",
         "modelKey": "gpt-5.5",
@@ -96,7 +234,7 @@
         "deprecated": false,
         "serviceTier": "default",
         "pricing": {
-          "inputToken": "Default: $5.00 / 1M tokens, Cached: $0.50 / 1M tokens (\u2264272K tokens; 2x input above)",
+          "inputToken": "Default: $5.00 / 1M tokens, Cached: $0.50 / 1M tokens (≤272K tokens; 2x input above)",
           "outputToken": "Default: $30.00 / 1M tokens (1.5x above 272K tokens)",
           "link": "https://openai.com/api/pricing/"
         },
@@ -146,7 +284,7 @@
     "apiKey": "",
     "organization": null,
     "baseUrl": "https://generativelanguage.googleapis.com",
-    "defaultEfficientModelKey": "gemini-3.1-pro",
+    "defaultEfficientModelKey": "gemini-3.5-flash",
     "version": null,
     "headers": {},
     "timeout": 30000,
@@ -161,7 +299,7 @@
         "name": "Gemini 3.1 Pro",
         "modelKey": "gemini-3.1-pro",
         "openHubRoute": {
-          "modelSlug": "google/gemini-3.1-pro",
+          "modelSlug": "google/gemini-3.1-pro-preview",
           "providerSlug": "google-ai-studio"
         },
         "creator": "Google",
@@ -176,8 +314,33 @@
         "releaseDate": "2026-05-01",
         "deprecated": false,
         "pricing": {
-          "inputToken": "\u2264200K tokens: $2.00 / 1M, >200K tokens: $4.00 / 1M, Cached: $0.20 / 1M",
-          "outputToken": "\u2264200K tokens: $12.00 / 1M, >200K tokens: $18.00 / 1M",
+          "inputToken": "≤200K tokens: $2.00 / 1M, >200K tokens: $4.00 / 1M, Cached: $0.20 / 1M",
+          "outputToken": "≤200K tokens: $12.00 / 1M, >200K tokens: $18.00 / 1M",
+          "link": "https://ai.google.dev/gemini-api/docs/pricing"
+        },
+        "supportBackendMode": 3
+      },
+      {
+        "name": "Gemini 3.5 Flash",
+        "modelKey": "gemini-3.5-flash",
+        "openHubRoute": {
+          "modelSlug": "google/gemini-3.5-flash",
+          "providerSlug": "google-ai-studio"
+        },
+        "creator": "Google",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 16384,
+        "supportsReasoning": true,
+        "reasoningEfforts": [],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": true,
+        "supportsWebSearch": true,
+        "releaseDate": "2026-05-19",
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "$1.50 / 1M tokens, Cached: $0.15 / 1M tokens",
+          "outputToken": "$9.00 / 1M tokens",
           "link": "https://ai.google.dev/gemini-api/docs/pricing"
         },
         "supportBackendMode": 3
@@ -227,6 +390,53 @@
       }
     ]
   },
+  "moonshot": {
+    "id": "moonshot",
+    "name": "Kimi AI",
+    "apiKey": "",
+    "organization": null,
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "defaultEfficientModelKey": "kimi-k3",
+    "version": null,
+    "headers": {},
+    "timeout": 30000,
+    "retryConfig": {
+      "maxRetries": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    },
+    "models": [
+      {
+        "name": "Kimi K3",
+        "modelKey": "kimi-k3",
+        "openHubRoute": {
+          "modelSlug": "kimi/kimi-k3",
+          "providerSlug": "kimi"
+        },
+        "creator": "Kimi",
+        "contextWindow": 1048576,
+        "maxOutputTokens": 1048576,
+        "supportsReasoning": true,
+        "reasoningEfforts": [
+          "low",
+          "high",
+          "max"
+        ],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": true,
+        "releaseDate": "2026-07-17",
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "Cache Hit: $0.30 / 1M tokens, Cache Miss: $3.00 / 1M tokens",
+          "outputToken": "$15.00 / 1M tokens",
+          "link": "https://platform.kimi.ai/docs/pricing/chat-k3"
+        },
+        "supportBackendMode": 2
+      }
+    ]
+  },
   "anthropic": {
     "id": "anthropic",
     "name": "Anthropic",
@@ -268,6 +478,34 @@
         "pricing": {
           "inputToken": "$5.00 / 1M tokens, Cached: $0.50 / 1M tokens",
           "outputToken": "$25.00 / 1M tokens",
+          "link": "https://platform.claude.com/docs/en/about-claude/pricing"
+        },
+        "supportBackendMode": 0
+      },
+      {
+        "name": "Claude Sonnet 5",
+        "modelKey": "claude-sonnet-5",
+        "openHubRoute": {
+          "modelSlug": "anthropic/claude-sonnet-5",
+          "providerSlug": "anthropic"
+        },
+        "creator": "Anthropic",
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "supportsReasoning": true,
+        "reasoningEfforts": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "supportsReasoningSummaries": false,
+        "supportsVerbosity": false,
+        "supportsImage": true,
+        "releaseDate": null,
+        "deprecated": false,
+        "pricing": {
+          "inputToken": "$3.00 / 1M tokens ($2.00 intro through 2026-08-31), Cached: $0.30 / 1M tokens",
+          "outputToken": "$15.00 / 1M tokens ($10.00 intro through 2026-08-31)",
           "link": "https://platform.claude.com/docs/en/about-claude/pricing"
         },
         "supportBackendMode": 0

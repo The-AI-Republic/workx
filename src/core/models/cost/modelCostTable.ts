@@ -36,9 +36,15 @@ export interface ModelRate {
  */
 export const MODEL_COST_TABLE: Record<string, ModelRate> = {
   // xai — flat, no cache discount
+  'xai:grok-4.3': { inputPer1M: 1.25, outputPer1M: 2.5, cachedInputPer1M: 1.25 },
+  'xai:grok-4.5': { inputPer1M: 2.0, outputPer1M: 6.0, cachedInputPer1M: 2.0 },
+  // legacy (retired from picker; retained so historical usage records cost correctly)
   'xai:grok-4-1-fast-reasoning': { inputPer1M: 0.2, outputPer1M: 0.5, cachedInputPer1M: 0.2 },
 
   // openai — Default tier (Priority tier intentionally not modeled)
+  'openai:gpt-5.6-sol': { inputPer1M: 5.0, outputPer1M: 30.0, cachedInputPer1M: 5.0 },
+  'openai:gpt-5.6-terra': { inputPer1M: 2.5, outputPer1M: 15.0, cachedInputPer1M: 2.5 },
+  'openai:gpt-5.6-luna': { inputPer1M: 1.0, outputPer1M: 6.0, cachedInputPer1M: 1.0 },
   'openai:gpt-5.5': { inputPer1M: 5.0, outputPer1M: 30.0, cachedInputPer1M: 0.5 },
   'openai:gpt-5.4': { inputPer1M: 2.5, outputPer1M: 15.0, cachedInputPer1M: 0.25 },
   // legacy (retired from picker; retained so historical usage records cost correctly)
@@ -47,6 +53,7 @@ export const MODEL_COST_TABLE: Record<string, ModelRate> = {
 
   // google-ai-studio — ≤200K base tier; client always reports cached=0
   'google-ai-studio:gemini-3.1-pro': { inputPer1M: 2.0, outputPer1M: 12.0, cachedInputPer1M: 0.2 },
+  'google-ai-studio:gemini-3.5-flash': { inputPer1M: 1.5, outputPer1M: 9.0, cachedInputPer1M: 0.15 },
   // legacy
   'google-ai-studio:gemini-3-pro-preview': { inputPer1M: 2.0, outputPer1M: 12.0, cachedInputPer1M: 2.0 },
   'google-ai-studio:gemini-2.5-pro': { inputPer1M: 1.25, outputPer1M: 10.0, cachedInputPer1M: 1.25 },
@@ -54,6 +61,8 @@ export const MODEL_COST_TABLE: Record<string, ModelRate> = {
   // deepseek — Cache Miss = input rate, Cache Hit = cached rate (free-tier default)
   'deepseek:deepseek-v4-flash': { inputPer1M: 0.14, outputPer1M: 0.28, cachedInputPer1M: 0.0028 },
 
+  // moonshot — Cache Miss = input rate, Cache Hit = cached rate
+  'moonshot:kimi-k3': { inputPer1M: 3.0, outputPer1M: 15.0, cachedInputPer1M: 0.3 },
   // legacy — Kimi (moonshot/fireworks/together) retired from the picker; rows
   // retained so historical usage records still cost correctly.
   'moonshot:kimi-k2.6': { inputPer1M: 0.95, outputPer1M: 4.0, cachedInputPer1M: 0.16 },
@@ -65,8 +74,10 @@ export const MODEL_COST_TABLE: Record<string, ModelRate> = {
   'together:moonshotai/Kimi-K2.6': { inputPer1M: 1.2, outputPer1M: 4.5, cachedInputPer1M: 0.2 },
   'together:moonshotai/Kimi-K2-Thinking': { inputPer1M: 1.2, outputPer1M: 4.0, cachedInputPer1M: 1.2 },
 
-  // anthropic — cache hit/refresh rate used for cached input
+  // anthropic — cache hit/refresh rate used for cached input; sonnet-5 priced
+  // at the standard (non-intro) rate so estimates stay valid past 2026-08-31
   'anthropic:claude-opus-4-8': { inputPer1M: 5.0, outputPer1M: 25.0, cachedInputPer1M: 0.5 },
+  'anthropic:claude-sonnet-5': { inputPer1M: 3.0, outputPer1M: 15.0, cachedInputPer1M: 0.3 },
   'anthropic:claude-sonnet-4-6': { inputPer1M: 3.0, outputPer1M: 15.0, cachedInputPer1M: 0.3 },
   'anthropic:claude-fable-5': { inputPer1M: 10.0, outputPer1M: 50.0, cachedInputPer1M: 1.0 },
   'anthropic:claude-haiku-4-5-20251001': { inputPer1M: 1.0, outputPer1M: 5.0, cachedInputPer1M: 0.1 },
